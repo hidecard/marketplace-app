@@ -36,6 +36,7 @@ import { OffersPage } from './pages/offers/OffersPage';
 import { ExpensesPage } from './pages/business/ExpensesPage';
 import { InventoryMovementsPage } from './pages/business/InventoryMovementsPage';
 import { CustomersPage } from './pages/business/CustomersPage';
+import { BusinessCategoriesPage } from './pages/business/BusinessCategoriesPage';
 import { NotFoundPage } from './pages/not-found/NotFoundPage';
 import { useAuth } from './hooks/useAuth';
 
@@ -103,6 +104,7 @@ export const App: React.FC = () => {
             <Route path="/business/expenses" element={<ExpensesPage />} />
             <Route path="/business/inventory" element={<InventoryMovementsPage />} />
             <Route path="/business/customers" element={<CustomersPage />} />
+            <Route path="/business/categories" element={<BusinessCategoriesPage />} />
 
             {/* Reviews & Reports */}
             <Route path="/review/:orderId" element={<WriteReviewPage />} />

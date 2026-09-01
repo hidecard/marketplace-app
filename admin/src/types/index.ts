@@ -147,3 +147,14 @@ export interface PlatformStats {
   pendingVerifications: number;
   pendingReports: number;
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  parentId: string | null;
+  order: number;
+  createdAt: Date;
+  updatedAt: Date;
+}

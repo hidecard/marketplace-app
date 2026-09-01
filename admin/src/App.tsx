@@ -13,6 +13,7 @@ import { VerificationsPage } from './pages/VerificationsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { BannersPage } from './pages/BannersPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { CategoriesPage } from './pages/CategoriesPage';
 
 export const App: React.FC = () => {
   useAuth();
@@ -30,6 +31,7 @@ export const App: React.FC = () => {
           <Route path="/admin/orders" element={<OrdersPage />} />
           <Route path="/admin/verifications" element={<VerificationsPage />} />
           <Route path="/admin/reports" element={<ReportsPage />} />
+          <Route path="/admin/categories" element={<CategoriesPage />} />
           <Route path="/admin/banners" element={<BannersPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
         </Route>

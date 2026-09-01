@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, DollarSign, ShoppingBag, TrendingUp, Plus, BarChart3 } from 'lucide-react';
+import { Package, DollarSign, ShoppingBag, TrendingUp, Plus, BarChart3, FolderTree } from 'lucide-react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop, Order, POSSale } from '../../types';
@@ -213,7 +213,7 @@ export const BusinessDashboardPage: React.FC = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-5 gap-3 mb-6">
           <Link to="/business/products/new" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
             <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
               <Plus className="text-primary-600" size={20} />
@@ -237,6 +237,12 @@ export const BusinessDashboardPage: React.FC = () => {
               <BarChart3 className="text-purple-600" size={20} />
             </div>
             <span className="text-xs text-gray-600 text-center">Analytics</span>
+          </Link>
+          <Link to="/business/categories" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
+            <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+              <FolderTree className="text-orange-600" size={20} />
+            </div>
+            <span className="text-xs text-gray-600 text-center">Categories</span>
           </Link>
         </div>
 

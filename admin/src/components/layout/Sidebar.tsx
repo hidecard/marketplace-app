@@ -12,6 +12,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  FolderTree,
   LucideIcon,
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -27,6 +28,7 @@ const navItems: NavItem[] = [
   { path: '/admin/users', icon: Users, label: 'Users' },
   { path: '/admin/shops', icon: Store, label: 'Shops' },
   { path: '/admin/products', icon: Package, label: 'Products' },
+  { path: '/admin/categories', icon: FolderTree, label: 'Categories' },
   { path: '/admin/orders', icon: ShoppingBag, label: 'Orders' },
   { path: '/admin/verifications', icon: FileCheck, label: 'Verifications' },
   { path: '/admin/reports', icon: Flag, label: 'Reports' },
