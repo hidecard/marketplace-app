@@ -1,0 +1,30 @@
+{
+  "name": "marketplace-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Marketplace + Business Management Platform",
+  "workspaces": [
+    "web",
+    "admin",
+    "shared"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w web",
+    "dev:admin": "npm run dev -w admin",
+    "build:web": "npm run build -w web",
+    "build:admin": "npm run build -w admin",
+    "build:all": "npm run build:web && npm run build:admin",
+    "deploy:web": "npm run build:web && firebase deploy --only hosting:web",
+    "deploy:admin": "npm run build:admin && firebase deploy --only hosting:admin",
+    "deploy:firebase": "firebase deploy --only firestore,functions,storage",
+    "deploy:all": "npm run build:all && firebase deploy",
+    "lint": "npm run lint -w web && npm run lint -w admin",
+    "typecheck": "npm run typecheck -w web && npm run typecheck -w admin"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

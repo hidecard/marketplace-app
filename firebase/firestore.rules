@@ -1,0 +1,204 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isShopMember(shopId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/shops/$(shopId)/members/$(request.auth.uid));
+    }
+
+    function isVerifiedShop(shopId) {
+      return isAuthenticated() && get(/databases/$(database)/documents/shops/$(shopId)).data.verified == true;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'phoneVerified', 'shopVerified']);
+      allow delete: if isAdmin();
+    }
+
+    // Shops collection
+    match /shops/{shopId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isShopMember(shopId) || isAdmin();
+      allow delete: if isAdmin();
+
+      // Shop members subcollection
+      match /members/{memberId} {
+        allow read: if isShopMember(shopId) || isAdmin();
+        allow write: if isShopMember(shopId) || isAdmin();
+      }
+    }
+
+    // Products collection
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isShopMember(resource.data.shopId) || isAdmin();
+      allow delete: if isShopMember(resource.data.shopId) || isAdmin();
+    }
+
+    // Categories collection
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Helper functions for order status transitions
+    function isTerminalStatus(status) {
+      return status == 'completed' || status == 'cancelled' || status == 'rejected';
+    }
+
+    function isValidSellerStatusTransition(oldStatus, newStatus) {
+      if oldStatus == newStatus: return true;
+      if isTerminalStatus(oldStatus): return false;
+      if oldStatus == 'pending' && (newStatus == 'confirmed' || newStatus == 'rejected'): return true;
+      if oldStatus == 'confirmed' && newStatus == 'preparing': return true;
+      if oldStatus == 'preparing' && newStatus == 'shipped': return true;
+      if oldStatus == 'shipped' && newStatus == 'out_for_delivery': return true;
+      if oldStatus == 'out_for_delivery' && newStatus == 'delivered': return true;
+      if oldStatus == 'delivered' && newStatus == 'completed': return true;
+      return false;
+    }
+
+    function canBuyerCancel(oldStatus) {
+      return oldStatus == 'pending' || oldStatus == 'confirmed';
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.buyerId == request.auth.uid || isShopMember(resource.data.shopId) || isAdmin());
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() ||
+        (isAuthenticated() && resource.data.buyerId == request.auth.uid &&
+         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+          (request.resource.data.status == 'cancelled' && canBuyerCancel(resource.data.status))))
+        ||
+        (isAuthenticated() && isShopMember(resource.data.shopId) &&
+         isValidSellerStatusTransition(resource.data.status, request.resource.data.status));
+      allow delete: if isAdmin();
+    }
+
+    // POS Sales collection
+    match /pos_sales/{saleId} {
+      allow read: if isShopMember(resource.data.shopId) || isAdmin();
+      allow create: if isShopMember(request.resource.data.shopId);
+      allow update: if isShopMember(resource.data.shopId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Chats collection
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+
+      // Messages subcollection
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+      }
+    }
+
+    // Offers collection
+    match /offers/{offerId} {
+      allow read: if isAuthenticated() &&
+        (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() &&
+        (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+    }
+
+    // Reviews collection
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.buyerId;
+      allow update, delete: if isAdmin();
+    }
+
+    // Favorites collection
+    match /favorites/{favoriteId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Shop Followers collection
+    match /shop_followers/{followerId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Addresses collection
+    match /addresses/{addressId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+    }
+
+    // Notifications collection
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow create: if isAdmin();
+    }
+
+    // Verification Requests collection
+    match /verification_requests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
+      allow update: if isAdmin();
+    }
+
+    // Reports collection
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+    }
+
+    // Expenses collection
+    match /expenses/{expenseId} {
+      allow read: if isShopMember(resource.data.shopId) || isAdmin();
+      allow write: if isShopMember(request.resource.data.shopId) || isAdmin();
+    }
+
+    // Inventory Movements collection
+    match /inventory_movements/{movementId} {
+      allow read: if isShopMember(resource.data.shopId) || isAdmin();
+      allow create: if isShopMember(request.resource.data.shopId);
+    }
+
+    // Banners collection
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Platform Stats collection
+    match /platform_stats/{statId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // App Settings collection
+    match /app_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
