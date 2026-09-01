@@ -60,12 +60,14 @@ export const CustomersPage: React.FC = () => {
       orders.forEach((order) => {
         const existing = customerMap.get(order.buyerId);
         const orderTotal = order.total || 0;
-        const orderDate = order.createdAt instanceof Date ? order.createdAt : order.createdAt?.toDate?.() || new Date();
+        const orderDate = order.createdAt instanceof Date 
+          ? order.createdAt 
+          : (order.createdAt as any)?.toDate?.() || new Date();
 
         if (existing) {
           existing.totalOrders += 1;
           existing.totalSpent += orderTotal;
-          if (orderDate > existing.lastOrderDate) {
+          if (orderDate > (existing.lastOrderDate || orderDate)) {
             existing.lastOrderDate = orderDate;
           }
         } else {
@@ -81,7 +83,7 @@ export const CustomersPage: React.FC = () => {
       });
 
       const sortedCustomers = Array.from(customerMap.values()).sort(
-        (a, b) => b.lastOrderDate.getTime() - a.lastOrderDate.getTime()
+        (a, b) => (b.lastOrderDate || new Date()).getTime() - (a.lastOrderDate || new Date()).getTime()
       );
       setCustomers(sortedCustomers);
     } catch (error) {
@@ -105,6 +107,15 @@ export const CustomersPage: React.FC = () => {
             <ArrowLeft size={22} />
           </Link>
           <h1 className="ml-2 text-lg font-semibold">Customers</h1>
+        </div>
+        <div className="px-4 pb-3">
+          <input
+            type="text"
+            placeholder="Search customers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 bg-gray-100 border-0 rounded-full text-sm focus:ring-2 focus:ring-primary-500"
+          />
         </div>
       </header>
 

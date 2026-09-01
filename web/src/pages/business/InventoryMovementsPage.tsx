@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, Package } from 'lucide-react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
-import { InventoryMovement, Shop, Product } from '../../types';
-import { formatCurrency, formatDate } from '../../utils/helpers';
+import { InventoryMovement, Shop } from '../../types';
+import { formatDate } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 
 export const InventoryMovementsPage: React.FC = () => {

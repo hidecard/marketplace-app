@@ -6,6 +6,7 @@ import { db } from '../../services/firebase';
 import { Shop, Product } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
+import { trackEvent } from '../../services/analytics';
 import toast from 'react-hot-toast';
 import QRModal from '../../components/offer/QRModal';
 

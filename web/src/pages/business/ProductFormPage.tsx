@@ -255,7 +255,7 @@ export const ProductFormPage: React.FC = () => {
               <button
                 key={cond}
                 type="button"
-                onClick={() => setFormData({ ...formData, condition: cond })}
+                onClick={() => setFormData({ ...formData, condition: cond as 'new' | 'used' | 'refurbished' })}
                 className={`flex-1 py-2.5 rounded-xl font-medium capitalize ${
                   formData.condition === cond
                     ? 'bg-primary-600 text-white'

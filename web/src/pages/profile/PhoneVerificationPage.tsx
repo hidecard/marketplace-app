@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Phone, Shield, CheckCircle } from 'lucide-react';
 import { signInWithPhoneNumber, RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
-import { auth, db } from '../../services/firebase';
+import { auth } from '../../services/firebase';
 import { useAuthStore } from '../../stores/authStore';
 import { updateUserData } from '../../types';
 import { trackEvent } from '../../services/analytics';

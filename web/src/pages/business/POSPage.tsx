@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, runTransaction, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, runTransaction, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
@@ -132,8 +132,6 @@ export const POSPage: React.FC = () => {
       let totalCostOfGoodsSold = 0;
 
       await runTransaction(db, async (transaction) => {
-        const movementPromises: Promise<void>[] = [];
-
         for (const item of cart) {
           const productRef = doc(db, 'products', item.product.id);
           const productDoc = await transaction.get(productRef);

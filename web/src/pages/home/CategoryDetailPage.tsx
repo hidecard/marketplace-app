@@ -147,8 +147,7 @@ export const CategoryDetailPage: React.FC = () => {
               </Link>
             ))}
           </div>
-)}
-        </div>
+        )}
       </div>
       <BottomNav />
     </div>
