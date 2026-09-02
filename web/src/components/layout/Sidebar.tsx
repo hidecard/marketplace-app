@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useUIStore } from '../../stores/uiStore';
+import { useAuthStore } from '../../stores/authStore';
+import { db } from '../../services/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 interface SidebarItem {
   path: string;
@@ -49,6 +52,34 @@ const businessItems: SidebarItem[] = [
 export const Sidebar: React.FC = () => {
   const location = useLocation();
   const { sidebarOpen, setSidebarOpen } = useUIStore();
+  const { user } = useAuthStore();
+  const [hasShop, setHasShop] = React.useState(false);
+  const [checkingShop, setCheckingShop] = React.useState(true);
+
+  React.useEffect(() => {
+    const checkShop = async () => {
+      if (!user) {
+        setHasShop(false);
+        setCheckingShop(false);
+        return;
+      }
+      try {
+        const q = query(collection(db, 'shops'), where('ownerId', '==', user.uid));
+        const snapshot = await getDocs(q);
+        setHasShop(!snapshot.empty);
+      } catch (error) {
+        console.error('Error checking shop:', error);
+        setHasShop(false);
+      } finally {
+        setCheckingShop(false);
+      }
+    };
+    checkShop();
+  }, [user]);
+
+  const isBusinessRoute = location.pathname.startsWith('/business');
+  const shouldShowBusiness = isBusinessRoute && hasShop;
+  const shouldShowMarketplace = !isBusinessRoute;
 
   const renderItems = (items: SidebarItem[]) => {
     return items.map((item) => {
@@ -93,22 +124,34 @@ export const Sidebar: React.FC = () => {
               <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
                 <Store className="text-white" size={24} />
               </div>
-              <span className="text-xl font-bold text-gray-900">Marketplace</span>
+              <span className="text-xl font-bold text-gray-900">
+                {shouldShowBusiness ? 'Business' : 'Marketplace'}
+              </span>
             </Link>
           </div>
           <nav className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-1">
-              <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Marketplace
-              </p>
-              {renderItems(marketplaceItems)}
-            </div>
-            <div className="mt-6 space-y-1">
-              <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Business
-              </p>
-              {renderItems(businessItems)}
-            </div>
+            {checkingShop ? (
+              <div className="px-4 py-8 text-center text-gray-500 text-sm">Loading...</div>
+            ) : (
+              <>
+                {shouldShowMarketplace && (
+                  <div className="space-y-1">
+                    <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Marketplace
+                    </p>
+                    {renderItems(marketplaceItems)}
+                  </div>
+                )}
+                {shouldShowBusiness && (
+                  <div className="space-y-1">
+                    <p className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Business
+                    </p>
+                    {renderItems(businessItems)}
+                  </div>
+                )}
+              </>
+            )}
           </nav>
         </div>
       </aside>
