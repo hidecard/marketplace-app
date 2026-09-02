@@ -1,9 +1,8 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
-import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
-import { getAnalytics, isSupported } from 'firebase/analytics';
+import { initializeApp, FirebaseApp } from 'firebase/app';
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -15,27 +14,18 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = initializeApp(firebaseConfig);
+let app: FirebaseApp;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (error) {
+  console.error('Firebase initialization error:', error);
+  throw error;
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 export { RecaptchaVerifier, signInWithPhoneNumber };
-
-export const initAnalytics = async () => {
-  const supported = await isSupported();
-  if (supported) {
-    return getAnalytics(app);
-  }
-  return null;
-};
-
-if (import.meta.env.VITE_USE_EMULATORS === 'true') {
-  connectAuthEmulator(auth, 'http://localhost:9099');
-  connectFirestoreEmulator(db, 'localhost', 8080);
-  connectStorageEmulator(storage, 'localhost', 9199);
-  connectFunctionsEmulator(functions, 'localhost', 5001);
-}
 
 export default app;
