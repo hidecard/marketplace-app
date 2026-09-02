@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer, Scan } from 'lucide-react';
 import { collection, query, where, getDocs, runTransaction, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop } from '../../types';
@@ -292,8 +292,18 @@ export const POSPage: React.FC = () => {
               placeholder="Search products or scan barcode..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-0 rounded-full focus:ring-2 focus:ring-primary-500"
+              className="w-full pl-10 pr-24 py-2.5 bg-gray-100 border-0 rounded-full focus:ring-2 focus:ring-primary-500"
             />
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => toast('Barcode scanner will open here')}
+                className="p-1.5 rounded-full hover:bg-gray-200"
+                title="Scan barcode"
+              >
+                <Scan size={18} />
+              </button>
+            </div>
           </div>
         </header>
 

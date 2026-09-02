@@ -167,7 +167,7 @@ export const ShopPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="sticky top-0 bg-white/95 backdrop-blur z-40 border-b border-gray-100">
         <div className="flex items-center justify-between px-4 h-14">

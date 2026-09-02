@@ -5,7 +5,6 @@ import { collection, query, where, getDocs, QueryConstraint, orderBy as firestor
 import { db } from '../../services/firebase';
 import { Product, Category } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
-import { BottomNav } from '../../components/navigation/BottomNav';
 import BannerAd from '../../components/ads/BannerAd';
 import { trackEvent } from '../../services/analytics';
 
@@ -16,6 +15,8 @@ export const SearchPage: React.FC = () => {
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest');
   const [condition, setCondition] = useState(searchParams.get('condition') || '');
   const [verifiedOnly, setVerifiedOnly] = useState(searchParams.get('verified') === 'true');
+  const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
+  const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -34,8 +35,10 @@ export const SearchPage: React.FC = () => {
     if (sortBy !== 'newest') params.sort = sortBy;
     if (condition) params.condition = condition;
     if (verifiedOnly) params.verified = 'true';
+    if (minPrice) params.minPrice = minPrice;
+    if (maxPrice) params.maxPrice = maxPrice;
     setSearchParams(params, { replace: true });
-  }, [searchQuery, selectedCategory, sortBy, condition, verifiedOnly]);
+  }, [searchQuery, selectedCategory, sortBy, condition, verifiedOnly, minPrice, maxPrice]);
 
   const fetchCategories = async () => {
     try {
@@ -80,6 +83,13 @@ export const SearchPage: React.FC = () => {
       const snapshot = await getDocs(q);
       let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
 
+      if (minPrice) {
+        data = data.filter((p) => p.price >= Number(minPrice));
+      }
+      if (maxPrice) {
+        data = data.filter((p) => p.price <= Number(maxPrice));
+      }
+
       if (searchQuery) {
         const queryLower = searchQuery.toLowerCase();
         data = data.filter(
@@ -109,12 +119,14 @@ export const SearchPage: React.FC = () => {
     setSortBy('newest');
     setCondition('');
     setVerifiedOnly(false);
+    setMinPrice('');
+    setMaxPrice('');
   };
 
-  const hasActiveFilters = selectedCategory || sortBy !== 'newest' || condition || verifiedOnly;
+  const hasActiveFilters = selectedCategory || sortBy !== 'newest' || condition || verifiedOnly || minPrice || maxPrice;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
         <div className="px-4 py-3">
@@ -204,6 +216,28 @@ export const SearchPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Price Range */}
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-700 mb-2 block">Price Range (Ks)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={minPrice}
+                  onChange={(e) => setMinPrice(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+                <span className="text-gray-500">-</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+              </div>
+            </div>
+
             {/* Sort */}
             <div className="mb-4">
               <label className="text-sm font-medium text-gray-700 mb-2 block">Sort By</label>
@@ -280,7 +314,6 @@ export const SearchPage: React.FC = () => {
           </div>
         )}
       </main>
-      <BottomNav />
     </div>
   );
 };

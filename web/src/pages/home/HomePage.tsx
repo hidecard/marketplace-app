@@ -7,7 +7,6 @@ import { Product, Category, Shop } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
-import { BottomNav } from '../../components/navigation/BottomNav';
 import BannerAd from '../../components/ads/BannerAd';
 
 const bannerImages = [
@@ -110,7 +109,7 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
         <div className="px-4 py-3">
@@ -326,10 +325,9 @@ export const HomePage: React.FC = () => {
           )}
 </section>
         </main>
-      <BottomNav />
-    </div>
-  );
-};
+      </div>
+    );
+  };
 
 interface ProductCardProps {
   product: Product;

@@ -5,7 +5,6 @@ import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Category } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
-import { BottomNav } from '../../components/navigation/BottomNav';
 
 export const CategoryDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -74,7 +73,7 @@ export const CategoryDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
         <div className="flex items-center justify-between px-4 h-14">
           <div className="flex items-center">
@@ -149,7 +148,6 @@ export const CategoryDetailPage: React.FC = () => {
           </div>
         )}
       </div>
-      <BottomNav />
     </div>
   );
 };

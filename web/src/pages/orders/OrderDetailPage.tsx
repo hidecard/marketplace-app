@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, MapPin, Phone, Clock, CheckCircle, MessageCircle, Truck } from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Phone, Clock, CheckCircle, MessageCircle, Truck, AlertTriangle } from 'lucide-react';
 import { doc, getDoc, collection, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Order, Shop } from '../../types';
@@ -59,10 +59,20 @@ export const OrderDetailPage: React.FC = () => {
   const handleCancelOrder = async () => {
     if (!order || !confirm('Are you sure you want to cancel this order?')) return;
     try {
-      await updateDoc(doc(db, 'orders', order.id), {
+      const updateData: any = {
         status: 'cancelled',
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      if (order.paymentMethod === 'cod') {
+        updateData.codRejectionCount = (order.codRejectionCount || 0) + 1;
+        updateData.codRejectionHistory = [
+          ...(order.codRejectionHistory || []),
+          { date: new Date(), reason: 'Buyer cancelled' },
+        ];
+      }
+
+      await updateDoc(doc(db, 'orders', order.id), updateData);
       trackEvent('order_cancelled', { order_id: order.id, order_number: order.orderNumber });
       toast.success('Order cancelled');
       fetchOrder();
@@ -137,7 +147,7 @@ export const OrderDetailPage: React.FC = () => {
   const currentStepIndex = getCurrentStepIndex();
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
         <div className="flex items-center px-4 h-14">
           <Link to="/orders" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
@@ -225,6 +235,29 @@ export const OrderDetailPage: React.FC = () => {
               <MessageCircle size={20} />
             </button>
           </Link>
+        )}
+
+        {/* Buyer Trust Indicator */}
+        {order.paymentMethod === 'cod' && order.codRejectionCount && order.codRejectionCount > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+            <h3 className="font-semibold text-yellow-800 flex items-center gap-2 mb-2">
+              <AlertTriangle size={18} />
+              Buyer COD History
+            </h3>
+            <p className="text-sm text-yellow-700">
+              This buyer has {order.codRejectionCount} COD rejection{order.codRejectionCount > 1 ? 's' : ''} on record.
+            </p>
+            {order.codRejectionHistory && order.codRejectionHistory.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {order.codRejectionHistory.map((entry, idx) => (
+                  <p key={idx} className="text-xs text-yellow-600">
+                    {entry.date instanceof Date ? entry.date.toLocaleDateString() : new Date(entry.date).toLocaleDateString()}
+                    {entry.reason && ` - ${entry.reason}`}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* Order Items */}

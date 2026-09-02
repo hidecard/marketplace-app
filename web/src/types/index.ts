@@ -89,11 +89,13 @@ export interface Order {
   deliveryFee: number;
   discount: number;
   total: number;
-  paymentMethod: 'cash' | 'kbzpay' | 'wavepay' | 'bank_transfer' | 'other';
+  paymentMethod: 'cash' | 'kbzpay' | 'wavepay' | 'bank_transfer' | 'other' | 'cod';
   paymentStatus: 'pending' | 'paid' | 'refunded';
   status: OrderStatus;
   shippingAddress: Address;
   note?: string;
+  codRejectionCount?: number;
+  codRejectionHistory?: Array<{ date: Date; reason?: string }>;
   createdAt: Date;
   updatedAt: Date;
 }

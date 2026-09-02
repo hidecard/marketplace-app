@@ -37,7 +37,9 @@ import { ExpensesPage } from './pages/business/ExpensesPage';
 import { InventoryMovementsPage } from './pages/business/InventoryMovementsPage';
 import { CustomersPage } from './pages/business/CustomersPage';
 import { BusinessCategoriesPage } from './pages/business/BusinessCategoriesPage';
+import { BusinessReportsPage } from './pages/business/BusinessReportsPage';
 import { NotFoundPage } from './pages/not-found/NotFoundPage';
+import { MainLayout } from './components/layout/MainLayout';
 import { useAuth } from './hooks/useAuth';
 
 const LoadingSpinner = () => (
@@ -62,6 +64,7 @@ export const App: React.FC = () => {
           </Route>
 
           <Route element={<ProtectedRoute />}>
+          <Route element={<MainLayout />}>
             {/* Home & Discovery */}
             <Route path="/" element={<HomePage />} />
             <Route path="/categories" element={<CategoriesPage />} />
@@ -99,6 +102,7 @@ export const App: React.FC = () => {
             <Route path="/business/products/:productId/edit" element={<ProductFormPage />} />
             <Route path="/business/orders" element={<BusinessOrdersPage />} />
             <Route path="/business/analytics" element={<BusinessAnalyticsPage />} />
+            <Route path="/business/reports" element={<BusinessReportsPage />} />
             <Route path="/business/settings" element={<BusinessSettingsPage />} />
             <Route path="/business/verification" element={<ShopVerificationPage />} />
             <Route path="/business/expenses" element={<ExpensesPage />} />
@@ -112,6 +116,7 @@ export const App: React.FC = () => {
 
             {/* Help */}
             <Route path="/help" element={<HelpSupportPage />} />
+          </Route>
           </Route>
 
           <Route path="*" element={<NotFoundPage />} />

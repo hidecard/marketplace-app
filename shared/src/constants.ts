@@ -79,6 +79,7 @@ export const PAYMENT_METHOD = {
   WAVE_PAY: 'wavepay',
   BANK_TRANSFER: 'bank_transfer',
   OTHER: 'other',
+  COD: 'cod',
 } as const;
 
 export const PAYMENT_STATUS = {

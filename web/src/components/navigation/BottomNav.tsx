@@ -10,7 +10,11 @@ const navItems = [
   { path: '/profile', icon: User, label: 'Profile' },
 ];
 
-export const BottomNav: React.FC = () => {
+interface BottomNavProps {
+  className?: string;
+}
+
+export const BottomNav: React.FC<BottomNavProps> = ({ className = '' }) => {
   const location = useLocation();
 
   const isActive = (path: string) => {
@@ -19,7 +23,7 @@ export const BottomNav: React.FC = () => {
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom">
+    <nav className={`fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom ${className}`}>
       <div className="flex justify-around items-center h-16 max-w-lg mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
