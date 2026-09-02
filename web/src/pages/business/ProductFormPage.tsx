@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, X, Camera } from 'lucide-react';
+import { ArrowLeft, X, Camera, Menu } from 'lucide-react';
 import { collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../services/firebase';
 import { Category, Shop, Product } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
 import toast from 'react-hot-toast';
 
 export const ProductFormPage: React.FC = () => {
@@ -168,11 +169,21 @@ export const ProductFormPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
-        <div className="flex items-center px-4 h-14">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-100">
-            <ArrowLeft size={22} />
-          </button>
-          <h1 className="ml-2 text-lg font-semibold">Add Product</h1>
+        <div className="flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => useUIStore.getState().toggleSidebar()}
+              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 lg:hidden"
+            >
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center">
+              <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-100">
+                <ArrowLeft size={22} />
+              </button>
+              <h1 className="ml-2 text-lg font-semibold">{isEdit ? 'Edit Product' : 'Add Product'}</h1>
+            </div>
+          </div>
         </div>
       </header>
 

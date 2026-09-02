@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Plus, Package, MoreVertical, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Package, MoreVertical, Edit, Trash2, Menu } from 'lucide-react';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
 import toast from 'react-hot-toast';
 
 export const BusinessProductsPage: React.FC = () => {
@@ -75,18 +76,26 @@ export const BusinessProductsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
         <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center">
-            <Link to="/business" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
-              <ArrowLeft size={22} />
-            </Link>
-            <h1 className="ml-2 text-lg font-semibold">My Products</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => useUIStore.getState().toggleSidebar()}
+              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 lg:hidden"
+            >
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center">
+              <Link to="/business" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
+                <ArrowLeft size={22} />
+              </Link>
+              <h1 className="ml-2 text-lg font-semibold">My Products</h1>
+            </div>
           </div>
           <Link
             to="/business/products/new"
             className="bg-primary-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
           >
             <Plus size={18} />
-            Add
+            <span className="hidden sm:inline">Add</span>
           </Link>
         </div>
       </header>

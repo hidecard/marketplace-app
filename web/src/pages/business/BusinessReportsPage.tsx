@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Download, TrendingUp, DollarSign, ShoppingBag, Calendar } from 'lucide-react';
+import { ArrowLeft, Download, TrendingUp, DollarSign, ShoppingBag, Calendar, Menu } from 'lucide-react';
 import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Order, POSSale, Expense, Shop } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
 import toast from 'react-hot-toast';
 
 export const BusinessReportsPage: React.FC = () => {
@@ -162,11 +163,19 @@ export const BusinessReportsPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
         <div className="flex items-center justify-between px-4 h-14">
-          <div className="flex items-center">
-            <Link to="/business" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
-              <ArrowLeft size={22} />
-            </Link>
-            <h1 className="ml-2 text-lg font-semibold">Reports</h1>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => useUIStore.getState().toggleSidebar()}
+              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 lg:hidden"
+            >
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center">
+              <Link to="/business" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
+                <ArrowLeft size={22} />
+              </Link>
+              <h1 className="ml-2 text-lg font-semibold">Reports</h1>
+            </div>
           </div>
           <button
             onClick={handleExport}

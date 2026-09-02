@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, Menu } from 'lucide-react';
 import { collection, query, where, orderBy, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Order, Shop } from '../../types';
 import { formatCurrency, formatDate, getOrderStatusColor } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
 import toast from 'react-hot-toast';
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'preparing' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
@@ -108,11 +109,21 @@ export const BusinessOrdersPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
-        <div className="flex items-center px-4 h-14">
-          <Link to="/business" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
-            <ArrowLeft size={22} />
-          </Link>
-          <h1 className="ml-2 text-lg font-semibold">Orders</h1>
+        <div className="flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => useUIStore.getState().toggleSidebar()}
+              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 lg:hidden"
+            >
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center">
+              <Link to="/business" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
+                <ArrowLeft size={22} />
+              </Link>
+              <h1 className="ml-2 text-lg font-semibold">Orders</h1>
+            </div>
+          </div>
         </div>
         <div className="flex overflow-x-auto px-4 pb-2 gap-2 scrollbar-hide">
           {filters.map((f) => (

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Camera, Globe, Facebook, Instagram } from 'lucide-react';
+import { ArrowLeft, Camera, Globe, Facebook, Instagram, Menu } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../services/firebase';
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
 import { generateSlug } from '../../utils/helpers';
 import { trackEvent } from '../../services/analytics';
 import toast from 'react-hot-toast';
@@ -113,11 +114,21 @@ export const CreateShopPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
-        <div className="flex items-center px-4 h-14">
-          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-100">
-            <ArrowLeft size={22} />
-          </button>
-          <h1 className="ml-2 text-lg font-semibold">Create Shop</h1>
+        <div className="flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => useUIStore.getState().toggleSidebar()}
+              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 lg:hidden"
+            >
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center">
+              <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-100">
+                <ArrowLeft size={22} />
+              </button>
+              <h1 className="ml-2 text-lg font-semibold">Create Shop</h1>
+            </div>
+          </div>
         </div>
       </header>
 

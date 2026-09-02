@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, DollarSign, ShoppingBag, TrendingUp, Plus, BarChart3, FolderTree, FileText } from 'lucide-react';
+import { Package, DollarSign, ShoppingBag, TrendingUp, Plus, BarChart3, FolderTree, FileText, Menu } from 'lucide-react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop, Order, POSSale } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
 
 export const BusinessDashboardPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -124,11 +125,18 @@ export const BusinessDashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">{shop?.name || 'Business'}</h1>
-            <p className="text-sm text-gray-500">Welcome back!</p>
+      <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
+        <div className="flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => useUIStore.getState().toggleSidebar()}
+              className="p-2 -ml-2 rounded-lg hover:bg-gray-100 lg:hidden"
+            >
+              <Menu size={22} />
+            </button>
+            <div>
+              <h1 className="text-lg font-semibold text-gray-900">{shop?.name || 'Business'}</h1>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -136,7 +144,7 @@ export const BusinessDashboardPage: React.FC = () => {
               className="bg-primary-600 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
             >
               <DollarSign size={18} />
-              POS
+              <span className="hidden sm:inline">POS</span>
             </Link>
           </div>
         </div>

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer, Scan } from 'lucide-react';
+import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer, Scan, Menu } from 'lucide-react';
 import { collection, query, where, getDocs, runTransaction, doc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
+import { useUIStore } from '../../stores/uiStore';
 import { trackEvent } from '../../services/analytics';
 import toast from 'react-hot-toast';
 
@@ -279,11 +280,21 @@ export const POSPage: React.FC = () => {
       {/* Products Section */}
       <div className="flex-1 flex flex-col">
         <header className="sticky top-0 bg-white border-b border-gray-200 z-40 px-4 py-3">
-          <div className="flex items-center gap-3 mb-3">
-            <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-100">
-              <ArrowLeft size={22} />
-            </button>
-            <h1 className="text-lg font-semibold">Point of Sale</h1>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => useUIStore.getState().toggleSidebar()}
+                className="p-2 -ml-2 rounded-lg hover:bg-gray-100 lg:hidden"
+              >
+                <Menu size={22} />
+              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-full hover:bg-gray-100">
+                  <ArrowLeft size={22} />
+                </button>
+                <h1 className="text-lg font-semibold">Point of Sale</h1>
+              </div>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
