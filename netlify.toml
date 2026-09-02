@@ -1,0 +1,13 @@
+[build]
+  command = "npm run build:web"
+  publish = "web/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--include=dev"
+
+# React Router needs every client-side route to serve the app shell.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
