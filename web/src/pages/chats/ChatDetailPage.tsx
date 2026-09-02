@@ -19,6 +19,7 @@ export const ChatDetailPage: React.FC = () => {
   const [showOfferModal, setShowOfferModal] = useState(false);
   const [offerPrice, setOfferPrice] = useState('');
   const [productId, setProductId] = useState('');
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,7 +30,12 @@ export const ChatDetailPage: React.FC = () => {
   }, [chatId]);
 
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0 || offers.length > 0) {
+      setLoading(false);
+    } else {
+      const timer = setTimeout(() => setLoading(false), 1000);
+      return () => clearTimeout(timer);
+    }
   }, [messages, offers]);
 
   const subscribeToMessages = () => {
@@ -57,10 +63,6 @@ export const ChatDetailPage: React.FC = () => {
       setOffers(data);
     });
     return unsubscribe;
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const handleSend = async () => {
@@ -173,7 +175,7 @@ export const ChatDetailPage: React.FC = () => {
     }
   };
 
-  if (messages.length === 0 && offers.length === 0) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary-600 border-t-transparent rounded-full animate-spin" />

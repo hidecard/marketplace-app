@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, MessageCircle } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Chat } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
@@ -32,14 +32,13 @@ export const ChatsPage: React.FC = () => {
         ...doc.data(),
       } as Chat));
 
-      // Fetch other user info for each chat
       const chatsWithUserInfo = await Promise.all(
         chatData.map(async (chat) => {
           const otherUserId = chat.participants.find((p) => p !== user.uid);
           if (otherUserId) {
-            const userDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', otherUserId)));
-            if (!userDoc.empty) {
-              const userData = userDoc.docs[0].data();
+            const userDoc = await getDoc(doc(db, 'users', otherUserId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
               return {
                 ...chat,
                 otherUserName: userData.displayName || 'Unknown',

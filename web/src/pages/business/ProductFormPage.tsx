@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, X, Camera } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../services/firebase';
 import { Category, Shop, Product } from '../../types';
@@ -80,10 +80,11 @@ export const ProductFormPage: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const q = query(collection(db, 'categories'), where('parentId', '==', null));
+      const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
       const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Category));
-      setCategories(data);
+      const allCategories = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Category));
+      const topLevel = allCategories.filter((c) => !c.parentId);
+      setCategories(topLevel.length > 0 ? topLevel : allCategories);
     } catch (error) {
       console.error('Error fetching categories:', error);
     }
