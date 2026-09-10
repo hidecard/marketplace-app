@@ -18,6 +18,7 @@
     "deploy:admin": "npm run build:admin && firebase deploy --only hosting:admin",
     "deploy:firebase": "firebase deploy --only firestore,functions,storage",
     "deploy:all": "npm run build:all && firebase deploy",
+    "deploy:cloudflare": "npm run build:web && npx wrangler deploy",
     "lint": "npm run lint -w web && npm run lint -w admin",
     "typecheck": "npm run typecheck -w web && npm run typecheck -w admin"
   },
