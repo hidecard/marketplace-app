@@ -31,12 +31,10 @@ class ExpensesState extends Equatable {
 
 class ExpensesCubit extends Cubit<ExpensesState> {
   final FirestoreService _fs = FirestoreService();
-  String? _shopId;
 
   ExpensesCubit() : super(const ExpensesState());
 
   void bind(String shopId) {
-    _shopId = shopId;
     emit(state.copyWith(isLoading: true, clearError: true));
     _fs.expensesStream(shopId).listen(
       (expenses) {

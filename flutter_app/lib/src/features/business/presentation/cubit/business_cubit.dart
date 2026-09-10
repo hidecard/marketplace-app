@@ -88,7 +88,11 @@ class BusinessCubit extends Cubit<BusinessState> {
   }
 
   Future<void> updateOrderStatus(String id, OrderStatus status) async {
-    await _fs.updateOrderStatus(id, status);
+    await _fs.callableVoid('updateOrderStatus', params: {
+      'orderId': id,
+      'status': orderStatusToString(status),
+      'idempotencyKey': '$id-${status.name}-${DateTime.now().millisecondsSinceEpoch}',
+    });
   }
 
   Future<void> setShop(Shop shop) async {

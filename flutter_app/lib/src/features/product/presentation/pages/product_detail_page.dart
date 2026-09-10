@@ -301,8 +301,8 @@ class _ImageGallery extends StatelessWidget {
             imageUrl: images[index],
             fit: BoxFit.cover,
             width: double.infinity,
-            placeholder: (_, __) => Container(color: Colors.grey[200]),
-            errorWidget: (_, __, ___) => Container(
+            placeholder: (context, url) => Container(color: Colors.grey[200]),
+            errorWidget: (context, url, error) => Container(
               color: Colors.grey[200],
               child: const Icon(Icons.image, color: Colors.grey),
             ),

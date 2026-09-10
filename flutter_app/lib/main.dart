@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'src/core/constants/app_constants.dart';
+import 'src/core/firebase/firebase_options.dart';
 import 'src/core/theme/app_theme.dart';
 import 'src/features/auth/presentation/cubit/auth_cubit.dart';
 import 'src/features/products/presentation/cubit/products_cubit.dart';
@@ -17,19 +18,19 @@ import 'src/features/customers/presentation/cubit/customers_cubit.dart';
 import 'src/features/reports/presentation/cubit/reports_cubit.dart';
 import 'src/core/router/app_router.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: 'AIzaSyC1-s5R4gzElq4D5NatWkcklF198fTEvRo',
-      authDomain: 'padaytharpin-app.firebaseapp.com',
-      projectId: 'padaytharpin-app',
-      storageBucket: 'padaytharpin-app.firebasestorage.app',
-      messagingSenderId: '304535507982',
-      appId: '1:304535507982:web:b960bdb0f2bc1652fb985f',
-      measurementId: 'G-F7JE4SNWDC',
-    ),
-  );
+
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
+  } on FirebaseException catch (e) {
+    if (e.code != 'duplicate-app') rethrow;
+  }
+
   runApp(const MarketplaceApp());
 }
 

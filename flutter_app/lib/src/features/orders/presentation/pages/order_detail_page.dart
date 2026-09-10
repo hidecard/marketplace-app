@@ -340,7 +340,6 @@ class _ActionBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final auth = context.read<AuthCubit>().state;
-    final isBuyer = auth.firebaseUser?.uid == order.buyerId;
     final isSeller = auth.shop?.id == order.shopId;
 
     final actions = <Widget>[];
@@ -351,7 +350,7 @@ class _ActionBar extends StatelessWidget {
           actions.addAll([
             ElevatedButton.icon(
               onPressed: () => onUpdateStatus(OrderStatus.confirmed),
-              icon: const Icon(Icons.check),
+              icon: const Icon(Icons.check), 
               label: const Text('Confirm'),
             ),
             const SizedBox(width: 12),
@@ -360,7 +359,7 @@ class _ActionBar extends StatelessWidget {
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
               icon: const Icon(Icons.close),
               label: const Text('Reject'),
-            ),
+            ),        
           ]);
         case OrderStatus.confirmed:
           actions.add(

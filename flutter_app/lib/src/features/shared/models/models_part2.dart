@@ -328,8 +328,9 @@ class Review {
   final String id;
   final String productId;
   final String shopId;
-  final String buyerId;
-  final String orderId;
+  final String userId;
+  final String? userName;
+  final String? orderId;
   final int rating;
   final String comment;
   final List<String> images;
@@ -338,8 +339,9 @@ class Review {
     required this.id,
     this.productId = '',
     this.shopId = '',
-    this.buyerId = '',
-    this.orderId = '',
+    this.userId = '',
+    this.userName,
+    this.orderId,
     this.rating = 5,
     this.comment = '',
     this.images = const [],
@@ -349,8 +351,9 @@ class Review {
         id: id,
         productId: m['productId'] as String? ?? '',
         shopId: m['shopId'] as String? ?? '',
-        buyerId: m['buyerId'] as String? ?? '',
-        orderId: m['orderId'] as String? ?? '',
+        userId: m['userId'] as String? ?? (m['buyerId'] as String? ?? ''),
+        userName: m['userName'] as String?,
+        orderId: m['orderId'] as String?,
         rating: m['rating'] as int? ?? 5,
         comment: m['comment'] as String? ?? '',
         images:
@@ -360,7 +363,8 @@ class Review {
   Map<String, dynamic> toMap() => {
         'productId': productId,
         'shopId': shopId,
-        'buyerId': buyerId,
+        'userId': userId,
+        'userName': userName,
         'orderId': orderId,
         'rating': rating,
         'comment': comment,
@@ -408,6 +412,7 @@ class Offer {
   final String buyerId;
   final String sellerId;
   final double price;
+  final double? counterPrice;
   final OfferStatus status;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -418,6 +423,7 @@ class Offer {
     this.buyerId = '',
     this.sellerId = '',
     this.price = 0,
+    this.counterPrice,
     this.status = OfferStatus.pending,
     this.createdAt,
     this.updatedAt,
@@ -429,6 +435,7 @@ class Offer {
         buyerId: m['buyerId'] as String? ?? '',
         sellerId: m['sellerId'] as String? ?? '',
         price: (m['price'] as num?)?.toDouble() ?? 0,
+        counterPrice: (m['counterPrice'] as num?)?.toDouble(),
         status: offerStatusFromString(m['status'] as String?),
         createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
         updatedAt: (m['updatedAt'] as Timestamp?)?.toDate(),
@@ -439,6 +446,7 @@ class Offer {
         'buyerId': buyerId,
         'sellerId': sellerId,
         'price': price,
+        'counterPrice': counterPrice,
         'status': offerStatusToString(status),
         'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
         'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
@@ -520,6 +528,8 @@ class Chat {
   final DateTime? lastMessageAt;
   final String? lastMessageBy;
   final DateTime? createdAt;
+  final Map<String, dynamic>? typing;
+  final List<String> readBy;
   Chat({
     required this.id,
     this.participants = const [],
@@ -529,6 +539,8 @@ class Chat {
     this.lastMessageAt,
     this.lastMessageBy,
     this.createdAt,
+    this.typing,
+    this.readBy = const [],
   });
   factory Chat.fromMap(Map<String, dynamic> m, String id) => Chat(
         id: id,
@@ -541,6 +553,10 @@ class Chat {
         lastMessageAt: (m['lastMessageAt'] as Timestamp?)?.toDate(),
         lastMessageBy: m['lastMessageBy'] as String?,
         createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
+        typing: m['typing'] is Map
+            ? Map<String, dynamic>.from(m['typing'] as Map)
+            : null,
+        readBy: (m['readBy'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       );
   Map<String, dynamic> toMap() => {
         'participants': participants,
@@ -551,5 +567,7 @@ class Chat {
             lastMessageAt != null ? Timestamp.fromDate(lastMessageAt!) : null,
         'lastMessageBy': lastMessageBy,
         'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+        'typing': typing,
+        'readBy': readBy,
       };
 }

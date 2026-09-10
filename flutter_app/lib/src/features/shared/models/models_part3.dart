@@ -273,6 +273,10 @@ class VerificationRequest {
   final String? facebookPage;
   final List<String> socialLinks;
   final List<String> shopPhotos;
+  final String? nrcUrl;
+  final String? licenseUrl;
+  final String? selfieUrl;
+  final String? note;
   final VerificationRequestStatus status;
   final String? adminNote;
   final String? reviewedBy;
@@ -293,6 +297,10 @@ class VerificationRequest {
     this.facebookPage,
     this.socialLinks = const [],
     this.shopPhotos = const [],
+    this.nrcUrl,
+    this.licenseUrl,
+    this.selfieUrl,
+    this.note,
     this.status = VerificationRequestStatus.pending,
     this.adminNote,
     this.reviewedBy,
@@ -319,6 +327,10 @@ class VerificationRequest {
         shopPhotos:
             (m['shopPhotos'] as List?)?.map((e) => e.toString()).toList() ??
                 const [],
+        nrcUrl: m['nrcUrl'] as String?,
+        licenseUrl: m['licenseUrl'] as String?,
+        selfieUrl: m['selfieUrl'] as String?,
+        note: m['note'] as String?,
         status: verificationRequestStatusFromString(m['status'] as String?),
         adminNote: m['adminNote'] as String?,
         reviewedBy: m['reviewedBy'] as String?,
@@ -339,6 +351,10 @@ class VerificationRequest {
         'facebookPage': facebookPage,
         'socialLinks': socialLinks,
         'shopPhotos': shopPhotos,
+        'nrcUrl': nrcUrl,
+        'licenseUrl': licenseUrl,
+        'selfieUrl': selfieUrl,
+        'note': note,
         'status': verificationRequestStatusToString(status),
         'adminNote': adminNote,
         'reviewedBy': reviewedBy,
@@ -406,7 +422,9 @@ class Report {
   final String description;
   final ReportStatus status;
   final String? adminNote;
+  final String? reviewedBy;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
   Report({
     required this.id,
     this.reporterId = '',
@@ -416,7 +434,9 @@ class Report {
     this.description = '',
     this.status = ReportStatus.pending,
     this.adminNote,
+    this.reviewedBy,
     this.createdAt,
+    this.updatedAt,
   });
   factory Report.fromMap(Map<String, dynamic> m, String id) => Report(
         id: id,
@@ -427,7 +447,9 @@ class Report {
         description: m['description'] as String? ?? '',
         status: reportStatusFromString(m['status'] as String?),
         adminNote: m['adminNote'] as String?,
+        reviewedBy: m['reviewedBy'] as String?,
         createdAt: (m['createdAt'] as Timestamp?)?.toDate(),
+        updatedAt: (m['updatedAt'] as Timestamp?)?.toDate(),
       );
   Map<String, dynamic> toMap() => {
         'reporterId': reporterId,
@@ -437,7 +459,9 @@ class Report {
         'description': description,
         'status': reportStatusToString(status),
         'adminNote': adminNote,
+        'reviewedBy': reviewedBy,
         'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+        'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
       };
   static String statusToString(ReportStatus s) => reportStatusToString(s);
 }

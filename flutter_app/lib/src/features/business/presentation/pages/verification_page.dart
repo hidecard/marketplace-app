@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../shared/widgets/sidebar_drawer.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
-import '../../../shared/models/models.dart';
 import '../../../shared/services/firestore_service.dart';
 
 class VerificationPage extends StatefulWidget {
@@ -13,97 +13,177 @@ class VerificationPage extends StatefulWidget {
 }
 
 class _VerificationPageState extends State<VerificationPage> {
-  VerificationRequest? _request;
-  String? _uid;
+  XFile? _nrc;
+  XFile? _license;
+  XFile? _selfie;
+  final _noteCtrl = TextEditingController();
+  bool _submitting = false;
 
   @override
-  void initState() {
-    super.initState();
-    _uid = context.read<AuthCubit>().state.firebaseUser?.uid;
-    _load();
+  void dispose() {
+    _noteCtrl.dispose();
+    super.dispose();
   }
 
-  void _load() {
-    if (_uid == null) return;
-    FirestoreService().myVerificationStream(_uid!).listen((r) {
-      if (mounted) setState(() => _request = r);
+  Future<void> _pick(String slot) async {
+    final picker = ImagePicker();
+    final file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1280);
+    if (file == null) return;
+    setState(() {
+      if (slot == 'nrc') _nrc = file;
+      if (slot == 'license') _license = file;
+      if (slot == 'selfie') _selfie = file;
     });
   }
 
   Future<void> _submit() async {
-    if (_uid == null) return;
-    final auth = context.read<AuthCubit>().state;
-    final shop = auth.shop;
-    if (shop == null) {
+    final auth = context.read<AuthCubit>();
+    final shop = auth.state.shop;
+    final user = auth.state.firebaseUser;
+    if (shop == null || user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Create a shop first')),
       );
       return;
     }
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final req = VerificationRequest(
-      id: id,
-      shopId: shop.id,
-      userId: _uid!,
-      shopName: shop.name,
-      ownerName: auth.appUser?.displayName ?? '',
-      phone: shop.phone,
-      email: shop.email,
-      address: shop.address,
-      city: shop.city,
-      region: shop.region,
-      description: shop.description,
-      status: VerificationRequestStatus.pending,
-    );
-    await FirestoreService().createVerificationRequest(req);
+    if (_nrc == null || _selfie == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('NRC photo and selfie are required')),
+      );
+      return;
+    }
+    setState(() => _submitting = true);
+    try {
+      final fs = FirestoreService();
+      final nrcUrl = await fs.uploadVerificationDoc(user.uid, 'nrc', _nrc!);
+      final selfieUrl = await fs.uploadVerificationDoc(user.uid, 'selfie', _selfie!);
+      String? licenseUrl;
+      if (_license != null) {
+        licenseUrl = await fs.uploadVerificationDoc(user.uid, 'license', _license!);
+      }
+      await fs.callableVoid('submitVerification', params: {
+        'shopId': shop.id,
+        'nrcUrl': nrcUrl,
+        'selfieUrl': selfieUrl,
+        // ignore: use_null_aware_elements
+        if (licenseUrl != null) 'licenseUrl': licenseUrl,
+        // ignore: use_null_aware_elements
+        if (_noteCtrl.text.trim().isNotEmpty) 'note': _noteCtrl.text.trim(),
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Verification request submitted')),
+      );
+      context.pop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Verification')),
-      drawer: const SidebarDrawer(currentRoute: '/business/verification'),
-      body: Padding(
+      appBar: AppBar(title: const Text('Verify your shop')),
+      body: ListView(
         padding: const EdgeInsets.all(16),
-        child: _request == null
-            ? Column(
-                children: [
-                  const Icon(Icons.verified_outlined, size: 80, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  const Text('Verify your shop', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Submit a verification request to get a verified badge on your shop.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(onPressed: _submit, child: const Text('Submit Request')),
-                  ),
-                ],
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Status', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Chip(
-                    label: Text(_request!.status.name),
-                    backgroundColor: _request!.status == VerificationRequestStatus.approved
-                        ? Colors.green.withValues(alpha: 0.2)
-                        : _request!.status == VerificationRequestStatus.rejected
-                            ? Colors.red.withValues(alpha: 0.2)
-                            : Colors.orange.withValues(alpha: 0.2),
-                  ),
-                  if (_request!.adminNote != null) ...[
-                    const SizedBox(height: 12),
-                    const Text('Admin Note', style: TextStyle(fontWeight: FontWeight.bold)),
-                    Text(_request!.adminNote!),
-                  ],
-                ],
+        children: [
+          const Icon(Icons.verified_outlined, size: 64, color: Color(0xFF2563EB)),
+          const SizedBox(height: 8),
+          const Text(
+            'Submit a verification request to get the verified badge.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          _UploadTile(
+            label: 'NRC (front) *',
+            file: _nrc,
+            onPick: () => _pick('nrc'),
+          ),
+          const SizedBox(height: 12),
+          _UploadTile(
+            label: 'Business license (optional)',
+            file: _license,
+            onPick: () => _pick('license'),
+          ),
+          const SizedBox(height: 12),
+          _UploadTile(
+            label: 'Selfie holding NRC *',
+            file: _selfie,
+            onPick: () => _pick('selfie'),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _noteCtrl,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Note for the admin (optional)',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _submitting ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
+              child: _submitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : const Text('Submit'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UploadTile extends StatelessWidget {
+  final String label;
+  final XFile? file;
+  final VoidCallback onPick;
+  const _UploadTile({required this.label, required this.file, required this.onPick});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPick,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              file == null ? Icons.add_a_photo_outlined : Icons.check_circle,
+              color: file == null ? Colors.grey : Colors.green,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                file == null ? label : '$label — ${file!.name}',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+            if (file != null) const Icon(Icons.edit, size: 18, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }

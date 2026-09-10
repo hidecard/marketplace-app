@@ -9,15 +9,16 @@ class BusinessCategoriesPage extends StatelessWidget {
   const BusinessCategoriesPage({super.key});
 
   Future<void> _edit(BuildContext context, [Category? existing]) async {
+    final cubit = context.read<CategoriesCubit>();
     final result = await showDialog<Category>(
       context: context,
       builder: (_) => _CategoryDialog(existing: existing),
     );
     if (result != null) {
       if (existing == null) {
-        context.read<CategoriesCubit>().create(result);
+        cubit.create(result);
       } else {
-        context.read<CategoriesCubit>().update(result);
+        cubit.update(result);
       }
     }
   }

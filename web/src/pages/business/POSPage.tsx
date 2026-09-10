@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer, Scan, Menu } from 'lucide-react';
-import { collection, query, where, getDocs, runTransaction, doc, serverTimestamp } from 'firebase/firestore';
+import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer, Scan, Menu, FileDown, AlertCircle } from 'lucide-react';
+import { collection, query, where, getDocs, serverTimestamp, addDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { FunctionsService } from '../../services/functions';
 import { Product, Shop } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
@@ -13,6 +14,84 @@ import toast from 'react-hot-toast';
 interface CartItem {
   product: Product;
   quantity: number;
+}
+
+interface SaleSnapshot {
+  id: string;
+  shopId: string;
+  shopName: string;
+  items: { title: string; price: number; quantity: number; subtotal: number }[];
+  subtotal: number;
+  discount: number;
+  tax: number;
+  total: number;
+  paymentMethod: string;
+  createdAtMs: number;
+}
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `pos-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function buildReceiptHtml(sale: SaleSnapshot, shop: Shop | null): string {
+  const date = new Date(sale.createdAtMs).toLocaleString();
+  const itemsHtml = sale.items
+    .map(
+      (i) => `
+      <div class="row">
+        <span>${escapeHtml(i.title)}</span>
+      </div>
+      <div class="row">
+        <span>${i.quantity} x ${formatCurrency(i.price)}</span>
+        <span>${formatCurrency(i.subtotal)} Ks</span>
+      </div>`,
+    )
+    .join('');
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Receipt ${sale.id}</title>
+<style>
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; width: 80mm; margin: 0 auto; padding: 12px; color: #000; }
+  .center { text-align: center; }
+  .line { border-top: 1px dashed #000; margin: 10px 0; }
+  .row { display: flex; justify-content: space-between; gap: 8px; }
+  .bold { font-weight: 700; }
+  h2 { margin: 0; font-size: 18px; }
+  p { margin: 2px 0; font-size: 13px; }
+</style>
+</head><body>
+  <div class="center">
+    <h2>${escapeHtml(shop?.name ?? sale.shopName)}</h2>
+    <p>${escapeHtml(shop?.address ?? '')}</p>
+    <p>Tel: ${escapeHtml(shop?.phone ?? '')}</p>
+  </div>
+  <div class="line"></div>
+  <p>Date: ${escapeHtml(date)}</p>
+  <p>Receipt: ${escapeHtml(sale.id)}</p>
+  <div class="line"></div>
+  ${itemsHtml}
+  <div class="line"></div>
+  <div class="row"><span>Subtotal:</span><span>${formatCurrency(sale.subtotal)} Ks</span></div>
+  ${sale.discount > 0 ? `<div class="row"><span>Discount:</span><span>-${formatCurrency(sale.discount)} Ks</span></div>` : ''}
+  ${sale.tax > 0 ? `<div class="row"><span>Tax:</span><span>${formatCurrency(sale.tax)} Ks</span></div>` : ''}
+  <div class="row bold"><span>TOTAL:</span><span>${formatCurrency(sale.total)} Ks</span></div>
+  <div class="line"></div>
+  <p>Payment: ${escapeHtml(sale.paymentMethod.toUpperCase())}</p>
+  <div class="line"></div>
+  <div class="center"><p>Thank you for your purchase!</p></div>
+</body></html>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 export const POSPage: React.FC = () => {
@@ -26,6 +105,9 @@ export const POSPage: React.FC = () => {
   const [showPayment, setShowPayment] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [discount, setDiscount] = useState(0);
+  const [tax, setTax] = useState(0);
+  const [lastSale, setLastSale] = useState<SaleSnapshot | null>(null);
+  const [printError, setPrintError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -60,7 +142,7 @@ export const POSPage: React.FC = () => {
       const q = query(
         collection(db, 'products'),
         where('shopId', '==', shop.id),
-        where('status', '==', 'active')
+        where('status', '==', 'active'),
       );
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
@@ -70,9 +152,14 @@ export const POSPage: React.FC = () => {
     }
   };
 
-  const filteredProducts = products.filter((p) =>
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.sku?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProducts = useMemo(
+    () =>
+      products.filter(
+        (p) =>
+          p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.sku?.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [products, searchQuery],
   );
 
   const addToCart = (product: Product) => {
@@ -84,10 +171,8 @@ export const POSPage: React.FC = () => {
       }
       setCart(
         cart.map((item) =>
-          item.product.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
+          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
+        ),
       );
     } else {
       if (product.stock === 0) {
@@ -113,7 +198,7 @@ export const POSPage: React.FC = () => {
           }
           return item;
         })
-        .filter(Boolean) as CartItem[]
+        .filter(Boolean) as CartItem[],
     );
   };
 
@@ -121,163 +206,131 @@ export const POSPage: React.FC = () => {
     setCart(cart.filter((item) => item.product.id !== productId));
   };
 
-  const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const total = subtotal - discount;
+  const subtotal = useMemo(
+    () => cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0),
+    [cart],
+  );
+  const total = useMemo(() => Math.max(0, subtotal - discount + tax), [subtotal, discount, tax]);
+
+  const buildSaleSnapshot = (): SaleSnapshot | null => {
+    if (!shop || !user) return null;
+    return {
+      id: generateIdempotencyKey(),
+      shopId: shop.id,
+      shopName: shop.name,
+      items: cart.map((i) => ({
+        title: i.product.title,
+        price: i.product.price,
+        quantity: i.quantity,
+        subtotal: i.product.price * i.quantity,
+      })),
+      subtotal,
+      discount,
+      tax,
+      total,
+      paymentMethod,
+      createdAtMs: Date.now(),
+    };
+  };
 
   const handleCompleteSale = async () => {
-    if (cart.length === 0) return;
+    if (cart.length === 0 || !shop || !user) return;
     setLoading(true);
+    setPrintError(null);
+    const pending = buildSaleSnapshot();
+    if (!pending) {
+      setLoading(false);
+      return;
+    }
 
     try {
-      let totalGrossProfit = 0;
-      let totalCostOfGoodsSold = 0;
-
-      await runTransaction(db, async (transaction) => {
-        for (const item of cart) {
-          const productRef = doc(db, 'products', item.product.id);
-          const productDoc = await transaction.get(productRef);
-          if (!productDoc.exists()) {
-            throw new Error(`Product ${item.product.title} not found`);
-          }
-          const currentStock = productDoc.data().stock;
-          if (currentStock < item.quantity) {
-            throw new Error(`Not enough stock for ${item.product.title}`);
-          }
-          const newStock = currentStock - item.quantity;
-          transaction.update(productRef, {
-            stock: newStock,
-            updatedAt: serverTimestamp(),
-          });
-
-          const itemProfit = (item.product.price - (item.product.costPrice || 0)) * item.quantity;
-          const itemCogs = (item.product.costPrice || 0) * item.quantity;
-          totalGrossProfit += itemProfit;
-          totalCostOfGoodsSold += itemCogs;
-
-          const movementRef = doc(collection(db, 'inventory_movements'));
-          transaction.set(movementRef, {
-            productId: item.product.id,
-            shopId: shop!.id,
-            type: 'decrement',
-            quantity: item.quantity,
-            previousStock: currentStock,
-            newStock,
-            userId: user!.uid,
-            createdAt: serverTimestamp(),
-          });
-        }
-
-        const saleRef = doc(collection(db, 'pos_sales'));
-        transaction.set(saleRef, {
-          shopId: shop!.id,
-          items: cart.map((item) => ({
-            productId: item.product.id,
-            title: item.product.title,
-            price: item.product.price,
-            costPrice: item.product.costPrice || 0,
-            quantity: item.quantity,
-            subtotal: item.product.price * item.quantity,
-            grossProfit: (item.product.price - (item.product.costPrice || 0)) * item.quantity,
-          })),
-          subtotal,
-          discount,
-          total,
-          grossProfit: totalGrossProfit,
-          costOfGoodsSold: totalCostOfGoodsSold,
-          paymentMethod,
-          customerName: '',
-          customerPhone: '',
-          note: '',
-          createdAt: serverTimestamp(),
-        });
-
-        const shopRef = doc(db, 'shops', shop!.id);
-        transaction.update(shopRef, {
-          totalSales: (shop!.totalSales || 0) + total,
-          updatedAt: serverTimestamp(),
-        });
+      const result = await FunctionsService.callOrThrow<any>('createPOSSale', {
+        shopId: shop.id,
+        items: cart.map((i) => ({
+          productId: i.product.id,
+          quantity: i.quantity,
+        })),
+        discount,
+        tax,
+        paymentMethod,
+        idempotencyKey: pending.id,
       });
 
-      trackEvent('pos_sale_completed', { sale_total: total, gross_profit: totalGrossProfit, items_count: cart.length });
+      const confirmed: SaleSnapshot = {
+        id: pending.id,
+        shopId: shop.id,
+        shopName: shop.name,
+        items: pending.items,
+        subtotal,
+        discount,
+        tax,
+        total,
+        paymentMethod,
+        createdAtMs: result?.createdAtMs ?? Date.now(),
+      };
+
+      setLastSale(confirmed);
+      trackEvent('pos_sale_completed', { sale_total: total, items_count: cart.length });
       toast.success('Sale completed!');
       setCart([]);
       setDiscount(0);
+      setTax(0);
       setShowPayment(false);
       fetchProducts();
     } catch (error: any) {
-      toast.error(error.message || 'Failed to complete sale');
+      console.error('POS sale error:', error);
+      toast.error(extractErrorMessage(error));
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePrintReceipt = () => {
-    // For Android Bluetooth printing, you would integrate with a native bridge
-    // For now, we'll create a printable receipt
+  const handlePrintReceipt = async (saleOverride?: SaleSnapshot) => {
+    const sale = saleOverride ?? lastSale;
+    if (!sale) {
+      toast.error('No receipt to print yet');
+      return;
+    }
+    const html = buildReceiptHtml(sale, shop);
     const receiptWindow = window.open('', '_blank');
-    if (receiptWindow) {
-      receiptWindow.document.write(`
-        <html>
-          <head>
-            <title>Receipt</title>
-            <style>
-              body { font-family: monospace; width: 80mm; margin: 0 auto; padding: 10px; }
-              .center { text-align: center; }
-              .line { border-top: 1px dashed #000; margin: 10px 0; }
-              .row { display: flex; justify-content: space-between; }
-              .bold { font-weight: bold; }
-            </style>
-          </head>
-          <body>
-            <div class="center">
-              <h2>${shop?.name || 'Shop'}</h2>
-              <p>${shop?.address || ''}</p>
-              <p>Tel: ${shop?.phone || ''}</p>
-            </div>
-            <div class="line"></div>
-            <p>Date: ${new Date().toLocaleString()}</p>
-            <div class="line"></div>
-            ${cart.map((item) => `
-              <div class="row">
-                <span>${item.product.title}</span>
-              </div>
-              <div class="row">
-                <span>${item.quantity} x ${item.product.price}</span>
-                <span>${item.quantity * item.product.price}</span>
-              </div>
-            `).join('')}
-            <div class="line"></div>
-            <div class="row">
-              <span>Subtotal:</span>
-              <span>${subtotal} Ks</span>
-            </div>
-            ${discount > 0 ? `
-              <div class="row">
-                <span>Discount:</span>
-                <span>-${discount} Ks</span>
-              </div>
-            ` : ''}
-            <div class="row bold">
-              <span>TOTAL:</span>
-              <span>${total} Ks</span>
-            </div>
-            <div class="line"></div>
-            <p>Payment: ${paymentMethod.toUpperCase()}</p>
-            <div class="line"></div>
-            <div class="center">
-              <p>Thank you for your purchase!</p>
-            </div>
-          </body>
-        </html>
-      `);
-      receiptWindow.document.close();
+    if (!receiptWindow) {
+      queueFailedPrint(sale, 'Popup blocked');
+      setPrintError('Popup blocked. Receipt saved to print queue.');
+      return;
+    }
+    receiptWindow.document.open();
+    receiptWindow.document.write(html);
+    receiptWindow.document.close();
+    receiptWindow.focus();
+    try {
       receiptWindow.print();
+    } catch (err) {
+      console.error('Print failed:', err);
+      queueFailedPrint(sale, (err as Error)?.message ?? 'Unknown error');
+      setPrintError('Printing failed. Receipt saved to print queue.');
+    }
+  };
+
+  const queueFailedPrint = async (sale: SaleSnapshot, reason: string) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'printJobs'), {
+        type: 'pos_receipt',
+        saleId: sale.id,
+        shopId: sale.shopId,
+        ownerId: user.uid,
+        payload: sale,
+        reason,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error('Failed to queue print job:', err);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Products Section */}
       <div className="flex-1 flex flex-col">
         <header className="sticky top-0 bg-white border-b border-gray-200 z-40 px-4 py-3">
           <div className="flex items-center justify-between mb-3">
@@ -351,11 +404,38 @@ export const POSPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Cart Section */}
       <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900">Current Sale</h2>
         </div>
+
+        {lastSale && (
+          <div className="p-4 bg-green-50 border-b border-green-100 space-y-2">
+            <p className="text-xs text-green-700 font-medium">Last sale recorded</p>
+            <p className="text-sm text-green-900">
+              {formatCurrency(lastSale.total)} Ks &middot; {lastSale.paymentMethod.toUpperCase()}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePrintReceipt()}
+                className="flex-1 inline-flex items-center justify-center gap-1 text-xs bg-white border border-green-200 text-green-800 px-2 py-1 rounded-md hover:bg-green-100"
+              >
+                <Printer size={14} /> Print
+              </button>
+              <button
+                onClick={() => downloadReceipt(lastSale, shop)}
+                className="flex-1 inline-flex items-center justify-center gap-1 text-xs bg-white border border-green-200 text-green-800 px-2 py-1 rounded-md hover:bg-green-100"
+              >
+                <FileDown size={14} /> Save HTML
+              </button>
+            </div>
+            {printError && (
+              <p className="text-xs text-amber-700 flex items-center gap-1">
+                <AlertCircle size={12} /> {printError}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-4">
           {cart.length === 0 ? (
@@ -407,7 +487,6 @@ export const POSPage: React.FC = () => {
           )}
         </div>
 
-        {/* Cart Summary */}
         <div className="border-t border-gray-200 p-4 space-y-3">
           <div className="flex justify-between text-sm">
             <span className="text-gray-600">Subtotal</span>
@@ -418,7 +497,19 @@ export const POSPage: React.FC = () => {
             <input
               type="number"
               value={discount}
-              onChange={(e) => setDiscount(Number(e.target.value) || 0)}
+              min={0}
+              onChange={(e) => setDiscount(Math.max(0, Number(e.target.value) || 0))}
+              className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
+              placeholder="0"
+            />
+          </div>
+          <div className="flex justify-between text-sm items-center">
+            <span className="text-gray-600">Tax</span>
+            <input
+              type="number"
+              value={tax}
+              min={0}
+              onChange={(e) => setTax(Math.max(0, Number(e.target.value) || 0))}
               className="w-24 px-2 py-1 border border-gray-300 rounded text-right"
               placeholder="0"
             />
@@ -437,7 +528,6 @@ export const POSPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Payment Modal */}
       {showPayment && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6">
@@ -455,13 +545,15 @@ export const POSPage: React.FC = () => {
                     key={method.id}
                     onClick={() => setPaymentMethod(method.id)}
                     className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 ${
-                      paymentMethod === method.id
-                        ? 'border-primary-600 bg-primary-50'
-                        : 'border-gray-200'
+                      paymentMethod === method.id ? 'border-primary-600 bg-primary-50' : 'border-gray-200'
                     }`}
                   >
                     <Icon size={24} className={paymentMethod === method.id ? 'text-primary-600' : 'text-gray-400'} />
-                    <span className={`text-sm font-medium ${paymentMethod === method.id ? 'text-primary-600' : 'text-gray-600'}`}>
+                    <span
+                      className={`text-sm font-medium ${
+                        paymentMethod === method.id ? 'text-primary-600' : 'text-gray-600'
+                      }`}
+                    >
                       {method.label}
                     </span>
                   </button>
@@ -483,16 +575,30 @@ export const POSPage: React.FC = () => {
                 {loading ? 'Processing...' : 'Complete Sale'}
               </button>
             </div>
-            <button
-              onClick={handlePrintReceipt}
-              className="w-full mt-3 py-2 text-primary-600 font-medium flex items-center justify-center gap-2"
-            >
-              <Printer size={18} />
-              Print Receipt
-            </button>
           </div>
         </div>
       )}
     </div>
   );
 };
+
+function extractErrorMessage(error: any): string {
+  if (!error) return 'Failed to complete sale';
+  if (typeof error === 'string') return error;
+  if (error.message) return error.message;
+  if (error.details) return String(error.details);
+  return 'Failed to complete sale';
+}
+
+function downloadReceipt(sale: SaleSnapshot, shop: Shop | null): void {
+  const html = buildReceiptHtml(sale, shop);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `receipt-${sale.id}.html`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}

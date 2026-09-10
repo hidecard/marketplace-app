@@ -43,35 +43,23 @@ class _CreateOfferPageState extends State<CreateOfferPage> {
       setState(() => _submitting = false);
       return;
     }
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final offer = Offer(
-      id: id,
-      productId: widget.productId,
-      buyerId: user.uid,
-      sellerId: _product!.sellerId.isNotEmpty ? _product!.sellerId : _product!.shopId,
-      price: double.tryParse(_price.text.trim()) ?? 0,
-    );
+    final price = double.tryParse(_price.text.trim()) ?? 0;
     try {
-      await _fs.createOffer(offer);
-      final chatId = await _fs.createOrGetChat(
-        [user.uid, offer.sellerId],
+      final chatId = await _fs.createOffer(
         productId: widget.productId,
+        price: price.toInt(),
       );
-      await _fs.sendMessage(
-        chatId: chatId,
-        senderId: user.uid,
-        content: 'Offer: ${offer.price.toStringAsFixed(0)} Ks',
-        type: MessageType.offer,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer sent')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Offer sent')));
+      if (chatId.isNotEmpty) {
         context.go('/chats/$chatId');
+      } else {
+        context.pop();
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
-        setState(() => _submitting = false);
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      setState(() => _submitting = false);
     }
   }
 

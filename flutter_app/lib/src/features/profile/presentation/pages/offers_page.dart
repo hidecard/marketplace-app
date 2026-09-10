@@ -52,8 +52,6 @@ class _OffersPageState extends State<OffersPage> with SingleTickerProviderStateM
           _OfferList(
             uid: uid,
             productFetcher: _product,
-            onAccept: null,
-            onReject: null,
             isReceived: false,
           ),
           _OfferList(
@@ -61,10 +59,43 @@ class _OffersPageState extends State<OffersPage> with SingleTickerProviderStateM
             productFetcher: _product,
             isReceived: true,
             onAccept: (o) async {
-              await _fs.updateOfferStatus(o.id, OfferStatus.accepted);
+              try {
+                await _fs.respondToOffer(offerId: o.id, decision: 'accepted');
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e')),
+                  );
+                }
+              }
             },
             onReject: (o) async {
-              await _fs.updateOfferStatus(o.id, OfferStatus.rejected);
+              try {
+                await _fs.respondToOffer(offerId: o.id, decision: 'rejected');
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e')),
+                  );
+                }
+              }
+            },
+            onCounter: (o) async {
+              final price = await _askCounterPrice(context, o.price);
+              if (price == null) return;
+              try {
+                await _fs.respondToOffer(
+                  offerId: o.id,
+                  decision: 'countered',
+                  counterPrice: price,
+                );
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: $e')),
+                  );
+                }
+              }
             },
           ),
         ],
@@ -79,6 +110,7 @@ class _OfferList extends StatelessWidget {
   final bool isReceived;
   final Future<void> Function(Offer)? onAccept;
   final Future<void> Function(Offer)? onReject;
+  final Future<void> Function(Offer)? onCounter;
 
   const _OfferList({
     required this.uid,
@@ -86,20 +118,21 @@ class _OfferList extends StatelessWidget {
     required this.isReceived,
     this.onAccept,
     this.onReject,
+    this.onCounter,
   });
-
-  bool _matches(Offer o) => isReceived ? o.sellerId == uid : o.buyerId == uid;
 
   @override
   Widget build(BuildContext context) {
     final fs = FirestoreService();
     return StreamBuilder<List<Offer>>(
-      stream: fs.offersByUserStream(uid),
+      stream: isReceived
+          ? fs.offersForSellerStream(uid)
+          : fs.offersForBuyerStream(uid),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        final all = (snap.data ?? []).where(_matches).toList();
+        final all = snap.data ?? [];
         if (all.isEmpty) {
           return EmptyState(
             icon: Icons.local_offer_outlined,
@@ -131,8 +164,10 @@ class _OfferList extends StatelessWidget {
                   ),
                   OfferCard(
                     offer: o,
+                    type: isReceived ? 'received' : 'sent',
                     onAccept: onAccept == null ? null : () => onAccept!(o),
                     onReject: onReject == null ? null : () => onReject!(o),
+                    onCounter: onCounter == null ? null : () => onCounter!(o),
                   ),
                   Padding(
                     padding: const EdgeInsets.only(left: 4, top: 4),
@@ -154,4 +189,31 @@ class _OfferList extends StatelessWidget {
     if (t == null) return '';
     return DateFormat('MMM d, HH:mm').format(t);
   }
+}
+
+Future<int?> _askCounterPrice(BuildContext context, double currentPrice) async {
+  final controller = TextEditingController(text: currentPrice.toStringAsFixed(0));
+  return showDialog<int>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Counter offer'),
+      content: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: const InputDecoration(labelText: 'Counter price (Ks)'),
+        autofocus: true,
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () {
+            final v = int.tryParse(controller.text.trim());
+            if (v == null || v <= 0) return;
+            Navigator.pop(ctx, v);
+          },
+          child: const Text('Send'),
+        ),
+      ],
+    ),
+  );
 }

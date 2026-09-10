@@ -130,8 +130,29 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _placeOrderInternal(Order order) async {
-    await context.read<OrdersCubit>().create(order);
-    await context.read<CartCubit>().clear();
+    final ordersCubit = context.read<OrdersCubit>();
+    final cartCubit = context.read<CartCubit>();
+    await ordersCubit.create(
+      items: order.items
+          .map((i) => {
+                'productId': i.productId,
+                'quantity': i.quantity,
+              })
+          .toList(),
+      address: {
+        'label': order.shippingAddress.label,
+        'name': order.shippingAddress.name,
+        'phone': order.shippingAddress.phone,
+        'address': order.shippingAddress.address,
+        'city': order.shippingAddress.city,
+        'region': order.shippingAddress.region,
+      },
+      deliveryFee: order.deliveryFee.toInt(),
+      discount: order.discount.toInt(),
+      paymentMethod: Order.paymentMethodToString(order.paymentMethod),
+      note: order.note,
+    );
+    await cartCubit.clear();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Order placed successfully')));
       context.go('/orders');
@@ -205,12 +226,36 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     Column(
                       children: _addresses
                           .map(
-                            (a) => RadioListTile<Address>(
-                              value: a,
-                              groupValue: _selectedAddress,
-                              title: Text(a.label),
-                              subtitle: Text('${a.name} \u00b7 ${a.phone}\n${a.address}, ${a.city}, ${a.region}'),
-                              onChanged: (v) => setState(() => _selectedAddress = v),
+                            (a) => InkWell(
+                              onTap: () => setState(() => _selectedAddress = a),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                decoration: BoxDecoration(
+                                  border: Border.all(color: Colors.grey[300]!),
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: _selectedAddress == a ? Colors.blue[50] : null,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      _selectedAddress == a ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                                      color: _selectedAddress == a ? Colors.blue : Colors.grey,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(a.label, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                          const SizedBox(height: 4),
+                                          Text('${a.name} \u00b7 ${a.phone}'),
+                                          Text('${a.address}, ${a.city}, ${a.region}'),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           )
                           .toList(),

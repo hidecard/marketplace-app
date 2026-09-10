@@ -12,6 +12,7 @@ class POSState extends Equatable {
   final String paymentMethod;
   final double discount;
   final bool isCheckingOut;
+  final String? error;
 
   const POSState({
     this.availableProducts = const [],
@@ -22,6 +23,7 @@ class POSState extends Equatable {
     this.paymentMethod = 'cash',
     this.discount = 0,
     this.isCheckingOut = false,
+    this.error,
   });
 
   double get subtotal => cart.fold(0, (sum, i) => sum + i.subtotal);
@@ -36,6 +38,8 @@ class POSState extends Equatable {
     String? paymentMethod,
     double? discount,
     bool? isCheckingOut,
+    String? error,
+    bool clearError = false,
   }) {
     return POSState(
       availableProducts: availableProducts ?? this.availableProducts,
@@ -46,12 +50,13 @@ class POSState extends Equatable {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       discount: discount ?? this.discount,
       isCheckingOut: isCheckingOut ?? this.isCheckingOut,
+      error: clearError ? null : (error ?? this.error),
     );
   }
 
   @override
   List<Object?> get props =>
-      [availableProducts, cart, customerName, customerPhone, note, paymentMethod, discount, isCheckingOut];
+      [availableProducts, cart, customerName, customerPhone, note, paymentMethod, discount, isCheckingOut, error];
 }
 
 class POSCubit extends Cubit<POSState> {
@@ -131,31 +136,29 @@ class POSCubit extends Cubit<POSState> {
     if (_shopId == null || state.cart.isEmpty) return null;
     emit(state.copyWith(isCheckingOut: true));
     try {
-      final id = DateTime.now().millisecondsSinceEpoch.toString();
-      final sale = POSSale(
-        id: id,
-        shopId: _shopId!,
-        items: state.cart,
-        subtotal: state.subtotal,
-        discount: state.discount,
-        total: state.total,
-        paymentMethod: state.paymentMethod,
-        customerName: state.customerName,
-        customerPhone: state.customerPhone,
-        note: state.note,
-      );
-      await _fs.createPOSSale(sale);
-      for (final item in state.cart) {
-        final product = await _fs.getProduct(item.productId);
-        if (product != null) {
-          final newStock = (product.stock - item.quantity).clamp(0, 1 << 30);
-          await _fs.updateProductStock(product.id, newStock);
-        }
-      }
+      final id = 'pos_${DateTime.now().millisecondsSinceEpoch}';
+      await _fs.callableVoid('createPOSSale', params: {
+        'idempotencyKey': id,
+        'shopId': _shopId,
+        'items': state.cart
+            .map((c) => {
+                  'productId': c.productId,
+                  'quantity': c.quantity,
+                })
+            .toList(),
+        'subtotal': state.subtotal,
+        'discount': state.discount,
+        'tax': 0,
+        'total': state.total,
+        'paymentMethod': state.paymentMethod,
+        if (state.customerPhone != null && state.customerPhone!.isNotEmpty)
+          'customerPhone': state.customerPhone,
+        if (state.note != null && state.note!.isNotEmpty) 'note': state.note,
+      });
       emit(const POSState());
       return id;
     } catch (e) {
-      emit(state.copyWith(isCheckingOut: false));
+      emit(state.copyWith(isCheckingOut: false, error: e.toString()));
       return null;
     }
   }

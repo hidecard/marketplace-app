@@ -42,6 +42,7 @@ class AdminCategoriesPage extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () async {
+                          final cubit = context.read<CategoriesCubit>();
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (_) => AlertDialog(
@@ -54,7 +55,7 @@ class AdminCategoriesPage extends StatelessWidget {
                             ),
                           );
                           if (confirm == true) {
-                            await context.read<CategoriesCubit>().delete(c.id);
+                            await cubit.delete(c.id);
                             if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Category deleted')));
                           }
                         },

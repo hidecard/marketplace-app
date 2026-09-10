@@ -289,3 +289,23 @@ export const api = functions.https.onRequest(async (req, res) => {
   // This will be expanded with proper routing
   res.json({ status: 'API is running' });
 });
+
+// ============ Callable functions (V1 secure backend) ============
+export {
+  onCreateShop,
+  submitVerification,
+  reviewVerification,
+  decrementStock,
+  adjustStock,
+  createOrder,
+  createPOSSale,
+  updateOrderStatus,
+  sendChatMessage,
+  setTyping,
+  markChatRead,
+  createOffer,
+  respondToOffer,
+  createReview,
+  createReport,
+  reviewReport,
+} from './callables';

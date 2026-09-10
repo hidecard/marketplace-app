@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
-import '../../../shared/models/models.dart';
 import '../../../shared/services/firestore_service.dart';
 
 class ReportPage extends StatefulWidget {
@@ -44,19 +43,12 @@ class _ReportPageState extends State<ReportPage> {
       return;
     }
     try {
-      final id = DateTime.now().millisecondsSinceEpoch.toString();
-      final report = Report(
-        id: id,
-        reporterId: user.uid,
-        targetType: ReportTargetType.values.firstWhere(
-          (e) => e.name == widget.targetType,
-          orElse: () => ReportTargetType.product,
-        ),
+      await FirestoreService().createReportViaCallable(
+        targetType: widget.targetType,
         targetId: widget.targetId,
         reason: _reason,
         description: _description.text.trim(),
       );
-      await FirestoreService().createReport(report);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Report submitted')));
         context.pop();
@@ -84,7 +76,7 @@ class _ReportPageState extends State<ReportPage> {
                   style: TextStyle(color: Colors.grey[600])),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _reason,
+                initialValue: _reason,
                 decoration: const InputDecoration(
                   labelText: 'Reason',
                   border: OutlineInputBorder(),

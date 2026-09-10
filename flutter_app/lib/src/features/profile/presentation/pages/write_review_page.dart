@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
-import '../../../shared/models/models.dart';
 import '../../../shared/services/firestore_service.dart';
 import '../../../shared/services/storage_service.dart';
 
@@ -56,18 +55,12 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
     }
     try {
       final urls = await _storage.uploadImages(_images, 'reviews/${widget.productId}');
-      final id = DateTime.now().millisecondsSinceEpoch.toString();
-      final review = Review(
-        id: id,
-        productId: widget.productId,
-        shopId: widget.shopId,
-        buyerId: user.uid,
+      await _fs.createReviewViaCallable(
         orderId: widget.orderId,
         rating: _rating,
         comment: _comment.text.trim(),
-        images: urls,
+        imageUrls: urls,
       );
-      await _fs.createReview(review);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thank you for your review!')));
         context.pop();
@@ -137,8 +130,8 @@ class _WriteReviewPageState extends State<WriteReviewPage> {
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _images.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) => Stack(
+                    separatorBuilder: (context, index) => const SizedBox(width: 8),
+                    itemBuilder: (context, i) => Stack(
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),

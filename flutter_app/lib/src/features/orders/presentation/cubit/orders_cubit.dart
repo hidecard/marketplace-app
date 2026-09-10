@@ -24,14 +24,10 @@ class OrdersState extends Equatable {
 
 class OrdersCubit extends Cubit<OrdersState> {
   final FirestoreService _fs = FirestoreService();
-  String? _userId;
-  String? _shopId;
 
   OrdersCubit() : super(const OrdersState());
 
   void loadForBuyer(String userId) {
-    _userId = userId;
-    _shopId = null;
     emit(state.copyWith(isLoading: true, clearError: true));
     _fs.ordersByBuyerStream(userId).listen(
       (orders) => emit(state.copyWith(isLoading: false, orders: orders)),
@@ -40,8 +36,6 @@ class OrdersCubit extends Cubit<OrdersState> {
   }
 
   void loadForShop(String shopId) {
-    _shopId = shopId;
-    _userId = null;
     emit(state.copyWith(isLoading: true, clearError: true));
     _fs.ordersByShopStream(shopId).listen(
       (orders) => emit(state.copyWith(isLoading: false, orders: orders)),
@@ -57,12 +51,36 @@ class OrdersCubit extends Cubit<OrdersState> {
     );
   }
 
+  /// Server-authoritative status update via `updateOrderStatus` callable.
   Future<void> updateStatus(String id, OrderStatus status) async {
-    await _fs.updateOrderStatus(id, status);
+    await _fs.callableVoid('updateOrderStatus', params: {
+      'orderId': id,
+      'status': orderStatusToString(status),
+      'idempotencyKey': '$id-${status.name}-${DateTime.now().millisecondsSinceEpoch}',
+    });
   }
 
-  Future<String> create(Order order) async {
-    await _fs.createOrder(order);
-    return order.id;
+  /// Server-authoritative order creation via `createOrder` callable.
+  /// Returns the created order id.
+  Future<String> create({
+    required List<Map<String, dynamic>> items,
+    required Map<String, dynamic> address,
+    required int deliveryFee,
+    required int discount,
+    required String paymentMethod,
+    String? note,
+  }) async {
+    final id = 'ord_${DateTime.now().millisecondsSinceEpoch}';
+    await _fs.callableVoid('createOrder', params: {
+      'idempotencyKey': id,
+      'items': items,
+      'address': address,
+      'deliveryFee': deliveryFee,
+      'discount': discount,
+      'paymentMethod': paymentMethod,
+      // ignore: use_null_aware_elements
+      if (note != null) 'note': note,
+    });
+    return id;
   }
 }

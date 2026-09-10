@@ -4,6 +4,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+apply(plugin = "com.google.gms.google-services")
+
 android {
     namespace = "com.marketplace.marketplace_app"
     compileSdk = flutter.compileSdkVersion

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "304535507982",
+    "project_id": "padaytharpin-app",
+    "storage_bucket": "padaytharpin-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:304535507982:android:26acbb11be9690f6fb985f",
+        "android_client_info": {
+          "package_name": "com.marketplace.marketplace_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8xRXeNX3E6nOyjsyt-3SoV48K0T2t3DY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

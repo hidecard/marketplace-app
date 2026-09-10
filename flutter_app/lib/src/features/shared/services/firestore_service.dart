@@ -1,8 +1,59 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart' hide Order;
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+
+  // ============== Cloud Functions wrapper ==============
+  Future<T> callable<T>(
+    String name, {
+    Map<String, dynamic>? params,
+    required T Function(Map<String, dynamic>) fromMap,
+  }) async {
+    final result = await _functions.httpsCallable(name).call(params);
+    final data = result.data;
+    if (data is! Map) {
+      throw FirebaseFunctionsException(
+        code: 'invalid-argument',
+        message: 'Expected a map from $name, got ${data.runtimeType}',
+      );
+    }
+    return fromMap(Map<String, dynamic>.from(data));
+  }
+
+  Future<void> callableVoid(String name, {Map<String, dynamic>? params}) async {
+    await _functions.httpsCallable(name).call(params);
+  }
+
+  // ============== Storage helpers ==============
+  Future<String> uploadShopLogo(XFile file) async {
+    final ref = _storage
+        .ref()
+        .child('shops/logos/${DateTime.now().millisecondsSinceEpoch}');
+    final task = await ref.putFile(File(file.path));
+    return await task.ref.getDownloadURL();
+  }
+
+  Future<String> uploadProductImage(String productId, XFile file) async {
+    final ref = _storage.ref().child('products/$productId/${DateTime.now().millisecondsSinceEpoch}');
+    final task = await ref.putFile(File(file.path));
+    return await task.ref.getDownloadURL();
+  }
+
+  Future<String> uploadVerificationDoc(String userId, String type, XFile file) async {
+    final ref = _storage
+        .ref()
+        .child('verifications/$userId/${type}_${DateTime.now().millisecondsSinceEpoch}');
+    final task = await ref.putFile(File(file.path));
+    return await task.ref.getDownloadURL();
+  }
 
   // ============== Products ==============
   Stream<List<Product>> productsStream({int? limit}) {
@@ -17,6 +68,26 @@ class FirestoreService {
     return _db.collection('products').snapshots().map(
           (s) => s.docs.map((d) => Product.fromMap(d.data(), d.id)).toList(),
         );
+  }
+
+  Stream<List<Product>> featuredProductsStream({int limit = 4}) {
+    return _db
+        .collection('products')
+        .where('status', isEqualTo: 'active')
+        .orderBy('views', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map((d) => Product.fromMap(d.data(), d.id)).toList());
+  }
+
+  Stream<List<Product>> recentProductsStream({int limit = 20}) {
+    return _db
+        .collection('products')
+        .where('status', isEqualTo: 'active')
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map((d) => Product.fromMap(d.data(), d.id)).toList());
   }
 
   Stream<List<Product>> productsByShopStream(String shopId) {
@@ -345,39 +416,69 @@ class FirestoreService {
     required String content,
     MessageType type = MessageType.text,
   }) async {
-    final msgRef = _db.collection('chats').doc(chatId).collection('messages').doc();
-    await msgRef.set(ChatMessage(
-      id: msgRef.id,
-      chatId: chatId,
-      senderId: senderId,
-      content: content,
-      type: type,
-      read: false,
-    ).toMap());
-    await _db.collection('chats').doc(chatId).update({
-      'lastMessage': content,
-      'lastMessageAt': FieldValue.serverTimestamp(),
-      'lastMessageBy': senderId,
+    final msgId = '$senderId-${DateTime.now().millisecondsSinceEpoch}';
+    await callableVoid('sendChatMessage', params: {
+      'chatId': chatId,
+      'content': content,
+      'type': messageTypeToString(type),
+      'idempotencyKey': msgId,
     });
   }
 
-  // ============== Offers ==============
-  Future<void> createOffer(Offer o) async {
-    await _db.collection('offers').doc(o.id).set(o.toMap());
+  Future<void> setTyping({required String chatId, required bool typing}) async {
+    await callableVoid('setTyping', params: {
+      'chatId': chatId,
+      'typing': typing,
+    });
   }
 
-  Stream<List<Offer>> offersByUserStream(String userId) {
+  Future<void> markChatRead(String chatId) async {
+    await callableVoid('markChatRead', params: {'chatId': chatId});
+  }
+
+  // ============== Offers ==============
+  Stream<List<Offer>> offersForBuyerStream(String buyerId) {
     return _db
         .collection('offers')
-        .where('buyerId', isEqualTo: userId)
+        .where('buyerId', isEqualTo: buyerId)
         .snapshots()
         .map((s) => s.docs.map((d) => Offer.fromMap(d.data(), d.id)).toList());
   }
 
-  Future<void> updateOfferStatus(String id, OfferStatus status) async {
-    await _db.collection('offers').doc(id).update({
-      'status': Offer.statusToString(status),
-      'updatedAt': FieldValue.serverTimestamp(),
+  Stream<List<Offer>> offersForSellerStream(String sellerId) {
+    return _db
+        .collection('offers')
+        .where('sellerId', isEqualTo: sellerId)
+        .snapshots()
+        .map((s) => s.docs.map((d) => Offer.fromMap(d.data(), d.id)).toList());
+  }
+
+  /// Server-authoritative offer creation. Returns the chatId to navigate to.
+  Future<String> createOffer({
+    required String productId,
+    required int price,
+  }) async {
+    final id = 'offer_${DateTime.now().millisecondsSinceEpoch}';
+    final result = await callable<dynamic>('createOffer', params: {
+      'productId': productId,
+      'price': price,
+      'idempotencyKey': id,
+    }, fromMap: (m) => m);
+    final map = result as Map;
+    return (map['chatId'] as String?) ?? '';
+  }
+
+  Future<void> respondToOffer({
+    required String offerId,
+    required String decision,
+    int? counterPrice,
+  }) async {
+    await callableVoid('respondToOffer', params: {
+      'offerId': offerId,
+      'decision': decision,
+      // ignore: use_null_aware_elements
+      if (counterPrice != null) 'counterPrice': counterPrice,
+      'idempotencyKey': 'resp_${offerId}_${DateTime.now().millisecondsSinceEpoch}',
     });
   }
 
@@ -391,8 +492,18 @@ class FirestoreService {
         .map((s) => s.docs.map((d) => Review.fromMap(d.data(), d.id)).toList());
   }
 
-  Future<void> createReview(Review r) async {
-    await _db.collection('reviews').doc(r.id).set(r.toMap());
+  Future<void> createReviewViaCallable({
+    required String orderId,
+    required int rating,
+    required String comment,
+    required List<String> imageUrls,
+  }) async {
+    await callableVoid('createReview', params: {
+      'orderId': orderId,
+      'rating': rating,
+      'comment': comment,
+      'imageUrls': imageUrls,
+    });
   }
 
   // ============== Expenses ==============
@@ -504,8 +615,32 @@ class FirestoreService {
         .map((s) => s.docs.map((d) => Report.fromMap(d.data(), d.id)).toList());
   }
 
-  Future<void> createReport(Report r) async {
-    await _db.collection('reports').doc(r.id).set(r.toMap());
+  Future<void> createReportViaCallable({
+    required String targetType,
+    required String targetId,
+    required String reason,
+    required String description,
+  }) async {
+    await callableVoid('createReport', params: {
+      'targetType': targetType,
+      'targetId': targetId,
+      'reason': reason,
+      'description': description,
+      'idempotencyKey': 'rep_${targetId}_${DateTime.now().millisecondsSinceEpoch}',
+    });
+  }
+
+  Future<void> reviewReport({
+    required String reportId,
+    required String decision,
+    String? note,
+  }) async {
+    await callableVoid('reviewReport', params: {
+      'reportId': reportId,
+      'decision': decision,
+      // ignore: use_null_aware_elements
+      if (note != null) 'note': note,
+    });
   }
 
   Future<void> updateReportStatus(String id, ReportStatus status, String? adminNote) async {

@@ -32,9 +32,9 @@ class AddressesPage extends StatelessWidget {
           }
           return ListView.separated(
             itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 4),
+            separatorBuilder: (context, index) => const SizedBox(height: 4),
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemBuilder: (_, i) => _AddressTile(address: list[i], userId: uid),
+            itemBuilder: (context, i) => _AddressTile(address: list[i], userId: uid),
           );
         },
       ),

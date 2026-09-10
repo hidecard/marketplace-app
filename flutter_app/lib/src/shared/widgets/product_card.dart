@@ -19,6 +19,13 @@ class ProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat.currency(symbol: '', decimalDigits: 0);
+    
+    // Calculate discount percentage
+    int? discountPercentage;
+    if (product.comparePrice != null && product.comparePrice! > product.price) {
+      discountPercentage = ((product.comparePrice! - product.price) / product.comparePrice! * 100).round();
+    }
+    
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -34,8 +41,8 @@ class ProductCard extends StatelessWidget {
                       ? CachedNetworkImage(
                           imageUrl: product.images.isNotEmpty ? product.images.first : '',
                           fit: BoxFit.cover,
-                          placeholder: (_, _) => Container(color: Colors.grey[200]),
-                          errorWidget: (_, _, _) => Container(
+                          placeholder: (context, url) => Container(color: Colors.grey[200]),
+                          errorWidget: (context, url, error) => Container(
                             color: Colors.grey[200],
                             child: const Icon(Icons.image, color: Colors.grey),
                           ),
@@ -45,10 +52,53 @@ class ProductCard extends StatelessWidget {
                           child: const Icon(Icons.image, color: Colors.grey),
                         ),
                 ),
+                // Condition badge (yellow for used items)
+                if (product.condition == ProductCondition.used)
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Used',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Discount percentage badge
+                if (discountPercentage != null && discountPercentage > 0)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '-$discountPercentage%',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Favorite button
                 if (onFavoriteToggle != null)
                   Positioned(
-                    top: 6,
-                    right: 6,
+                    top: discountPercentage != null ? 40 : 8,
+                    right: 8,
                     child: Material(
                       color: Colors.white.withValues(alpha: 0.9),
                       shape: const CircleBorder(),
@@ -78,35 +128,27 @@ class ProductCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         '${fmt.format(product.price)} Ks',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Theme.of(context).colorScheme.primary,
-                          fontSize: 13,
+                          fontSize: 14,
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          product.condition == ProductCondition.used
-                              ? 'Used'
-                              : product.condition == ProductCondition.refurbished
-                                  ? 'Refurbished'
-                                  : 'New',
-                          style: const TextStyle(
-                            fontSize: 9,
-                            color: Color(0xFF10B981),
-                            fontWeight: FontWeight.w600,
+                      if (product.comparePrice != null && product.comparePrice! > product.price) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '${fmt.format(product.comparePrice)} Ks',
+                          style: TextStyle(
+                            fontWeight: FontWeight.normal,
+                            color: Colors.grey[400],
+                            fontSize: 12,
+                            decoration: TextDecoration.lineThrough,
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],

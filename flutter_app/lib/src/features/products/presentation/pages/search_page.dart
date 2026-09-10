@@ -79,7 +79,7 @@ class _SearchPageState extends State<SearchPage> {
                        BlocBuilder<CategoriesCubit, CategoriesState>(
                         builder: (context, catState) {
                           return DropdownButtonFormField<String>(
-                            value: _selectedCategory,
+                            initialValue: _selectedCategory,
                             decoration: const InputDecoration(labelText: 'Category'),
                             items: [
                               const DropdownMenuItem(value: null, child: Text('All')),
@@ -91,7 +91,7 @@ class _SearchPageState extends State<SearchPage> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<ProductCondition>(
-                        value: _selectedCondition,
+                        initialValue: _selectedCondition,
                         decoration: const InputDecoration(labelText: 'Condition'),
                         items: const [
                           DropdownMenuItem(value: null, child: Text('All')),

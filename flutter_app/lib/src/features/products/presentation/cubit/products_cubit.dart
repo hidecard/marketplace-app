@@ -76,6 +76,22 @@ class ProductsCubit extends Cubit<ProductsState> {
     );
   }
 
+  void loadFeatured({int limit = 4}) {
+    emit(state.copyWith(isLoading: true, clearError: true));
+    _fs.featuredProductsStream(limit: limit).listen(
+      (products) => emit(state.copyWith(isLoading: false, products: products)),
+      onError: (e) => emit(state.copyWith(isLoading: false, error: e.toString())),
+    );
+  }
+
+  void loadRecent({int limit = 20}) {
+    emit(state.copyWith(isLoading: true, clearError: true));
+    _fs.recentProductsStream(limit: limit).listen(
+      (products) => emit(state.copyWith(isLoading: false, products: products)),
+      onError: (e) => emit(state.copyWith(isLoading: false, error: e.toString())),
+    );
+  }
+
   void loadByCategory(String categoryId) {
     emit(state.copyWith(isLoading: true, categoryId: categoryId, clearError: true));
     _fs.productsByCategoryStream(categoryId).listen(

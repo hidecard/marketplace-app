@@ -42,6 +42,7 @@ class _BusinessSettingsPageState extends State<BusinessSettingsPage> {
     final auth = context.read<AuthCubit>().state;
     final shop = auth.shop;
     if (shop == null) return;
+    final authCubit = context.read<AuthCubit>();
     setState(() => _loading = true);
     try {
       final updated = shop.copyWith(
@@ -54,7 +55,7 @@ class _BusinessSettingsPageState extends State<BusinessSettingsPage> {
         region: _region.text,
       );
       await FirestoreService().updateShop(updated);
-      await context.read<AuthCubit>().setShop(updated);
+      await authCubit.setShop(updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Settings saved')),

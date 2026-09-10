@@ -34,8 +34,8 @@ class NotificationsPage extends StatelessWidget {
           }
           return ListView.separated(
             itemCount: list.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (_, i) {
+            separatorBuilder: (context, index) => const Divider(height: 1),
+            itemBuilder: (context, i) {
               final n = list[i];
               return ListTile(
                 leading: CircleAvatar(
@@ -70,7 +70,9 @@ class NotificationsPage extends StatelessWidget {
                   if (!n.read) {
                     await fs.markNotificationRead(n.id);
                   }
-                  _onTap(context, n);
+                  if (context.mounted) {
+                    _onTap(context, n);
+                  }
                 },
               );
             },

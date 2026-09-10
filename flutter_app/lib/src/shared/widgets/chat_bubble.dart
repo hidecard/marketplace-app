@@ -72,8 +72,6 @@ class ChatBubble extends StatelessWidget {
         );
       case MessageType.text:
         return Text(message.content, style: TextStyle(color: textColor));
-      default:
-        return Text(message.content, style: TextStyle(color: textColor));
     }
   }
 }

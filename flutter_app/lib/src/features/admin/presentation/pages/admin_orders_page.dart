@@ -66,11 +66,19 @@ class AdminOrdersPage extends StatelessWidget {
                         label: Text(orderStatusToString(s)),
                         selected: isSelected,
                         onSelected: (v) async {
-                          if (v && !isSelected) {
-                            await fs.updateOrderStatus(o.id, s);
+                          try {
+                            await fs.callableVoid('updateOrderStatus', params: {
+                              'orderId': o.id,
+                              'status': orderStatusToString(s),
+                              'idempotencyKey': '${o.id}-${s.name}-${DateTime.now().millisecondsSinceEpoch}',
+                            });
                             setState(() {});
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Status updated to ${orderStatusToString(s)}')));
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update rejected: $e')));
                             }
                           }
                         },

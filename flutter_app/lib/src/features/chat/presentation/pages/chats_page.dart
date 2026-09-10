@@ -67,8 +67,8 @@ class _ChatsPageState extends State<ChatsPage> {
             },
             child: ListView.separated(
               itemCount: state.chats.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, i) {
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, i) {
                 final chat = state.chats[i];
                 final otherId = chat.participants.firstWhere(
                   (p) => p != me,

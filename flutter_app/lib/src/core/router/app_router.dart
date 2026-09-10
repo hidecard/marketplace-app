@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
+import '../../features/auth/presentation/pages/profile_setup_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/products/presentation/pages/search_page.dart';
 import '../../features/categories/presentation/pages/categories_page.dart';
@@ -54,12 +55,18 @@ final GoRouter appRouter = GoRouter(
   redirect: (context, state) {
     final authState = context.read<AuthCubit>().state;
     final loc = state.matchedLocation;
-    final isAuthRoute = loc == '/login' || loc == '/admin/login';
+    final isAuthRoute = loc == '/login' || loc == '/admin/login' || loc == '/profile-setup';
 
     if (!authState.isAuthenticated && !isAuthRoute) {
       return '/login';
     }
     if (authState.isAuthenticated) {
+      if (authState.needsProfileSetup && loc != '/profile-setup') {
+        return '/profile-setup';
+      }
+      if (!authState.needsProfileSetup && loc == '/profile-setup') {
+        return authState.isAdmin ? '/admin' : '/';
+      }
       if (loc == '/login') {
         return authState.isAdmin ? '/admin' : '/';
       }
@@ -72,11 +79,20 @@ final GoRouter appRouter = GoRouter(
       if (loc.startsWith('/admin') && loc != '/admin/login' && !authState.isAdmin) {
         return '/';
       }
+      if (loc.startsWith('/business') &&
+          loc != '/business/create-shop' &&
+          loc != '/business/verification' &&
+          (authState.shop == null || !authState.shop!.verified)) {
+        return authState.shop == null
+            ? '/business/create-shop'
+            : '/business/verification';
+      }
     }
     return null;
   },
   routes: [
     GoRoute(path: '/login', builder: (_, _) => const LoginPage()),
+    GoRoute(path: '/profile-setup', builder: (_, _) => const ProfileSetupPage()),
     GoRoute(path: '/admin/login', builder: (_, _) => const AdminLoginPage()),
     GoRoute(path: '/', builder: (_, _) => const HomePage()),
     GoRoute(path: '/search', builder: (_, _) => const SearchPage()),
