@@ -11,9 +11,11 @@
   "scripts": {
     "dev:web": "npm run dev -w web",
     "dev:admin": "npm run dev -w admin",
+    "build": "npm run build:web",
     "build:web": "npm run build -w web",
     "build:admin": "npm run build -w admin",
     "build:all": "npm run build:web && npm run build:admin",
+    "deploy": "npm run build && npx wrangler deploy",
     "deploy:web": "npm run build:web && firebase deploy --only hosting:web",
     "deploy:admin": "npm run build:admin && firebase deploy --only hosting:admin",
     "deploy:firebase": "firebase deploy --only firestore,functions,storage",
