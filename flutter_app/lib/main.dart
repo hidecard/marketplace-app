@@ -35,7 +35,6 @@ Future<void> main() async {
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.playIntegrity,
     appleProvider: AppleProvider.deviceCheck,
-    debugProvider: kDebugMode ? DebugProvider.debug : null,
   );
 
   runApp(const MarketplaceApp());

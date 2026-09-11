@@ -8,6 +8,8 @@ import '../../features/products/presentation/pages/search_page.dart';
 import '../../features/categories/presentation/pages/categories_page.dart';
 import '../../features/categories/presentation/pages/category_detail_page.dart';
 import '../../features/product/presentation/pages/product_detail_page.dart';
+import '../../features/shop/presentation/pages/shops_page.dart';
+import '../../features/shop/presentation/pages/shop_detail_page.dart';
 import '../../features/cart/presentation/pages/cart_page.dart';
 import '../../features/cart/presentation/pages/checkout_page.dart';
 import '../../features/orders/presentation/pages/orders_page.dart';
