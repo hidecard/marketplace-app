@@ -23,10 +23,13 @@ try {
   throw error;
 }
 
-initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider(import.meta.env.VITE_FIREBASE_APP_CHECK_KEY || ''),
-  isTokenAutoRefreshEnabled: true,
-});
+const appCheckKey = import.meta.env.VITE_FIREBASE_APP_CHECK_KEY;
+if (appCheckKey) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(appCheckKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

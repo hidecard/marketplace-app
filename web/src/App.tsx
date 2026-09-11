@@ -63,19 +63,20 @@ export const App: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
           </Route>
 
-          <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
-            {/* Home & Discovery */}
+            {/* Public browsing */}
             <Route path="/" element={<HomePage />} />
             <Route path="/categories" element={<CategoriesPage />} />
             <Route path="/category/:slug" element={<CategoryDetailPage />} />
             <Route path="/shops" element={<ShopsPage />} />
             <Route path="/search" element={<SearchPage />} />
-
-            {/* Product & Shop */}
             <Route path="/product/:productId" element={<ProductDetailPage />} />
             <Route path="/shop/:shopId" element={<ShopPage />} />
+            <Route path="/help" element={<HelpSupportPage />} />
+          </Route>
 
+          <Route element={<ProtectedRoute />}>
+          <Route element={<MainLayout />}>
             {/* Orders */}
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/:orderId" element={<OrderDetailPage />} />
@@ -114,8 +115,6 @@ export const App: React.FC = () => {
             <Route path="/review/:orderId" element={<WriteReviewPage />} />
             <Route path="/report/:type/:id" element={<ReportPage />} />
 
-            {/* Help */}
-            <Route path="/help" element={<HelpSupportPage />} />
           </Route>
           </Route>
 
