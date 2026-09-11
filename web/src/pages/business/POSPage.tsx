@@ -585,8 +585,12 @@ export const POSPage: React.FC = () => {
 function extractErrorMessage(error: any): string {
   if (!error) return 'Failed to complete sale';
   if (typeof error === 'string') return error;
-  if (error.message) return error.message;
   if (error.details) return String(error.details);
+  if (error.code && error.message && error.message !== error.code) return `${error.code}: ${error.message}`;
+  if (error.message && error.message.toLowerCase() !== 'internal') return error.message;
+  if (error.code === 'functions/internal' || error.message?.toLowerCase() === 'internal') {
+    return 'Sale service failed. Please check that Firebase Functions are deployed, then try again.';
+  }
   return 'Failed to complete sale';
 }
 

@@ -357,7 +357,7 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
         if (productSnaps.some((s) => !s.exists)) {
             throw new functions.https.HttpsError('not-found', 'One or more products not found');
         }
-        const products = productSnaps.map((s) => s.data());
+        const products = productSnaps.map((s) => (Object.assign(Object.assign({}, s.data()), { id: s.id })));
         const shopId = products[0].shopId;
         if (!products.every((p) => p.shopId === shopId)) {
             throw new functions.https.HttpsError('invalid-argument', 'All items must be from one shop');
@@ -366,6 +366,9 @@ exports.createOrder = functions.https.onCall(async (data, context) => {
         const lineItems = products.map((p, idx) => {
             var _a, _b, _c, _d;
             const requested = items[idx].quantity;
+            if (!Number.isInteger(requested) || requested < 1) {
+                throw new functions.https.HttpsError('invalid-argument', 'Each item quantity must be a positive integer');
+            }
             if (((_a = p.stock) !== null && _a !== void 0 ? _a : 0) < requested) {
                 throw new functions.https.HttpsError('failed-precondition', `Insufficient stock for ${p.title}`);
             }
@@ -483,13 +486,16 @@ exports.createPOSSale = functions.https.onCall(async (data, context) => {
         if (productSnaps.some((s) => !s.exists)) {
             throw new functions.https.HttpsError('not-found', 'Product not found');
         }
-        const products = productSnaps.map((s) => s.data());
+        const products = productSnaps.map((s) => (Object.assign(Object.assign({}, s.data()), { id: s.id })));
         if (!products.every((p) => p.shopId === shopId)) {
             throw new functions.https.HttpsError('invalid-argument', 'Items must be from this shop');
         }
         const lineItems = products.map((p, idx) => {
             var _a, _b, _c, _d;
             const q = items[idx].quantity;
+            if (!Number.isInteger(q) || q < 1) {
+                throw new functions.https.HttpsError('invalid-argument', 'Each item quantity must be a positive integer');
+            }
             if (((_a = p.stock) !== null && _a !== void 0 ? _a : 0) < q) {
                 throw new functions.https.HttpsError('failed-precondition', `Insufficient stock for ${p.title}`);
             }
