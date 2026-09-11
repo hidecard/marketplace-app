@@ -1,13 +1,21 @@
+export type UserRole = 'user' | 'admin';
+export type UserStatus = 'active' | 'suspended' | 'banned';
+export type VerificationStatus = 'not_requested' | 'pending' | 'approved' | 'rejected';
+export type ProductCondition = 'new' | 'used' | 'refurbished';
+export type ProductStatus = 'active' | 'inactive' | 'sold' | 'hidden';
+export type SellerType = 'INDIVIDUAL' | 'SHOP';
+
 export interface User {
   uid: string;
   email: string | null;
   phoneNumber: string | null;
   displayName: string;
   photoURL: string | null;
-  role: 'user' | 'admin';
+  role: UserRole;
   phoneVerified: boolean;
   shopVerified: boolean;
-  status: 'active' | 'suspended' | 'banned';
+  status: UserStatus;
+  fcmToken?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,20 +33,29 @@ export interface Shop {
   address: string;
   city: string;
   region: string;
+  socialLinks?: {
+    facebook?: string | null;
+    instagram?: string | null;
+    tiktok?: string | null;
+    website?: string | null;
+  };
   verified: boolean;
-  verificationStatus: 'not_requested' | 'pending' | 'approved' | 'rejected';
+  verificationStatus: VerificationStatus;
   rating: number;
   totalReviews: number;
   totalProducts: number;
   totalSales: number;
+  totalFollowers?: number;
+  businessModeEnabled?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface Product {
   id: string;
-  shopId: string;
+  shopId: string | null;
   sellerId: string;
+  sellerType: SellerType;
   title: string;
   description: string;
   price: number;
@@ -46,10 +63,12 @@ export interface Product {
   costPrice?: number;
   categoryId: string;
   images: string[];
-  condition: 'new' | 'used' | 'refurbished';
+  condition: ProductCondition;
   stock: number;
   sku?: string;
-  status: 'active' | 'inactive' | 'sold' | 'hidden';
+  location?: string;
+  codAvailable?: boolean;
+  status: ProductStatus;
   views: number;
   createdAt: Date;
   updatedAt: Date;
@@ -65,7 +84,7 @@ export interface Order {
   deliveryFee: number;
   discount: number;
   total: number;
-  paymentMethod: string;
+  paymentMethod: 'cash' | 'kbzpay' | 'wavepay' | 'bank_transfer' | 'other' | 'cod';
   paymentStatus: 'pending' | 'paid' | 'refunded';
   status: OrderStatus;
   shippingAddress: Address;
@@ -116,7 +135,7 @@ export interface VerificationRequest {
   description: string;
   facebookPage?: string;
   shopPhotos: string[];
-  status: 'pending' | 'approved' | 'rejected';
+  status: VerificationStatus;
   adminNote?: string;
   reviewedBy?: string;
   createdAt: Date;

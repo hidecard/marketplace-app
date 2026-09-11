@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Menu } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Order, Shop } from '../../types';
 import { formatCurrency, formatDate, getOrderStatusColor } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 
 type StatusFilter = 'all' | 'pending' | 'confirmed' | 'preparing' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
@@ -74,14 +75,16 @@ export const BusinessOrdersPage: React.FC = () => {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      await updateDoc(doc(db, 'orders', orderId), {
+      await FunctionsService.callOrThrow('updateOrderStatus', {
+        orderId,
         status: newStatus,
-        updatedAt: serverTimestamp(),
+        idempotencyKey: `status_${orderId}_${Date.now()}`,
+        note: '',
       });
       toast.success('Order status updated');
       fetchOrders();
-    } catch (error) {
-      toast.error('Failed to update order');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update order');
     }
   };
 

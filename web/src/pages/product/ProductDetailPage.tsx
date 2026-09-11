@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Heart, Share2, ShoppingCart, MessageCircle, Star, Shield, MapPin, Truck, QrCode } from 'lucide-react';
-import { doc, getDoc, collection, query, where, orderBy, getDocs, addDoc, serverTimestamp, increment, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop, Review } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
 import { trackEvent } from '../../services/analytics';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 import QRModal from '../../components/offer/QRModal';
 
@@ -42,8 +43,8 @@ export const ProductDetailPage: React.FC = () => {
         trackEvent('product_view', { product_id: productData.id, product_title: productData.title, price: productData.price });
 
         // Increment view count
-        await updateDoc(doc(db, 'products', productId), {
-          views: increment(1),
+        FunctionsService.call('incrementProductViews', {
+          productId: productData.id,
         });
 
         // Fetch shop

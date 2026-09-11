@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Package, MoreVertical, Edit, Trash2, Menu } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 
 export const BusinessProductsPage: React.FC = () => {
@@ -63,11 +64,13 @@ export const BusinessProductsPage: React.FC = () => {
   const handleDelete = async (productId: string) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     try {
-      await deleteDoc(doc(db, 'products', productId));
+      await FunctionsService.callOrThrow('deleteProduct', {
+        productId,
+      });
       toast.success('Product deleted');
       fetchProducts();
-    } catch (error) {
-      toast.error('Failed to delete product');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete product');
     }
     setActiveMenu(null);
   };

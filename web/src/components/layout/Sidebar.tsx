@@ -12,7 +12,6 @@ import {
   DollarSign,
   BarChart3,
   Settings,
-  FolderTree,
   FileText,
   LucideIcon,
 } from 'lucide-react';
@@ -45,7 +44,6 @@ const businessItems: SidebarItem[] = [
   { path: '/business/orders', icon: ShoppingBag, label: 'Orders', section: 'business' },
   { path: '/business/analytics', icon: BarChart3, label: 'Analytics', section: 'business' },
   { path: '/business/reports', icon: FileText, label: 'Reports', section: 'business' },
-  { path: '/business/categories', icon: FolderTree, label: 'Categories', section: 'business' },
   { path: '/business/settings', icon: Settings, label: 'Settings', section: 'business' },
 ];
 

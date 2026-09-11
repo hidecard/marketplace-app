@@ -8,7 +8,8 @@
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
-    "lint": "eslint --ext .js,.ts ."
+    "lint": "eslint --ext .js,.ts .",
+    "test": "mocha --require ts-node/register tests/**/*.test.ts"
   },
   "engines": {
     "node": "20"
@@ -19,12 +20,18 @@
     "firebase-functions": "^4.8.0"
   },
   "devDependencies": {
+    "@types/chai": "^5.2.3",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.20.2",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
+    "chai": "^4.3.10",
     "eslint": "^8.56.0",
     "eslint-config-google": "^0.14.0",
     "eslint-plugin-import": "^2.29.0",
-    "firebase-functions-test": "^3.1.0",
+    "firebase-functions-test": "^2.4.0",
+    "mocha": "^10.2.0",
+    "ts-node": "^10.9.0",
     "typescript": "^5.3.0"
   },
   "private": true

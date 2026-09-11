@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, Shield, MapPin, MessageCircle, Heart, Share2, Grid, List, QrCode } from 'lucide-react';
-import { doc, getDoc, collection, query, where, orderBy, getDocs, setDoc, deleteDoc, serverTimestamp, increment, addDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, getDocs, serverTimestamp, addDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Shop, Product } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { trackEvent } from '../../services/analytics';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 import QRModal from '../../components/offer/QRModal';
 
@@ -107,24 +108,20 @@ export const ShopPage: React.FC = () => {
         );
         const snapshot = await getDocs(q);
         if (!snapshot.empty) {
-          await deleteDoc(doc(db, 'shop_followers', snapshot.docs[0].id));
+          await FunctionsService.callOrThrow('toggleShopFollow', {
+            shopId,
+            follow: false,
+          });
         }
         setIsFollowing(false);
         setFollowerCount((prev) => Math.max(0, prev - 1));
-        await updateDoc(doc(db, 'shops', shopId), {
-          totalFollowers: increment(-1),
-        });
       } else {
-        await setDoc(doc(collection(db, 'shop_followers')), {
-          userId: user.uid,
+        await FunctionsService.callOrThrow('toggleShopFollow', {
           shopId,
-          createdAt: serverTimestamp(),
+          follow: true,
         });
         setIsFollowing(true);
         setFollowerCount((prev) => prev + 1);
-        await updateDoc(doc(db, 'shops', shopId), {
-          totalFollowers: increment(1),
-        });
       }
     } catch (error) {
       console.error('Error toggling follow:', error);

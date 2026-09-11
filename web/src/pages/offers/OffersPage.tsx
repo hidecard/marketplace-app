@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Tag } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Offer } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import OfferCard from '../../components/offer/OfferCard';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 
 export const OffersPage: React.FC = () => {
@@ -50,27 +51,29 @@ export const OffersPage: React.FC = () => {
 
   const handleAccept = async (offerId: string) => {
     try {
-      await updateDoc(doc(db, 'offers', offerId), {
-        status: 'accepted',
-        updatedAt: serverTimestamp(),
+      await FunctionsService.callOrThrow('respondToOffer', {
+        offerId,
+        decision: 'accepted',
+        idempotencyKey: `resp_${offerId}_${Date.now()}`,
       });
       toast.success('Offer accepted');
       fetchOffers();
-    } catch (error) {
-      toast.error('Failed to accept offer');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to accept offer');
     }
   };
 
   const handleReject = async (offerId: string) => {
     try {
-      await updateDoc(doc(db, 'offers', offerId), {
-        status: 'rejected',
-        updatedAt: serverTimestamp(),
+      await FunctionsService.callOrThrow('respondToOffer', {
+        offerId,
+        decision: 'rejected',
+        idempotencyKey: `resp_${offerId}_${Date.now()}`,
       });
       toast.success('Offer rejected');
       fetchOffers();
-    } catch (error) {
-      toast.error('Failed to reject offer');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to reject offer');
     }
   };
 
@@ -78,15 +81,16 @@ export const OffersPage: React.FC = () => {
     const counterPrice = prompt('Enter counter offer price:');
     if (!counterPrice || isNaN(Number(counterPrice))) return;
     try {
-      await updateDoc(doc(db, 'offers', offerId), {
-        status: 'countered',
-        price: Number(counterPrice),
-        updatedAt: serverTimestamp(),
+      await FunctionsService.callOrThrow('respondToOffer', {
+        offerId,
+        decision: 'countered',
+        counterPrice: Number(counterPrice),
+        idempotencyKey: `resp_${offerId}_${Date.now()}`,
       });
       toast.success('Counter offer sent');
       fetchOffers();
-    } catch (error) {
-      toast.error('Failed to send counter offer');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send counter offer');
     }
   };
 

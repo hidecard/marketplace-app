@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Minus, Plus, Trash2, ShoppingBag, MapPin } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, doc, runTransaction, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Address } from '../../types';
-import { formatCurrency, generateOrderNumber } from '../../utils/helpers';
+import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
 import { trackEvent } from '../../services/analytics';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 
 export const CartPage: React.FC = () => {
@@ -78,57 +79,32 @@ export const CartPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const orderNumber = generateOrderNumber();
-      const order = {
-        orderNumber,
-        buyerId: user.uid,
-        shopId: items[0].shopId,
+      const idempotencyKey = `order_${user.uid}_${Date.now()}`;
+
+      const result = await FunctionsService.callOrThrow<any>('createOrder', {
         items: items.map((item) => ({
           productId: item.productId,
-          title: item.title,
-          image: item.image,
-          price: item.price,
           quantity: item.quantity,
-          subtotal: item.subtotal,
+          variantId: null,
         })),
-        subtotal: getTotal(),
+        address: {
+          id: selectedAddress.id,
+          name: selectedAddress.name,
+          phone: selectedAddress.phone,
+          address: selectedAddress.address,
+          city: selectedAddress.city,
+          region: selectedAddress.region,
+          isDefault: selectedAddress.isDefault,
+        },
+        idempotencyKey,
         deliveryFee: 0,
         discount: 0,
-        total: getTotal(),
-        paymentMethod: 'cash',
-        paymentStatus: 'pending',
-        status: 'pending',
-        shippingAddress: selectedAddress,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      // Use transaction to update stock
-      await runTransaction(db, async (transaction) => {
-        for (const item of items) {
-          const productRef = doc(db, 'products', item.productId);
-          const productDoc = await transaction.get(productRef);
-          if (!productDoc.exists()) {
-            throw new Error(`Product ${item.title} not found`);
-          }
-          const currentStock = productDoc.data().stock;
-          if (currentStock < item.quantity) {
-            throw new Error(`Not enough stock for ${item.title}`);
-          }
-          transaction.update(productRef, {
-            stock: currentStock - item.quantity,
-            updatedAt: serverTimestamp(),
-          });
-        }
+        paymentMethod: 'cod',
       });
 
-      // Create order
-      await addDoc(collection(db, 'orders'), order);
-      trackEvent('order_placed', { order_number: orderNumber, total: getTotal() });
+      trackEvent('order_placed', { order_number: result.orderNumber, total: getTotal() });
 
-      // Clear cart
       clearCart();
-
       toast.success('Order placed successfully!');
       navigate('/orders');
     } catch (error: any) {

@@ -9,8 +9,8 @@
     "target": "es2017",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["mocha", "chai", "node"]
   },
-  "compileOnSave": true,
-  "include": ["src"]
+  "include": ["src", "tests"]
 }

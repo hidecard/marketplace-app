@@ -308,4 +308,9 @@ export {
   createReview,
   createReport,
   reviewReport,
+  createExpense,
+  deleteExpense,
+  incrementProductViews,
+  toggleShopFollow,
+  deleteProduct,
 } from './callables';

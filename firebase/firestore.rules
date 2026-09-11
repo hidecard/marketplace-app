@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -15,65 +14,92 @@ service cloud.firestore {
       return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function isShopOwner(shopId) {
+      return isAuthenticated() && exists(/databases/$(database)/documents/shops/$(shopId)) &&
+        get(/databases/$(database)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
+    }
+
     function isShopMember(shopId) {
       return isAuthenticated() && exists(/databases/$(database)/documents/shops/$(shopId)/members/$(request.auth.uid));
     }
 
-    function isVerifiedShop(shopId) {
-      return isAuthenticated() && get(/databases/$(database)/documents/shops/$(shopId)).data.verified == true;
+    function canManageShop(shopId) {
+      return isAdmin() || isShopOwner(shopId) || isShopMember(shopId);
+    }
+
+    function hasValidAppCheck() {
+      return request.app != null && request.app.verifyToken() != null;
     }
 
     // Users collection
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId)
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'phoneVerified', 'shopVerified']);
+      allow read: if isAdmin();
+      allow create: if isOwner(userId) && hasValidAppCheck();
+      allow update: if isOwner(userId) && request.resource.data.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.phoneVerified == resource.data.phoneVerified
+        && request.resource.data.shopVerified == resource.data.shopVerified
+        && request.resource.data.status == resource.data.status
+        && hasValidAppCheck()
+        || isAdmin();
       allow delete: if isAdmin();
     }
 
     // Shops collection
     match /shops/{shopId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isShopMember(shopId) || isAdmin();
+      allow read: if isAuthenticated() && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid && hasValidAppCheck();
+      allow update: if (isShopOwner(shopId)
+          && request.resource.data.ownerId == resource.data.ownerId
+          && request.resource.data.verified == resource.data.verified
+          && request.resource.data.verificationStatus == resource.data.verificationStatus
+          && request.resource.data.businessModeEnabled == resource.data.businessModeEnabled
+          && hasValidAppCheck())
+        || isAdmin();
       allow delete: if isAdmin();
 
-      // Shop members subcollection
       match /members/{memberId} {
-        allow read: if isShopMember(shopId) || isAdmin();
-        allow write: if isShopMember(shopId) || isAdmin();
+        allow read: if canManageShop(shopId) && hasValidAppCheck();
+        allow create: if isShopOwner(shopId) || isAdmin();
+        allow update: if isShopOwner(shopId) || isAdmin();
+        allow delete: if isShopOwner(shopId) || isAdmin();
       }
     }
 
     // Products collection
     match /products/{productId} {
-      allow read: if true;
-      allow create: if isAuthenticated();
-      allow update: if isShopMember(resource.data.shopId) || isAdmin();
-      allow delete: if isShopMember(resource.data.shopId) || isAdmin();
+      allow read: if isAuthenticated() && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid
+        && (request.resource.data.shopId == null || isShopOwner(request.resource.data.shopId))
+        && hasValidAppCheck();
+      allow update: if isAdmin() && hasValidAppCheck()
+        || (isAuthenticated() && request.resource.data.sellerId == request.auth.uid
+          && resource.data.sellerId == request.auth.uid
+          && hasValidAppCheck())
+        || (isAuthenticated() && resource.data.shopId != null && isShopOwner(resource.data.shopId)
+          && hasValidAppCheck());
+      allow delete: if isAdmin();
     }
 
     // Categories collection
     match /categories/{categoryId} {
-      allow read: if true;
+      allow read: if isAuthenticated() && hasValidAppCheck();
       allow write: if isAdmin();
     }
 
-    // Helper functions for order status transitions
     function isTerminalStatus(status) {
       return status == 'completed' || status == 'cancelled' || status == 'rejected';
     }
 
     function isValidSellerStatusTransition(oldStatus, newStatus) {
-      if oldStatus == newStatus: return true;
-      if isTerminalStatus(oldStatus): return false;
-      if oldStatus == 'pending' && (newStatus == 'confirmed' || newStatus == 'rejected'): return true;
-      if oldStatus == 'confirmed' && newStatus == 'preparing': return true;
-      if oldStatus == 'preparing' && newStatus == 'shipped': return true;
-      if oldStatus == 'shipped' && newStatus == 'out_for_delivery': return true;
-      if oldStatus == 'out_for_delivery' && newStatus == 'delivered': return true;
-      if oldStatus == 'delivered' && newStatus == 'completed': return true;
+      if (oldStatus == newStatus) return true;
+      if (isTerminalStatus(oldStatus)) return false;
+      if (oldStatus == 'pending' && (newStatus == 'confirmed' || newStatus == 'rejected')) return true;
+      if (oldStatus == 'confirmed' && newStatus == 'preparing') return true;
+      if (oldStatus == 'preparing' && newStatus == 'shipped') return true;
+      if (oldStatus == 'shipped' && newStatus == 'out_for_delivery') return true;
+      if (oldStatus == 'out_for_delivery' && newStatus == 'delivered') return true;
+      if (oldStatus == 'delivered' && newStatus == 'completed') return true;
       return false;
     }
 
@@ -84,120 +110,170 @@ service cloud.firestore {
     // Orders collection
     match /orders/{orderId} {
       allow read: if isAuthenticated() &&
-        (resource.data.buyerId == request.auth.uid || isShopMember(resource.data.shopId) || isAdmin());
-      allow create: if isAuthenticated();
-      allow update: if isAdmin() ||
-        (isAuthenticated() && resource.data.buyerId == request.auth.uid &&
-         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
-          (request.resource.data.status == 'cancelled' && canBuyerCancel(resource.data.status))))
-        ||
-        (isAuthenticated() && isShopMember(resource.data.shopId) &&
-         isValidSellerStatusTransition(resource.data.status, request.resource.data.status));
+        (resource.data.buyerId == request.auth.uid || isShopMember(resource.data.shopId) || isAdmin())
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.resource.data.buyerId == request.auth.uid && hasValidAppCheck();
+      allow update: if isAdmin() && hasValidAppCheck()
+        || (resource.data.buyerId == request.auth.uid
+          && request.resource.data.buyerId == resource.data.buyerId
+          && request.resource.data.status == 'cancelled'
+          && canBuyerCancel(resource.data.status)
+          && hasValidAppCheck())
+        || (isShopMember(resource.data.shopId)
+          && isValidSellerStatusTransition(resource.data.status, request.resource.data.status)
+          && hasValidAppCheck());
       allow delete: if isAdmin();
     }
 
-    // POS Sales collection
+    // POS sales
     match /pos_sales/{saleId} {
-      allow read: if isShopMember(resource.data.shopId) || isAdmin();
-      allow create: if isShopMember(request.resource.data.shopId);
-      allow update: if isShopMember(resource.data.shopId) || isAdmin();
+      allow read: if isAuthenticated() && (isShopMember(resource.data.shopId) || isAdmin())
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && isShopOwner(request.resource.data.shopId) && hasValidAppCheck();
+      allow update: if isAdmin() || (isShopOwner(resource.data.shopId));
       allow delete: if isAdmin();
     }
 
-    // Chats collection
+    // Chats
     match /chats/{chatId} {
-      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
-      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants;
-      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants
+        && hasValidAppCheck();
+      allow update: if isAdmin();
 
-      // Messages subcollection
       match /messages/{messageId} {
-        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
-        allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && hasValidAppCheck();
+        allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants
+          && request.resource.data.senderId == request.auth.uid
+          && hasValidAppCheck();
       }
     }
 
-    // Offers collection
+    // Offers
     match /offers/{offerId} {
       allow read: if isAuthenticated() &&
-        (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
-      allow create: if isAuthenticated();
-      allow update: if isAuthenticated() &&
-        (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+        (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin())
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.buyerId
+        && hasValidAppCheck();
+      allow update: if isAdmin()
+        || (resource.data.sellerId == request.auth.uid && hasValidAppCheck())
+        || (resource.data.buyerId == request.auth.uid && hasValidAppCheck());
     }
 
-    // Reviews collection
+    // Reviews
     match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.buyerId;
+      allow read: if isAuthenticated() && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
       allow update, delete: if isAdmin();
     }
 
-    // Favorites collection
+    // Favorites
     match /favorites/{favoriteId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
     }
 
-    // Shop Followers collection
+    // Shop followers
     match /shop_followers/{followerId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
-      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isAuthenticated() && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId
+        && hasValidAppCheck();
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.userId
+        && hasValidAppCheck();
     }
 
-    // Addresses collection
+    // Addresses
     match /addresses/{addressId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
     }
 
-    // Notifications collection
+    // Notifications
     match /notifications/{notificationId} {
-      allow read: if isAuthenticated() && request.auth.uid == resource.data.userId;
-      allow update: if isAuthenticated() && request.auth.uid == resource.data.userId;
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+      allow create: if isAdmin();
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && hasValidAppCheck();
+    }
+
+    // Verification requests
+    match /verification_requests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin())
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId
+        && hasValidAppCheck();
+      allow update: if isAdmin();
+    }
+
+    // Reports
+    match /reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated() && hasValidAppCheck();
+      allow update: if isAdmin();
+    }
+
+    // Expenses
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated() && (isShopMember(resource.data.shopId) || isAdmin())
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && isShopOwner(request.resource.data.shopId)
+        && hasValidAppCheck();
+      allow update: if isAdmin() || (isShopOwner(resource.data.shopId));
+      allow delete: if isAdmin() || (isShopOwner(resource.data.shopId));
+    }
+
+    // Inventory movements
+    match /inventory_movements/{movementId} {
+      allow read: if isAuthenticated() && (isShopMember(resource.data.shopId) || isAdmin())
+        && hasValidAppCheck();
+      allow create: if isAuthenticated() && isShopOwner(request.resource.data.shopId)
+        && hasValidAppCheck();
+    }
+
+    // Order status history (idempotency records)
+    match /order_status_history/{historyId} {
+      allow read: if isAdmin();
       allow create: if isAdmin();
     }
 
-    // Verification Requests collection
-    match /verification_requests/{requestId} {
-      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
-      allow update: if isAdmin();
-    }
-
-    // Reports collection
-    match /reports/{reportId} {
+    // Offer decisions (idempotency records)
+    match /offer_decisions/{decisionId} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated();
-      allow update: if isAdmin();
+      allow create: if isAdmin();
     }
 
-    // Expenses collection
-    match /expenses/{expenseId} {
-      allow read: if isShopMember(resource.data.shopId) || isAdmin();
-      allow write: if isShopMember(request.resource.data.shopId) || isAdmin();
-    }
-
-    // Inventory Movements collection
-    match /inventory_movements/{movementId} {
-      allow read: if isShopMember(resource.data.shopId) || isAdmin();
-      allow create: if isShopMember(request.resource.data.shopId);
-    }
-
-    // Banners collection
+    // Banners
     match /banners/{bannerId} {
-      allow read: if true;
+      allow read: if isAuthenticated() && hasValidAppCheck();
       allow write: if isAdmin();
     }
 
-    // Platform Stats collection
+    // Platform stats
     match /platform_stats/{statId} {
       allow read: if isAdmin();
       allow write: if false;
     }
 
-    // App Settings collection
+    // App settings
     match /app_settings/{settingId} {
-      allow read: if true;
+      allow read: if isAuthenticated() && hasValidAppCheck();
       allow write: if isAdmin();
     }
   }

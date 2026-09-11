@@ -273,17 +273,27 @@ class FirestoreService {
   }
 
   Future<void> createOrder(Order o) async {
-    await _db.collection('orders').doc(o.id).set(o.toMap());
+    await callableVoid('createOrder', params: {
+      'items': o.items.map((i) => {
+        'productId': i.productId,
+        'quantity': i.quantity,
+        'variantId': null,
+      }).toList(),
+      'address': o.shippingAddress.toMap(),
+      'idempotencyKey': o.id,
+      'deliveryFee': o.deliveryFee,
+      'discount': o.discount,
+      'paymentMethod': o.paymentMethod,
+      'note': o.note,
+    });
   }
 
   Future<void> updateOrder(Order o) async {
-    await _db.collection('orders').doc(o.id).update(o.toMap());
-  }
-
-  Future<void> updateOrderStatus(String id, OrderStatus status) async {
-    await _db.collection('orders').doc(id).update({
-      'status': Order.statusToString(status),
-      'updatedAt': FieldValue.serverTimestamp(),
+    await callableVoid('updateOrderStatus', params: {
+      'orderId': o.id,
+      'status': o.status,
+      'idempotencyKey': 'status_${o.id}_${DateTime.now().millisecondsSinceEpoch}',
+      'note': o.note ?? '',
     });
   }
 
@@ -517,17 +527,26 @@ class FirestoreService {
   }
 
   Future<void> createExpense(Expense e) async {
-    await _db.collection('expenses').doc(e.id).set(e.toMap());
+    await callableVoid('createExpense', params: {
+      'shopId': e.shopId,
+      'amount': e.amount,
+      'category': e.category,
+      'note': e.description,
+      'date': e.date?.toIso8601String() ?? DateTime.now().toIso8601String(),
+      'idempotencyKey': e.id,
+    });
   }
 
   Future<void> deleteExpense(String id) async {
-    await _db.collection('expenses').doc(id).delete();
+    await callableVoid('deleteExpense', params: {
+      'expenseId': id,
+    });
   }
 
   // ============== Inventory Movements ==============
   Stream<List<InventoryMovement>> inventoryMovementsStream(String shopId) {
     return _db
-        .collection('inventoryMovements')
+        .collection('inventory_movements')
         .where('shopId', isEqualTo: shopId)
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -535,17 +554,31 @@ class FirestoreService {
   }
 
   Future<void> createInventoryMovement(InventoryMovement m) async {
-    await _db.collection('inventoryMovements').doc(m.id).set(m.toMap());
+    await callableVoid('adjustStock', params: {
+      'productId': m.productId,
+      'shopId': m.shopId,
+      'type': m.type == InventoryMovementType.decrement ? 'decrement' : m.type == InventoryMovementType.set ? 'set' : 'increment',
+      'quantity': m.quantity.abs(),
+      'idempotencyKey': m.id,
+      'reason': 'manual',
+    });
   }
 
   Future<void> updateProductStock(String productId, int newStock) async {
-    await _db.collection('products').doc(productId).update({'stock': newStock});
+    await callableVoid('adjustStock', params: {
+      'productId': productId,
+      'shopId': '',
+      'type': 'set',
+      'quantity': newStock,
+      'idempotencyKey': 'stock_${productId}_${DateTime.now().millisecondsSinceEpoch}',
+      'reason': 'manual',
+    });
   }
 
   // ============== POS Sales ==============
   Stream<List<POSSale>> posSalesStream(String shopId) {
     return _db
-        .collection('posSales')
+        .collection('pos_sales')
         .where('shopId', isEqualTo: shopId)
         .orderBy('createdAt', descending: true)
         .snapshots()
@@ -553,7 +586,20 @@ class FirestoreService {
   }
 
   Future<void> createPOSSale(POSSale s) async {
-    await _db.collection('posSales').doc(s.id).set(s.toMap());
+    await callableVoid('createPOSSale', params: {
+      'shopId': s.shopId,
+      'items': s.items.map((i) => {
+        'productId': i.productId,
+        'quantity': i.quantity,
+        'variantId': null,
+      }).toList(),
+      'idempotencyKey': s.id,
+      'discount': s.discount,
+      'tax': 0,
+      'paymentMethod': s.paymentMethod,
+      'customerPhone': s.customerPhone,
+      'note': s.note,
+    });
   }
 
   // ============== Customers ==============
@@ -576,7 +622,7 @@ class FirestoreService {
   // ============== Verifications ==============
   Stream<List<VerificationRequest>> verificationsStream() {
     return _db
-        .collection('verificationRequests')
+        .collection('verification_requests')
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((s) => s.docs.map((d) => VerificationRequest.fromMap(d.data(), d.id)).toList());
@@ -584,7 +630,7 @@ class FirestoreService {
 
   Stream<VerificationRequest?> myVerificationStream(String userId) {
     return _db
-        .collection('verificationRequests')
+        .collection('verification_requests')
         .where('userId', isEqualTo: userId)
         .limit(1)
         .snapshots()
@@ -594,7 +640,7 @@ class FirestoreService {
   }
 
   Future<void> createVerificationRequest(VerificationRequest r) async {
-    await _db.collection('verificationRequests').doc(r.id).set(r.toMap());
+    await _db.collection('verification_requests').doc(r.id).set(r.toMap());
   }
 
   Future<void> updateVerificationStatus(
@@ -699,10 +745,10 @@ class FirestoreService {
   }
 
   Stream<Map<String, dynamic>?> settingsStream() {
-    return _db.collection('settings').doc('app').snapshots().map((d) => d.exists ? d.data() : null);
+    return _db.collection('app_settings').doc('app').snapshots().map((d) => d.exists ? d.data() : null);
   }
 
   Future<void> updateSettings(Map<String, dynamic> data) async {
-    await _db.collection('settings').doc('app').set(data, SetOptions(merge: true));
+    await _db.collection('app_settings').doc('app').set(data, SetOptions(merge: true));
   }
 }

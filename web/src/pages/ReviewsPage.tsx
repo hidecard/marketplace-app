@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Star, Send, Flag } from 'lucide-react';
-import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { Order, Review } from '../types';
 import { formatDate } from '../utils/helpers';
 import { useAuthStore } from '../stores/authStore';
+import { FunctionsService } from '../services/functions';
 import toast from 'react-hot-toast';
 
 export const WriteReviewPage: React.FC = () => {
@@ -59,14 +60,11 @@ export const WriteReviewPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'reviews'), {
-        productId: order.items?.[0]?.productId || '',
-        shopId: order.shopId,
-        buyerId: user.uid,
+      await FunctionsService.callOrThrow('createReview', {
         orderId: order.id,
         rating,
         comment,
-        createdAt: serverTimestamp(),
+        imageUrls: [],
       });
       toast.success('Review submitted!');
       fetchOrder();
@@ -224,14 +222,12 @@ export const ReportPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'reports'), {
-        reporterId: user.uid,
+      await FunctionsService.callOrThrow('createReport', {
         targetType: type,
         targetId: id,
         reason,
         description,
-        status: 'pending',
-        createdAt: serverTimestamp(),
+        idempotencyKey: `rep_${type}_${id}_${Date.now()}`,
       });
       toast.success('Report submitted. We will review it shortly.');
       setReason('');

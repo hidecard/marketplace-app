@@ -3,6 +3,7 @@ import { getAuth, RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,6 +22,11 @@ try {
   console.error('Firebase initialization error:', error);
   throw error;
 }
+
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider(import.meta.env.VITE_FIREBASE_APP_CHECK_KEY || ''),
+  isTokenAutoRefreshEnabled: true,
+});
 
 export const auth = getAuth(app);
 export const db = getFirestore(app);

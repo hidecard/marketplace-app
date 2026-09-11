@@ -10,7 +10,7 @@ export const COLLECTIONS = {
   MESSAGES: 'messages',
   OFFERS: 'offers',
   ORDERS: 'orders',
-  REVIEWS: 'notifications',
+  REVIEWS: 'reviews',
   NOTIFICATIONS: 'notifications',
   VERIFICATION_REQUESTS: 'verification_requests',
   REPORTS: 'reports',

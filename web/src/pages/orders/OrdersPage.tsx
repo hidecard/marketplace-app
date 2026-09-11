@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Package } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Order } from '../../types';
 import { formatCurrency, formatDate, getOrderStatusColor } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
+import { FunctionsService } from '../../services/functions';
+import toast from 'react-hot-toast';
 
 type TabType = 'all' | 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'completed' | 'cancelled';
 
@@ -51,13 +53,16 @@ export const OrdersPage: React.FC = () => {
   const handleCancelOrder = async (orderId: string) => {
     if (!confirm('Are you sure you want to cancel this order?')) return;
     try {
-      await updateDoc(doc(db, 'orders', orderId), {
+      await FunctionsService.callOrThrow('updateOrderStatus', {
+        orderId,
         status: 'cancelled',
-        updatedAt: serverTimestamp(),
+        idempotencyKey: `cancel_${orderId}_${Date.now()}`,
+        note: 'Buyer cancelled',
       });
       fetchOrders();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error cancelling order:', error);
+      toast.error(error.message || 'Failed to cancel order');
     }
   };
 

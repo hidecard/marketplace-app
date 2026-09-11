@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, MapPin, Phone, Clock, CheckCircle, MessageCircle, Truck, AlertTriangle } from 'lucide-react';
-import { doc, getDoc, collection, updateDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, serverTimestamp, addDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Order, Shop } from '../../types';
 import { formatCurrency, formatDateTime, getOrderStatusColor } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { trackEvent } from '../../services/analytics';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 
 const orderStatusSteps = [
@@ -59,40 +60,34 @@ export const OrderDetailPage: React.FC = () => {
   const handleCancelOrder = async () => {
     if (!order || !confirm('Are you sure you want to cancel this order?')) return;
     try {
-      const updateData: any = {
+      await FunctionsService.callOrThrow('updateOrderStatus', {
+        orderId: order.id,
         status: 'cancelled',
-        updatedAt: serverTimestamp(),
-      };
-
-      if (order.paymentMethod === 'cod') {
-        updateData.codRejectionCount = (order.codRejectionCount || 0) + 1;
-        updateData.codRejectionHistory = [
-          ...(order.codRejectionHistory || []),
-          { date: new Date(), reason: 'Buyer cancelled' },
-        ];
-      }
-
-      await updateDoc(doc(db, 'orders', order.id), updateData);
+        idempotencyKey: `cancel_${order.id}_${Date.now()}`,
+        note: 'Buyer cancelled',
+      });
       trackEvent('order_cancelled', { order_id: order.id, order_number: order.orderNumber });
       toast.success('Order cancelled');
       fetchOrder();
-    } catch (error) {
-      toast.error('Failed to cancel order');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to cancel order');
     }
   };
 
   const handleCompleteOrder = async () => {
     if (!order) return;
     try {
-      await updateDoc(doc(db, 'orders', order.id), {
+      await FunctionsService.callOrThrow('updateOrderStatus', {
+        orderId: order.id,
         status: 'completed',
-        updatedAt: serverTimestamp(),
+        idempotencyKey: `complete_${order.id}_${Date.now()}`,
+        note: '',
       });
       trackEvent('order_completed', { order_id: order.id, order_number: order.orderNumber });
       toast.success('Order completed! Leave a review for the seller.');
       fetchOrder();
-    } catch (error) {
-      toast.error('Failed to complete order');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to complete order');
     }
   };
 

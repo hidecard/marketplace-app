@@ -82,6 +82,7 @@ final GoRouter appRouter = GoRouter(
       if (loc.startsWith('/business') &&
           loc != '/business/create-shop' &&
           loc != '/business/verification' &&
+          loc != '/business/categories' &&
           (authState.shop == null || !authState.shop!.verified)) {
         return authState.shop == null
             ? '/business/create-shop'
@@ -97,6 +98,8 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/', builder: (_, _) => const HomePage()),
     GoRoute(path: '/search', builder: (_, _) => const SearchPage()),
     GoRoute(path: '/categories', builder: (_, _) => const CategoriesPage()),
+    GoRoute(path: '/shops', builder: (_, _) => const ShopsPage()),
+    GoRoute(path: '/shop/:id', builder: (_, s) => ShopDetailPage(shopId: s.pathParameters['id']!)),
     GoRoute(path: '/category/:id', builder: (_, s) => CategoryDetailPage(categoryId: s.pathParameters['id']!)),
     GoRoute(path: '/product/:id', builder: (_, s) => ProductDetailPage(productId: s.pathParameters['id']!)),
     GoRoute(path: '/cart', builder: (_, _) => const CartPage()),

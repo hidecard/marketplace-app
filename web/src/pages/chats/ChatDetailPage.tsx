@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, Image, Tag, X } from 'lucide-react';
-import { collection, query, where, orderBy, addDoc, doc, getDoc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDoc, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Message, Offer } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { formatDateTime, formatCurrency } from '../../utils/helpers';
+import { FunctionsService } from '../../services/functions';
 import toast from 'react-hot-toast';
 
 export const ChatDetailPage: React.FC = () => {
@@ -69,18 +70,11 @@ export const ChatDetailPage: React.FC = () => {
     if (!newMessage.trim() || !user || !chatId || sending) return;
     setSending(true);
     try {
-      await addDoc(collection(db, 'chats', chatId, 'messages'), {
-        senderId: user.uid,
+      await FunctionsService.callOrThrow('sendChatMessage', {
+        chatId,
         content: newMessage.trim(),
         type: 'text',
-        read: false,
-        createdAt: serverTimestamp(),
-      });
-      await updateDoc(doc(db, 'chats', chatId), {
-        lastMessage: newMessage.trim(),
-        lastMessageBy: user.uid,
-        lastMessageAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        idempotencyKey: `msg_${user.uid}_${Date.now()}`,
       });
       setNewMessage('');
     } catch (error) {
@@ -101,7 +95,7 @@ export const ChatDetailPage: React.FC = () => {
         toast.error('Chat not found');
         return;
       }
-      const chatData = chatDoc.data();
+      const chatData = chatDoc.data() as { participants: string[] };
       const participants = chatData.participants as string[];
       const otherUserId = participants.find((id) => id !== user.uid);
       if (!otherUserId) {
@@ -109,15 +103,10 @@ export const ChatDetailPage: React.FC = () => {
         return;
       }
 
-      await addDoc(collection(db, 'offers'), {
-        chatId,
+      await FunctionsService.callOrThrow('createOffer', {
         productId: productId || '',
-        buyerId: user.uid,
-        sellerId: otherUserId,
         price: Number(offerPrice),
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        idempotencyKey: `offer_${user.uid}_${Date.now()}`,
       });
 
       toast.success('Offer sent');
@@ -131,9 +120,10 @@ export const ChatDetailPage: React.FC = () => {
 
   const handleAcceptOffer = async (offerId: string) => {
     try {
-      await updateDoc(doc(db, 'offers', offerId), {
-        status: 'accepted',
-        updatedAt: serverTimestamp(),
+      await FunctionsService.callOrThrow('respondToOffer', {
+        offerId,
+        decision: 'accepted',
+        idempotencyKey: `resp_${offerId}_${Date.now()}`,
       });
       toast.success('Offer accepted');
     } catch (error) {
@@ -143,9 +133,10 @@ export const ChatDetailPage: React.FC = () => {
 
   const handleRejectOffer = async (offerId: string) => {
     try {
-      await updateDoc(doc(db, 'offers', offerId), {
-        status: 'rejected',
-        updatedAt: serverTimestamp(),
+      await FunctionsService.callOrThrow('respondToOffer', {
+        offerId,
+        decision: 'rejected',
+        idempotencyKey: `resp_${offerId}_${Date.now()}`,
       });
       toast.success('Offer rejected');
     } catch (error) {
@@ -157,10 +148,11 @@ export const ChatDetailPage: React.FC = () => {
     const price = prompt('Enter counter offer price:');
     if (!price || isNaN(Number(price))) return;
     try {
-      await updateDoc(doc(db, 'offers', offerId), {
-        status: 'countered',
-        price: Number(price),
-        updatedAt: serverTimestamp(),
+      await FunctionsService.callOrThrow('respondToOffer', {
+        offerId,
+        decision: 'countered',
+        counterPrice: Number(price),
+        idempotencyKey: `resp_${offerId}_${Date.now()}`,
       });
       toast.success('Counter offer sent');
     } catch (error) {

@@ -66,15 +66,15 @@ function requirePositiveInt(value: any, field: string): number {
 
 type OrderStatus =
   | 'pending' | 'confirmed' | 'preparing' | 'shipped'
-  | 'outForDelivery' | 'delivered' | 'completed'
+  | 'out_for_delivery' | 'delivered' | 'completed'
   | 'cancelled' | 'rejected';
 
 const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   pending: ['confirmed', 'cancelled', 'rejected'],
   confirmed: ['preparing', 'cancelled'],
   preparing: ['shipped', 'cancelled'],
-  shipped: ['outForDelivery', 'delivered'],
-  outForDelivery: ['delivered', 'shipped'],
+  shipped: ['out_for_delivery', 'delivered'],
+  out_for_delivery: ['delivered', 'shipped'],
   delivered: ['completed'],
   completed: [],
   cancelled: [],
@@ -83,6 +83,10 @@ const ORDER_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 function canTransition(from: OrderStatus, to: OrderStatus): boolean {
   return ORDER_TRANSITIONS[from]?.includes(to) ?? false;
+}
+
+function canBuyerCancel(status: string): boolean {
+  return status === 'pending' || status === 'confirmed';
 }
 
 // ============ onCreateShop ============
@@ -141,12 +145,13 @@ export const onCreateShop = functions.https.onCall(async (data, context) => {
     lng: null,
     socialLinks: { facebook: '', instagram: '', tiktok: '', website: '' },
     verified: false,
-    verificationStatus: 'notRequested',
+    verificationStatus: 'not_requested',
     rating: 0,
     totalReviews: 0,
     totalProducts: 0,
     totalSales: 0,
     totalFollowers: 0,
+    businessModeEnabled: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
@@ -301,8 +306,8 @@ export const decrementStock = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('failed-precondition', 'Insufficient stock');
     }
 
-    // Idempotency: check the inventoryMovements collection for an existing entry with this key.
-    const idemRef = db.collection('inventoryMovements').doc(idempotencyKey);
+    // Idempotency: check the inventory_movements collection for an existing entry with this key.
+    const idemRef = db.collection('inventory_movements').doc(idempotencyKey);
     const idemSnap = await tx.get(idemRef);
     if (idemSnap.exists) {
       return { alreadyProcessed: true, newStock: currentStock };
@@ -427,7 +432,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
         stock: admin.firestore.FieldValue.increment(-l.quantity),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      const mvmtRef = db.collection('inventoryMovements').doc(
+      const mvmtRef = db.collection('inventory_movements').doc(
         `${idempotencyKey}-${l.productId}`
       );
       tx.set(mvmtRef, {
@@ -493,7 +498,7 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
   const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
 
   // Idempotency: a receipt with the same id should be returned.
-  const idemRef = db.collection('posSales').doc(idempotencyKey);
+  const idemRef = db.collection('pos_sales').doc(idempotencyKey);
   const idemSnap = await idemRef.get();
   if (idemSnap.exists) return idemSnap.data();
 
@@ -555,7 +560,7 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
         stock: admin.firestore.FieldValue.increment(-l.quantity),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      const mvmtRef = db.collection('inventoryMovements').doc(
+      const mvmtRef = db.collection('inventory_movements').doc(
         `pos-${idempotencyKey}-${l.productId}`
       );
       tx.set(mvmtRef, {
@@ -596,20 +601,22 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
     }
     const order = orderSnap.data()!;
 
-    // Authorize: shop owner OR admin.
     const userDoc = await tx.get(db.collection('users').doc(uid));
     const isAdmin = userDoc.data()?.role === 'admin';
     let allowed = isAdmin;
     if (!allowed) {
-      const shopDoc = await tx.get(db.collection('shops').doc(order.shopId));
-      allowed = shopDoc.exists && shopDoc.data()!.ownerId === uid;
+      if (order.buyerId === uid && to === 'cancelled' && canBuyerCancel(order.status)) {
+        allowed = true;
+      } else {
+        const shopDoc = await tx.get(db.collection('shops').doc(order.shopId));
+        allowed = shopDoc.exists && shopDoc.data()!.ownerId === uid;
+      }
     }
     if (!allowed) {
       throw new functions.https.HttpsError('permission-denied', 'Not authorized');
     }
 
-    // Idempotency: refuse duplicate transitions for the same key.
-    const idemRef = db.collection('orderStatusHistory').doc(idempotencyKey);
+    const idemRef = db.collection('order_status_history').doc(idempotencyKey);
     const idemSnap = await tx.get(idemRef);
     if (idemSnap.exists) {
       return { ok: true, alreadyProcessed: true, status: order.status };
@@ -621,10 +628,21 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
         `Cannot transition from ${from} to ${to}`);
     }
 
-    tx.update(orderRef, {
+    const updateData: Record<string, any> = {
       status: to,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    };
+
+    if (to === 'cancelled' && order.buyerId === uid) {
+      updateData.codRejectionCount = admin.firestore.FieldValue.increment(1);
+      updateData.codRejectionHistory = admin.firestore.FieldValue.arrayUnion({
+        date: admin.firestore.FieldValue.serverTimestamp(),
+        reason: note || 'Buyer cancelled',
+        actor: uid,
+      });
+    }
+
+    tx.update(orderRef, updateData);
     tx.set(idemRef, {
       id: idempotencyKey,
       orderId,
@@ -637,7 +655,6 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
     return { ok: true, alreadyProcessed: false, status: to };
   });
 
-  // After commit, FCM the customer.
   try {
     const orderDoc = await db.collection('orders').doc(orderId).get();
     const customerId = orderDoc.data()?.customerId;
@@ -707,7 +724,7 @@ export const adjustStock = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('failed-precondition', 'Stock cannot go below zero');
     }
 
-    const idemRef = db.collection('inventoryMovements').doc(idempotencyKey);
+    const idemRef = db.collection('inventory_movements').doc(idempotencyKey);
     const idemSnap = await tx.get(idemRef);
     if (idemSnap.exists) {
       return { alreadyProcessed: true, newStock: current };
@@ -965,7 +982,7 @@ export const respondToOffer = functions.https.onCall(async (data, context) => {
   }
 
   // Idempotency: refuse the same decision twice.
-  const idemRef = db.collection('offerDecisions').doc(idempotencyKey);
+  const idemRef = db.collection('offer_decisions').doc(idempotencyKey);
   const idemSnap = await idemRef.get();
   if (idemSnap.exists) {
     return { ok: true, alreadyProcessed: true, status: offer.status };
@@ -1138,3 +1155,168 @@ export const reviewReport = functions.https.onCall(async (data, context) => {
   });
   return { ok: true };
 });
+
+// ============ createExpense ============
+
+export const createExpense = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
+  const shopId = requireString(data.shopId, 'shopId');
+  const amount = requireMoneyInt(data.amount, 'amount');
+  const category = requireString(data.category, 'category', 80);
+  const note = optionalString(data.note, 'note', 500) ?? '';
+  const date = optionalString(data.date, 'date', 40) ?? new Date().toISOString();
+  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
+
+  const userDoc = await db.collection('users').doc(uid).get();
+  const isAdmin = userDoc.data()?.role === 'admin';
+  if (!isAdmin) {
+    const shopDoc = await db.collection('shops').doc(shopId).get();
+    if (!shopDoc.exists || shopDoc.data()!.ownerId !== uid) {
+      throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
+    }
+  }
+
+  const idemRef = db.collection('expenses').doc(idempotencyKey);
+  const idemSnap = await idemRef.get();
+  if (idemSnap.exists) {
+    return { alreadyProcessed: true, id: idempotencyKey };
+  }
+
+  const ref = db.collection('expenses').doc(idempotencyKey);
+  await ref.set({
+    id: idempotencyKey,
+    shopId,
+    amount,
+    category,
+    note,
+    date,
+    userId: uid,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  return { alreadyProcessed: false, id: idempotencyKey };
+});
+
+// ============ deleteExpense ============
+
+export const deleteExpense = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
+  const expenseId = requireString(data.expenseId, 'expenseId');
+
+  const ref = db.collection('expenses').doc(expenseId);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Expense not found');
+  }
+
+  const expense = snap.data()!;
+  const userDoc = await db.collection('users').doc(uid).get();
+  const isAdmin = userDoc.data()?.role === 'admin';
+  if (!isAdmin) {
+    const shopDoc = await db.collection('shops').doc(expense.shopId).get();
+    if (!shopDoc.exists || shopDoc.data()!.ownerId !== uid) {
+      throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
+    }
+  }
+
+  await ref.delete();
+  return { ok: true };
+});
+
+// ============ incrementProductViews ============
+
+export const incrementProductViews = functions.https.onCall(async (data, _context) => {
+  const productId = requireString(data.productId, 'productId');
+  const productRef = db.collection('products').doc(productId);
+  await productRef.update({
+    views: admin.firestore.FieldValue.increment(1),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return { ok: true };
+});
+
+// ============ toggleShopFollow ============
+
+export const toggleShopFollow = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
+  const shopId = requireString(data.shopId, 'shopId');
+  const follow = data.follow === true;
+
+  const shopRef = db.collection('shops').doc(shopId);
+  const shopSnap = await shopRef.get();
+  if (!shopSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Shop not found');
+  }
+
+  const followersRef = db.collection('shop_followers').doc();
+  const existingQ = db.collection('shop_followers')
+    .where('userId', '==', uid)
+    .where('shopId', '==', shopId)
+    .limit(1);
+
+  const existingSnap = await existingQ.get();
+  if (follow) {
+    if (!existingSnap.empty) {
+      return { ok: true, alreadyFollowing: true };
+    }
+    await followersRef.set({
+      id: followersRef.id,
+      userId: uid,
+      shopId,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await shopRef.update({
+      totalFollowers: admin.firestore.FieldValue.increment(1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { ok: true, following: true };
+  } else {
+    if (existingSnap.empty) {
+      return { ok: true, alreadyNotFollowing: true };
+    }
+    await existingSnap.docs[0].ref.delete();
+    await shopRef.update({
+      totalFollowers: admin.firestore.FieldValue.increment(-1),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { ok: true, following: false };
+  }
+});
+
+// ============ deleteProduct ============
+
+export const deleteProduct = functions.https.onCall(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
+  const productId = requireString(data.productId, 'productId');
+
+  const productRef = db.collection('products').doc(productId);
+  const productSnap = await productRef.get();
+  if (!productSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Product not found');
+  }
+  const product = productSnap.data()!;
+
+  const userDoc = await db.collection('users').doc(uid).get();
+  const isAdmin = userDoc.data()?.role === 'admin';
+  if (!isAdmin) {
+    if (product.sellerId !== uid) {
+      const shopDoc = await db.collection('shops').doc(product.shopId).get();
+      if (!shopDoc.exists || shopDoc.data()!.ownerId !== uid) {
+        throw new functions.https.HttpsError('permission-denied', 'Not authorized');
+      }
+    }
+  }
+
+  await productRef.delete();
+  return { ok: true };
+});
+
+export {
+  requireAuth,
+  requireString,
+  optionalString,
+  slugify,
+  requireMoneyInt,
+  requirePositiveInt,
+  canTransition,
+};
