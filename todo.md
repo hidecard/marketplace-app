@@ -118,9 +118,9 @@
 
 ### Credentials and Actual Deployment
 
-- [ ] Add GitHub secret `CLOUDFLARE_API_TOKEN` with scoped Workers edit permission.
-- [ ] Add GitHub secret `CLOUDFLARE_ACCOUNT_ID` for the Worker owner account.
-- [ ] Add GitHub secret `FIREBASE_SERVICE_ACCOUNT` with Firebase deployment permissions.
+- [x] Add GitHub secret `CLOUDFLARE_API_TOKEN` with scoped Workers edit permission.
+- [x] Add GitHub secret `CLOUDFLARE_ACCOUNT_ID` for the Worker owner account.
+- [x] Add GitHub secret `FIREBASE_SERVICE_ACCOUNT` with Firebase deployment permissions.
 - [ ] Add `VITE_FIREBASE_VAPID_KEY` for production Web push notifications.
 - [ ] Add `VITE_FIREBASE_APP_CHECK_KEY` for the Web PWA.
 - [ ] Add the admin Web App Check key/provider configuration.
