@@ -91,8 +91,12 @@ export default defineConfig({
     port: 3000,
     host: '0.0.0.0',
   },
+  preview: {
+    host: '0.0.0.0',
+    allowedHosts: ['.manus.computer'],
+  },
   build: {
-    outDir: path.resolve(__dirname, '../dist'),
+    outDir: 'dist',
     emptyOutDir: true,
     sourcemap: true,
   },

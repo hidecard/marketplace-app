@@ -1,204 +1,207 @@
 # Padetha Marketplace Project Todo List
 
-> Status is split into two levels: **Implemented** means the source code and basic flow exist in the repository. **Pending** means it still needs production verification, security review, automated tests, deployment, or release sign-off.
+> **Last updated:** 2026-09-19
+>
+> **Current priority:** Web PWA first. Flutter/Android work is intentionally deferred until the Web release is stable.
+> **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
 
-## 1. Implemented in the Repository
+## 1. Completed in This Web-First Pass
 
-### Foundation and Firebase Structure
-- [x] Firebase project configuration exists
-- [x] Web, admin, Flutter, Firebase Functions, and shared workspace structures exist
-- [x] Firestore, Storage, Auth, and Cloud Functions structure exists
-- [x] Base navigation and layout shells exist
-- [x] Shared constants, enums, and domain structures exist
-- [x] Firebase App Check integration structure exists in client/rules code
+### Web Build, Hosting, and CI
 
-### Authentication and User Flow
-- [x] Email/password authentication flow exists
-- [x] Phone OTP flow exists in the web app
-- [x] Profile-related screens and user state flow exist
-- [x] Verification checks and protected-flow patterns exist
-- [x] Basic onboarding and error-handling patterns exist
+- [x] Clone and audit the repository against the supplied project PDF.
+- [x] Configure the supplied Firebase Web values in local ignored `web/.env` and `admin/.env` files.
+- [x] Fix the missing `addProduct` English/Burmese translation that blocked the Web build.
+- [x] Fix the Web Vite output path from the incorrect root `dist/` directory to `web/dist/`.
+- [x] Confirm `wrangler.jsonc` now packages the fresh `web/dist` output used by the existing `marketplace-app` Worker.
+- [x] Add `.github/workflows/deploy-cloudflare.yml` for pull-request CI and automatic `main` deployment.
+- [x] Run Web and admin typecheck, lint, and production builds in CI.
+- [x] Build, lint, and unit-test Firebase Functions in CI.
+- [x] Compile Firestore and Storage Rules with Firebase emulators in CI.
+- [x] Deploy Firebase Functions, Firestore rules/indexes, and Storage rules before the Web Worker in CI.
+- [x] Upload and reuse the validated Web artifact instead of rebuilding during deployment.
+- [x] Add deployment concurrency so an older workflow cannot overwrite a newer `main` build.
+- [x] Document required GitHub secrets and the hosted URL in `README.md`.
+- [x] Confirm local Web production build succeeds.
+- [x] Confirm local admin production build succeeds.
+- [x] Confirm Cloudflare Wrangler dry-run succeeds and discovers the current Web assets.
+- [x] Smoke-test the fresh Web production preview and confirm the Marketplace page loads.
 
-### Marketplace Read Flow
-- [x] Home page with banners, categories, shops, and products exists
-- [x] Search, filtering, sorting, and product listing views exist
-- [x] Product detail page exists
-- [x] Shop profile page exists
-- [x] Favorites and shop-follow interactions exist
+### Authentication and Identity Safety
 
-### Individual Selling and Shop Creation
-- [x] Individual listing flow exists
-- [x] Shop creation form exists
-- [x] Shop verification request flow exists
-- [x] Pending, approved, and rejected verification states exist in the UI/data flow
-- [x] Business-mode gating structure exists
+- [x] Keep email/password authentication and phone OTP entry flows.
+- [x] Change phone verification from signing into a separate phone account to linking the phone credential to the current account.
+- [x] Add `syncPhoneVerification` so the backend updates `phoneVerified` only when Firebase Auth confirms a linked phone number.
+- [x] Remove the unused client-authoritative `phoneVerified` update path.
+- [x] Prevent normal users from changing protected role, status, phone-verification, and shop-verification fields in Firestore Rules.
 
-### Business Mode and Inventory
-- [x] Business workspace exists
-- [x] Product management and product forms exist
-- [x] Stock and low-stock UI exists
-- [x] Inventory movement page/data structure exists
-- [x] Shared stock/business operation structure exists
+### Shop Creation, Verification, and Business Access
 
-### POS, Sales, Profit, and Expenses
-- [x] POS cart and checkout UI exists
-- [x] Cash, KBZPay, WavePay, bank transfer, and other payment options exist in the flow
-- [x] Sale snapshot/data structure exists
-- [x] Sales, COGS, gross profit, and expenses UI/data structures exist
-- [x] Receipt/printing support structure exists
+- [x] Move shop creation from direct client writes to the `onCreateShop` callable.
+- [x] Add transactional one-shop-per-owner and unique-slug lock documents.
+- [x] Preserve shop logo, cover, address, contact, and social-link data during callable creation.
+- [x] Preserve existing custom claims when adding a shop claim.
+- [x] Move verification submission to the `submitVerification` callable.
+- [x] Standardize verification data on the canonical `verification_requests` collection used by Web, admin, rules, and triggers.
+- [x] Make one pending verification request per shop atomic and deterministic.
+- [x] Validate and limit verification image type, size, and count.
+- [x] Move admin approval/rejection to the transactional `reviewVerification` callable.
+- [x] Keep Firebase Auth custom-claim updates outside Firestore transactions.
+- [x] Set `verified`, `verificationStatus`, `businessModeEnabled`, and user `shopVerified` consistently on approval/rejection.
+- [x] Support resubmission after rejection and show the admin rejection note.
+- [x] Add a verified-business route guard for dashboard, POS, products, inventory, orders, analytics, reports, expenses, customers, and settings.
+- [x] Keep shop creation and verification-status routes available before approval.
+- [x] Update the sidebar to distinguish no shop, pending/rejected verification, and approved business access.
+- [x] Remove unsupported seller access to global marketplace category management.
 
-### Orders, Notifications, Chat, and Offers
-- [x] Marketplace cart/checkout and order management flow exists
-- [x] Order status views exist
-- [x] Notification service and web Firebase Messaging service worker exist
-- [x] Chat list/detail and messaging pages exist
-- [x] Offer screens and offer handling flow exist
+### Products, Orders, Stock, POS, and Profit
 
-### Reviews, Reports, and Trust
-- [x] Review screens and completed-order flow structure exist
-- [x] Shop rating/review data structure exists
-- [x] Product, shop, and user report flows exist
-- [x] Admin moderation/trust support structure exists
+- [x] Add server-authoritative `saveProduct` create/update callable.
+- [x] Require phone verification for individual listings and approved-shop ownership for business listings.
+- [x] Prevent products from being reassigned between seller accounts.
+- [x] Validate price, stock, condition, images, and seller identity on the server.
+- [x] Record initial and edited stock movements for shop products.
+- [x] Remove the Firestore-sized base64 image fallback; failed uploads now fail visibly.
+- [x] Store pre-creation/shop/product images under authenticated user-owned Storage paths.
+- [x] Make marketplace order creation server-authoritative for product price, stock, seller identity, totals, and COD-only payment.
+- [x] Add support for individual-seller order identity independently of shop ownership.
+- [x] Make POS sales server-authoritative and remove the insecure direct Firestore transaction fallback.
+- [x] Require an approved verified shop for POS and manual stock changes.
+- [x] Validate POS payment method and product status on the server.
+- [x] Calculate POS subtotal, discount, tax, COGS, and gross profit on the server.
+- [x] Render POS receipts and analytics from the server sale result.
+- [x] Add caller-scoped idempotency for marketplace orders, POS sales, stock changes, expenses, and product saves.
+- [x] Make order and POS idempotency checks transactionally race-safe.
+- [x] Enforce the server order-state transition machine.
+- [x] Route expense creation through its authorized callable.
+- [x] Improve POS layout for mobile/tablet widths.
+- [x] Record receipt-print intent and keep failed print payloads in a bounded local retry queue.
 
-### Admin Web and PWA
-- [x] Admin dashboard exists
-- [x] User, shop, product, order, report, verification, banner, and category management pages exist
-- [x] Analytics/dashboard summary structure exists
-- [x] Web PWA manifest configuration exists
-- [x] Web service worker/notification wiring exists
+### Chat, Notifications, and Trust Boundaries
 
-## 2. Not Finished — Production, Security, and Release Work
+- [x] Add server-authoritative deterministic `createChat` callable.
+- [x] Resolve the real seller from the order, product, or shop instead of using a product ID as a chat participant.
+- [x] Migrate order, product, and shop chat creation to the callable.
+- [x] Remove arbitrary client notification document creation.
+- [x] Remove insecure legacy `updateStock` and `sendPushNotification` callable endpoints.
+- [x] Restrict analytics ingestion to authenticated callers and an event allowlist.
+- [x] Trigger verification notifications from committed canonical verification writes.
 
-### A. Firebase Security and App Check
-- [ ] Review Firestore Rules for high-severity security findings
-- [ ] Review Storage Rules for high-severity security findings
-- [ ] Deploy Firestore Rules to the target Firebase project
-- [ ] Deploy Storage Rules to the target Firebase project
-- [ ] Enable Android App Check with Play Integrity
-- [ ] Enable iOS App Check with Device Check, if iOS is ever released
-- [ ] Enable Web App Check with reCAPTCHA v3
-- [ ] Enable App Check for the admin web app
-- [ ] Remove debug App Check tokens from production builds
-- [ ] Confirm Firebase Emulator secrets are not included in client builds
-- [ ] Restrict Firebase/Google API keys to the correct app fingerprints and domains
-- [ ] Confirm no service-account key or private credential is committed
+### Firestore and Storage Security
 
-### B. Server-Authoritative Backend
-- [ ] Make marketplace order creation fully server-authoritative
-- [ ] Make POS sale creation fully server-authoritative
-- [ ] Re-read product price, cost price, and stock inside server transactions
-- [ ] Calculate order totals, discounts, COGS, and profit on the server
-- [ ] Prevent clients from directly changing protected stock/order/money fields
-- [ ] Enforce valid order-state transitions on the server
-- [ ] Move all sensitive stock writes from clients to callable functions
-- [ ] Enforce shop ownership/member authorization in every sensitive callable
-- [ ] Add idempotency keys to order creation
-- [ ] Add idempotency keys to POS sales
-- [ ] Add idempotency keys to stock changes
-- [ ] Add idempotency keys to offer creation/response
-- [ ] Add idempotency keys to review and report creation
-- [ ] Send notifications only after successful backend commits
+- [x] Replace invalid `request.app` rule checks with supported authorization rules and documented App Check service enforcement.
+- [x] Deny direct client writes to protected shops, products, orders, POS sales, chats/messages, offers, reviews, reports, expenses, verification requests, inventory movements, and backend operation locks.
+- [x] Allow only safe owner-editable shop profile fields from the Web settings page.
+- [x] Restrict notification updates to the owner and the `read` field only.
+- [x] Preserve safe favorites, addresses, and admin-management paths.
+- [x] Tighten Storage to authenticated owners, shop members, chat participants, and admins.
+- [x] Enforce image MIME type and a 5 MB upload limit in both Web validation and Storage Rules.
+- [x] Confirm Firestore and Storage Rules compile successfully in the emulator suite.
+- [x] Confirm no service-account key or private deployment credential is committed.
 
-### C. Automated QA and Emulator Tests
-- [ ] Add duplicate order submission test
-- [ ] Add concurrent last-stock order test
-- [ ] Add invalid order transition test
-- [ ] Add buyer cancellation permission test
-- [ ] Add completed-order-only review test
-- [ ] Add one-review-per-order test
-- [ ] Add own-product offer restriction test
-- [ ] Add one-shop-per-user test
-- [ ] Add unique-shop-slug test
-- [ ] Add one-pending-verification-per-shop test
-- [ ] Add Firestore Rules emulator tests
-- [ ] Add Cloud Functions emulator tests
-- [ ] Add web critical-flow tests
-- [ ] Add admin critical-flow tests
-- [ ] Complete manual staging QA for buyer, seller, business, and admin flows
+### Local Verification Completed
 
-### D. Build and CI
-- [ ] Add GitHub Actions workflow under `.github/workflows/ci.yml`
-- [ ] Run Flutter analyze in CI
-- [ ] Run Flutter tests in CI
-- [ ] Run Dart analyze in CI
-- [ ] Run Firebase Emulator tests in CI
-- [ ] Run web typecheck/build/lint in CI
-- [ ] Run admin typecheck/build/lint in CI
-- [ ] Confirm production web build succeeds
-- [ ] Confirm production admin build succeeds
-- [ ] Confirm Android release build succeeds with a real release key
+- [x] Web TypeScript check.
+- [x] Admin TypeScript check.
+- [x] Web ESLint with zero warnings.
+- [x] Admin ESLint with zero warnings.
+- [x] Web production build and PWA generation.
+- [x] Admin production build.
+- [x] Firebase Functions TypeScript build.
+- [x] Firebase Functions ESLint.
+- [x] Existing Functions unit suite: 19 tests passing.
+- [x] Firestore and Storage Rules emulator compilation.
+- [x] `git diff --check`.
+- [x] Wrangler deployment dry-run.
 
-### E. Localization
-- [ ] Create Flutter `app_en.arb` localization file
-- [ ] Create Flutter `app_my.arb` localization file
-- [ ] Replace remaining hard-coded Flutter English strings
-- [ ] Add Burmese and English strings for authentication/onboarding
-- [ ] Add Burmese and English strings for marketplace flows
-- [ ] Add Burmese and English strings for business/POS flows
-- [ ] Add Burmese and English strings for admin/review/report flows
-- [ ] Add locale-aware date, number, and Myanmar kyat formatting
-- [ ] Review web/admin Burmese and English coverage
+## 2. Still Pending — Required Before Production Sign-Off
 
-### F. Monitoring and Operations
-- [ ] Configure Crashlytics or Sentry for Flutter
-- [ ] Configure error reporting for web and admin
-- [ ] Instrument key analytics events
-- [ ] Deploy and verify Firestore indexes
-- [ ] Measure Cloud Function cold start and latency
-- [ ] Monitor FCM delivery
-- [ ] Configure offline persistence where appropriate
-- [ ] Document rollback procedure
+### Credentials and Actual Deployment
 
-### G. Deployment and Release
-- [ ] Configure staging Firebase project/environment
-- [ ] Complete staging end-to-end test
-- [ ] Configure production Firebase project
-- [ ] Deploy Cloud Functions
-- [ ] Configure web custom domain
-- [ ] Configure admin custom domain
-- [ ] Verify SSL certificates
-- [ ] Complete release security review
-- [ ] Complete release QA sign-off
-- [ ] Upload signed Android APK/AAB to internal testing
-- [ ] Verify production App Check enforcement
-- [ ] Monitor Firebase errors, quota, cost, and function latency after deployment
-- [ ] Gather and review initial user feedback
+- [ ] Add GitHub secret `CLOUDFLARE_API_TOKEN` with scoped Workers edit permission.
+- [ ] Add GitHub secret `CLOUDFLARE_ACCOUNT_ID` for the Worker owner account.
+- [ ] Add GitHub secret `FIREBASE_SERVICE_ACCOUNT` with Firebase deployment permissions.
+- [ ] Add `VITE_FIREBASE_VAPID_KEY` for production Web push notifications.
+- [ ] Add `VITE_FIREBASE_APP_CHECK_KEY` for the Web PWA.
+- [ ] Add the admin Web App Check key/provider configuration.
+- [ ] Push/merge the workflow to `main` and confirm the GitHub Actions quality job passes.
+- [ ] Confirm Firebase Functions, Firestore indexes/rules, and Storage rules deploy from CI.
+- [ ] Confirm the Cloudflare Worker deploy job succeeds from CI.
+- [ ] Confirm the production URL serves the new asset hash and not the previous bundle.
+- [ ] Add a custom domain only if a domain is selected; the current Workers URL already has managed HTTPS.
 
-## 3. Explicitly Out of Scope for V1
+### App Check Rollout
 
-- [x] Wallet, escrow, and online payment gateway
-- [x] Courier API integration
-- [x] Paid subscription and paid boost
-- [x] Multi-branch and staff-role management
-- [x] Advanced CRM
-- [x] AI recommendation system
-- [x] Native iOS app release
+- [ ] Register reCAPTCHA Enterprise/App Check providers for the Web PWA and admin app.
+- [ ] Verify App Check tokens in staging for Firestore, Storage, Authentication, and callable Functions.
+- [ ] Set repository variable `ENFORCE_APP_CHECK=true` only after both Web clients are configured.
+- [ ] Enable App Check enforcement in Firebase Console for Firestore, Storage, and supported services.
+- [ ] Restrict Firebase/Google API keys to the final production domains and APIs.
+- [ ] Enable Android Play Integrity later when app work resumes.
 
-## 4. Recommended Execution Order
+### Automated Tests Still Missing
 
-1. Firebase Rules and Storage Rules security review
-2. App Check configuration and enforcement
-3. Server-authoritative order, POS, stock, and money validation
-4. Idempotency and order-state transition handling
-5. Firestore/Functions emulator tests
-6. Web, admin, and Flutter CI checks
-7. Burmese/English localization completion
-8. Staging deployment and full QA
-9. Production deployment and release sign-off
-10. Post-deployment monitoring
+- [ ] Add Firestore Rules authorization tests for buyer, individual seller, shop owner, non-member, and admin roles.
+- [ ] Add Storage Rules tests for user drafts, shop images, verification evidence, and unauthorized access.
+- [ ] Add duplicate order submission integration test.
+- [ ] Add concurrent last-stock order test.
+- [ ] Add duplicate POS submission integration test.
+- [ ] Add buyer cancellation permission test.
+- [ ] Add completed-order-only review test.
+- [ ] Add one-review-per-order test.
+- [ ] Add own-product offer restriction test.
+- [ ] Add one-shop-per-user concurrency test.
+- [ ] Add unique-shop-slug concurrency test.
+- [ ] Add one-pending-verification-per-shop concurrency test.
+- [ ] Add Web critical-flow tests for sign-up, phone link, listing, checkout, verification, and POS.
+- [ ] Add admin critical-flow tests for verification, reports, orders, users, and products.
+
+### Backend Follow-Up
+
+- [ ] Add caller-scoped idempotency to offer creation/response.
+- [ ] Add caller-scoped idempotency to review and report creation.
+- [ ] Complete a second callable-by-callable authorization audit, including all admin-only paths.
+- [ ] Add server-owned delivery-fee configuration if paid delivery is introduced; V1 currently forces COD and a zero server fee.
+- [ ] Add explicit promotion/coupon models before allowing order discounts; V1 ignores buyer-supplied discounts.
+- [ ] Add retention/cleanup jobs for operation locks, analytics events, old notifications, rejected evidence, and local print retries.
+- [ ] Add rate limits/abuse controls for chat, offers, reports, reviews, follows, and analytics events.
+- [ ] Add pagination to large Web and admin collection screens.
+
+### Web and Admin Product Work
+
+- [ ] Add a full admin verification detail view with evidence-photo gallery rather than list-only review.
+- [ ] Replace the rejection `prompt()` with a designed moderation dialog.
+- [ ] Complete Burmese/English coverage for remaining hard-coded Web and admin strings.
+- [ ] Add locale-aware date, number, and Myanmar kyat formatting.
+- [ ] Add Web/admin error reporting such as Sentry.
+- [ ] Monitor FCM delivery and provide a production notification-permission UX.
+- [ ] Add deployment rollback documentation and a tested rollback procedure.
+- [ ] Reduce the current large Web/admin JavaScript bundles with route-level code splitting.
+- [ ] Complete manual staging QA on phone linking, individual selling, shop verification, business unlock, orders, chat, offers, POS, expenses, and admin moderation.
+- [ ] Complete release security review and QA sign-off.
+
+## 3. Flutter/Android App — Deferred Until Web Is Stable
+
+- [ ] Run Flutter/Dart analyze and tests in CI.
+- [ ] Create and complete `app_en.arb` and `app_my.arb` localization files.
+- [ ] Replace remaining hard-coded Flutter strings.
+- [ ] Align Flutter callable contracts with the hardened Web/backend schemas.
+- [ ] Configure Android App Check with Play Integrity.
+- [ ] Configure Crashlytics or Sentry for Flutter.
+- [ ] Create and protect the real Android release signing key.
+- [ ] Build a signed APK/AAB and upload it to internal testing.
+- [ ] Perform Android buyer, seller, business, notification, offline, and low-end-device QA.
+
+## 4. Explicitly Out of Scope for V1
+
+- [x] Wallet, escrow, and online payment gateway.
+- [x] Courier API integration.
+- [x] Paid subscription and paid boost.
+- [x] Multi-branch and staff-role management.
+- [x] Advanced CRM.
+- [x] AI recommendation system.
+- [x] Native iOS release.
 
 ## 5. Current Definition of Done
 
-The project is **feature-complete at source level**, but it is **not release-complete yet**.
-
-Release is complete only when all of the following are true:
-
-- [ ] P0 backend/security work is signed off in staging
-- [ ] All protected money, stock, and order-state writes are server-authoritative
-- [ ] Firestore and Storage Rules pass security review
-- [ ] App Check is enforced in production
-- [ ] Automated and emulator tests pass
-- [ ] Flutter, web, and admin builds pass in CI
-- [ ] Burmese and English UI coverage is complete
-- [ ] Signed Android build is uploaded for internal testing
-- [ ] Release checklist is fully completed
+The Web-first source is substantially hardened and all local checks pass, but the release is **not production-complete** until credentials are added, CI deploys the Firebase backend and Cloudflare Worker, production App Check is configured and enforced, automated authorization/concurrency tests are added, and staging QA is signed off.

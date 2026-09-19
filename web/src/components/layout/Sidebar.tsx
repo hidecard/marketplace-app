@@ -33,6 +33,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import { db } from '../../services/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
+type ShopAccess = 'none' | 'pending' | 'rejected' | 'approved';
+
 interface SidebarItem {
   path: string;
   icon: LucideIcon;
@@ -46,7 +48,7 @@ export const Sidebar: React.FC = () => {
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { user } = useAuthStore();
   const { language, toggleLanguage, t } = useLanguage();
-  const [hasShop, setHasShop] = React.useState(false);
+  const [shopAccess, setShopAccess] = React.useState<ShopAccess>('none');
   const [checkingShop, setCheckingShop] = React.useState(true);
 
   const marketplaceItems: SidebarItem[] = [
@@ -71,7 +73,6 @@ export const Sidebar: React.FC = () => {
     { path: '/business/orders', icon: ShoppingBag, labelKey: 'orders', fallbackLabel: 'Customer Orders', section: 'business' },
     { path: '/business/expenses', icon: Receipt, labelKey: 'expenses', fallbackLabel: 'Expenses', section: 'business' },
     { path: '/business/customers', icon: Users, labelKey: 'customers', fallbackLabel: 'Customers', section: 'business' },
-    { path: '/business/categories', icon: FolderTree, labelKey: 'categories', fallbackLabel: 'Shop Categories', section: 'business' },
     { path: '/business/analytics', icon: BarChart3, labelKey: 'analytics', fallbackLabel: 'Analytics', section: 'business' },
     { path: '/business/reports', icon: FileText, labelKey: 'grossProfit', fallbackLabel: 'Reports & P&L', section: 'business' },
     { path: '/business/verification', icon: ShieldCheck, labelKey: 'verifiedShops', fallbackLabel: 'Verification', section: 'business' },
@@ -81,17 +82,28 @@ export const Sidebar: React.FC = () => {
   React.useEffect(() => {
     const checkShop = async () => {
       if (!user) {
-        setHasShop(false);
+        setShopAccess('none');
         setCheckingShop(false);
         return;
       }
       try {
         const q = query(collection(db, 'shops'), where('ownerId', '==', user.uid));
         const snapshot = await getDocs(q);
-        setHasShop(!snapshot.empty);
+        if (snapshot.empty) {
+          setShopAccess('none');
+        } else {
+          const shop = snapshot.docs[0].data();
+          setShopAccess(
+            shop.verified === true && shop.verificationStatus === 'approved'
+              ? 'approved'
+              : shop.verificationStatus === 'rejected'
+                ? 'rejected'
+                : 'pending',
+          );
+        }
       } catch (error) {
         console.error('Error checking shop:', error);
-        setHasShop(false);
+        setShopAccess('none');
       } finally {
         setCheckingShop(false);
       }
@@ -179,12 +191,24 @@ export const Sidebar: React.FC = () => {
                 </Link>
               ) : (
                 <Link
-                  to={hasShop ? '/business' : '/business/create-shop'}
+                  to={
+                    shopAccess === 'approved'
+                      ? '/business'
+                      : shopAccess === 'none'
+                        ? '/business/create-shop'
+                        : '/business/verification'
+                  }
                   onClick={() => setSidebarOpen(false)}
                   className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-primary-50 hover:bg-primary-100 text-primary-700 text-xs font-semibold rounded-lg transition-colors border border-primary-200"
                 >
                   <ArrowRightLeft size={15} />
-                  <span>{hasShop ? (language === 'my' ? 'စီးပွားရေးမုဒ်သို့ ကူးမည်' : 'Switch to Business Mode') : (language === 'my' ? 'ဆိုင်ဖွင့်မည် / ရောင်းချမည်' : 'Open Shop / Seller Mode')}</span>
+                  <span>
+                    {shopAccess === 'approved'
+                      ? (language === 'my' ? 'စီးပွားရေးမုဒ်သို့ ကူးမည်' : 'Switch to Business Mode')
+                      : shopAccess === 'none'
+                        ? (language === 'my' ? 'ဆိုင်ဖွင့်မည် / ရောင်းချမည်' : 'Open Shop / Seller Mode')
+                        : (language === 'my' ? 'ဆိုင်အတည်ပြုမှု ကြည့်မည်' : 'View Verification Status')}
+                  </span>
                 </Link>
               )}
             </div>
@@ -218,4 +242,3 @@ export const Sidebar: React.FC = () => {
     </>
   );
 };
-

@@ -36,12 +36,12 @@ import { OffersPage } from './pages/offers/OffersPage';
 import { ExpensesPage } from './pages/business/ExpensesPage';
 import { InventoryMovementsPage } from './pages/business/InventoryMovementsPage';
 import { CustomersPage } from './pages/business/CustomersPage';
-import { BusinessCategoriesPage } from './pages/business/BusinessCategoriesPage';
 import { BusinessReportsPage } from './pages/business/BusinessReportsPage';
 import { NotFoundPage } from './pages/not-found/NotFoundPage';
 import { MainLayout } from './components/layout/MainLayout';
 import { LanguageProvider } from './context/LanguageContext';
 import { useAuth } from './hooks/useAuth';
+import { VerifiedBusinessRoute } from './pages/business/VerifiedBusinessRoute';
 
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -78,7 +78,7 @@ export const App: React.FC = () => {
             </Route>
 
             <Route element={<ProtectedRoute />}>
-            <Route element={<MainLayout />}>
+              <Route element={<MainLayout />}>
               {/* Sell route for individual and shop sellers */}
               <Route path="/sell" element={<ProductFormPage />} />
 
@@ -99,29 +99,32 @@ export const App: React.FC = () => {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/offers" element={<OffersPage />} />
 
-            {/* Business */}
-            <Route path="/business" element={<BusinessDashboardPage />} />
-            <Route path="/business/create-shop" element={<CreateShopPage />} />
-            <Route path="/business/pos" element={<POSPage />} />
-            <Route path="/business/products" element={<BusinessProductsPage />} />
-            <Route path="/business/products/new" element={<ProductFormPage />} />
-            <Route path="/business/products/:productId/edit" element={<ProductFormPage />} />
-            <Route path="/business/orders" element={<BusinessOrdersPage />} />
-            <Route path="/business/analytics" element={<BusinessAnalyticsPage />} />
-            <Route path="/business/reports" element={<BusinessReportsPage />} />
-            <Route path="/business/settings" element={<BusinessSettingsPage />} />
-            <Route path="/business/verification" element={<ShopVerificationPage />} />
-            <Route path="/business/expenses" element={<ExpensesPage />} />
-            <Route path="/business/inventory" element={<InventoryMovementsPage />} />
-            <Route path="/business/customers" element={<CustomersPage />} />
-            <Route path="/business/categories" element={<BusinessCategoriesPage />} />
+              {/* Shop setup remains available before verification. */}
+              <Route path="/business/create-shop" element={<CreateShopPage />} />
+              <Route path="/business/verification" element={<ShopVerificationPage />} />
+
+              {/* Business operations require an approved, verified shop. */}
+              <Route element={<VerifiedBusinessRoute />}>
+                <Route path="/business" element={<BusinessDashboardPage />} />
+                <Route path="/business/pos" element={<POSPage />} />
+                <Route path="/business/products" element={<BusinessProductsPage />} />
+                <Route path="/business/products/new" element={<ProductFormPage />} />
+                <Route path="/business/products/:productId/edit" element={<ProductFormPage />} />
+                <Route path="/business/orders" element={<BusinessOrdersPage />} />
+                <Route path="/business/analytics" element={<BusinessAnalyticsPage />} />
+                <Route path="/business/reports" element={<BusinessReportsPage />} />
+                <Route path="/business/settings" element={<BusinessSettingsPage />} />
+                <Route path="/business/expenses" element={<ExpensesPage />} />
+                <Route path="/business/inventory" element={<InventoryMovementsPage />} />
+                <Route path="/business/customers" element={<CustomersPage />} />
+              </Route>
 
             {/* Reviews & Reports */}
             <Route path="/review/:orderId" element={<WriteReviewPage />} />
             <Route path="/report/:type/:id" element={<ReportPage />} />
 
-          </Route>
-          </Route>
+              </Route>
+            </Route>
 
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Phone, Shield, CheckCircle } from 'lucide-react';
-import { signInWithPhoneNumber, RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
+import { linkWithPhoneNumber, RecaptchaVerifier, ConfirmationResult } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import { useAuthStore } from '../../stores/authStore';
-import { updateUserData } from '../../types';
+import { FunctionsService } from '../../services/functions';
 import { trackEvent } from '../../services/analytics';
 import toast from 'react-hot-toast';
 
@@ -42,7 +42,10 @@ export const PhoneVerificationPage: React.FC = () => {
       setRecaptchaVerifier(verifier);
 
       const formattedPhone = `+95${phone.replace(/^0+/, '')}`;
-      const result = await signInWithPhoneNumber(auth, formattedPhone, verifier);
+      if (!auth.currentUser) {
+        throw new Error('Please sign in before verifying your phone number');
+      }
+      const result = await linkWithPhoneNumber(auth.currentUser, formattedPhone, verifier);
       setConfirmationResult(result);
       toast.success('OTP sent to your phone');
       setStep('otp');
@@ -78,9 +81,7 @@ export const PhoneVerificationPage: React.FC = () => {
         return;
       }
       await confirmationResult.confirm(otp);
-      if (user) {
-        await updateUserData(user.uid, { phoneVerified: true });
-      }
+      await FunctionsService.callOrThrow('syncPhoneVerification');
       trackEvent('phone_verified');
       toast.success('Phone verified successfully!');
       setStep('success');

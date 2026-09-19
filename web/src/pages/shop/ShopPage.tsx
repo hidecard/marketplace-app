@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, Shield, MapPin, MessageCircle, Heart, Share2, Grid, List, QrCode } from 'lucide-react';
-import { doc, getDoc, collection, query, where, orderBy, getDocs, serverTimestamp, addDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Shop, Product } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
@@ -150,12 +150,10 @@ export const ShopPage: React.FC = () => {
   const handleChat = async () => {
     if (!user || !shop) return;
     try {
-      const chatRef = await addDoc(collection(db, 'chats'), {
-        participants: [user.uid, shop.ownerId],
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      const chat = await FunctionsService.callOrThrow<{ id: string }>('createChat', {
+        shopId: shop.id,
       });
-      navigate(`/chats/${chatRef.id}`);
+      navigate(`/chats/${chat.id}`);
     } catch (error) {
       toast.error('Failed to start chat');
     }

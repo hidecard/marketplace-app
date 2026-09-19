@@ -89,6 +89,7 @@ export interface Order {
   id: string;
   orderNumber: string;
   buyerId: string;
+  sellerId?: string;
   shopId: string;
   items: OrderItem[];
   subtotal: number;

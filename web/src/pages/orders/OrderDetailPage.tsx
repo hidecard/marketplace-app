@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, MapPin, Phone, Clock, CheckCircle, MessageCircle, Truck, AlertTriangle } from 'lucide-react';
-import { doc, getDoc, collection, serverTimestamp, addDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Order, Shop } from '../../types';
 import { formatCurrency, formatDateTime, getOrderStatusColor } from '../../utils/helpers';
@@ -94,13 +94,10 @@ export const OrderDetailPage: React.FC = () => {
   const handleContactSeller = async () => {
     if (!order || !user) return;
     try {
-      const chatRef = await addDoc(collection(db, 'chats'), {
-        participants: [user.uid, order.items[0]?.productId || ''],
+      const chat = await FunctionsService.callOrThrow<{ id: string }>('createChat', {
         orderId: order.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
-      navigate(`/chats/${chatRef.id}`);
+      navigate(`/chats/${chat.id}`);
     } catch (error) {
       toast.error('Failed to start chat');
     }

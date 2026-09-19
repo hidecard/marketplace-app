@@ -33,12 +33,14 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteProduct = exports.toggleShopFollow = exports.incrementProductViews = exports.deleteExpense = exports.createExpense = exports.reviewReport = exports.createReport = exports.createReview = exports.respondToOffer = exports.createOffer = exports.markChatRead = exports.setTyping = exports.sendChatMessage = exports.updateOrderStatus = exports.createPOSSale = exports.createOrder = exports.adjustStock = exports.decrementStock = exports.reviewVerification = exports.submitVerification = exports.onCreateShop = exports.api = exports.onMessageCreated = exports.onVerificationSubmitted = exports.trackEvent = exports.sendPushNotification = exports.updateStock = exports.onOrderStatusChanged = exports.onOrderCreated = exports.onUserCreated = void 0;
+exports.deleteProduct = exports.toggleShopFollow = exports.incrementProductViews = exports.createChat = exports.saveProduct = exports.deleteExpense = exports.createExpense = exports.reviewReport = exports.createReport = exports.createReview = exports.respondToOffer = exports.createOffer = exports.markChatRead = exports.setTyping = exports.sendChatMessage = exports.updateOrderStatus = exports.createPOSSale = exports.createOrder = exports.adjustStock = exports.decrementStock = exports.reviewVerification = exports.submitVerification = exports.onCreateShop = exports.syncPhoneVerification = exports.api = exports.onMessageCreated = exports.onVerificationSubmitted = exports.trackEvent = exports.onOrderStatusChanged = exports.onOrderCreated = exports.onUserCreated = void 0;
 const functions = __importStar(require("firebase-functions"));
 const admin = __importStar(require("firebase-admin"));
 admin.initializeApp();
 const db = admin.firestore();
-const messaging = admin.messaging();
+const secureCallable = functions.runWith({
+    enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+}).https.onCall;
 // ============ USER FUNCTIONS ============
 exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
     const userData = {
@@ -121,91 +123,26 @@ exports.onOrderStatusChanged = functions.firestore
         });
     }
 });
-// ============ STOCK FUNCTIONS ============
-exports.updateStock = functions.https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-    }
-    const { productId, quantity, type, shopId } = data;
-    if (!productId || !quantity || !type || !shopId) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields');
-    }
-    const productRef = db.collection('products').doc(productId);
-    await db.runTransaction(async (transaction) => {
-        const productDoc = await transaction.get(productRef);
-        if (!productDoc.exists) {
-            throw new functions.https.HttpsError('not-found', 'Product not found');
-        }
-        const productData = productDoc.data();
-        const currentStock = (productData === null || productData === void 0 ? void 0 : productData.stock) || 0;
-        let newStock;
-        if (type === 'increment') {
-            newStock = currentStock + quantity;
-        }
-        else if (type === 'decrement') {
-            newStock = currentStock - quantity;
-            if (newStock < 0) {
-                throw new functions.https.HttpsError('failed-precondition', 'Insufficient stock');
-            }
-        }
-        else {
-            newStock = quantity;
-        }
-        transaction.update(productRef, {
-            stock: newStock,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        // Record inventory movement
-        const movementRef = db.collection('inventory_movements').doc();
-        transaction.set(movementRef, {
-            productId,
-            shopId,
-            type,
-            quantity,
-            previousStock: currentStock,
-            newStock,
-            userId: context.auth.uid,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        });
-    });
-    return { success: true };
-});
-// ============ NOTIFICATION FUNCTIONS ============
-exports.sendPushNotification = functions.https.onCall(async (data, context) => {
-    var _a;
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-    }
-    const { userId, title, body, data: notificationData } = data;
-    const userDoc = await db.collection('users').doc(userId).get();
-    const fcmToken = (_a = userDoc.data()) === null || _a === void 0 ? void 0 : _a.fcmToken;
-    if (!fcmToken) {
-        return { success: false, message: 'No FCM token found' };
-    }
-    try {
-        await messaging.send({
-            token: fcmToken,
-            notification: { title, body },
-            data: notificationData || {},
-        });
-        return { success: true };
-    }
-    catch (error) {
-        console.error('Error sending notification:', error);
-        return { success: false, message: 'Failed to send notification' };
-    }
-});
 // ============ ANALYTICS FUNCTIONS ============
-exports.trackEvent = functions.https.onCall(async (data, context) => {
-    var _a;
+exports.trackEvent = secureCallable(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+    }
     const { eventName, params } = data;
-    if (!eventName) {
+    const allowedEvents = new Set([
+        'sign_up', 'phone_verified', 'login', 'product_view', 'search', 'shop_view',
+        'favorite_added', 'chat_started', 'offer_sent', 'checkout_started',
+        'order_placed', 'order_completed', 'order_cancelled', 'shop_created',
+        'verification_requested', 'shop_verified', 'pos_opened', 'pos_sale_completed',
+        'receipt_printed',
+    ]);
+    if (typeof eventName !== 'string' || !allowedEvents.has(eventName)) {
         throw new functions.https.HttpsError('invalid-argument', 'Event name is required');
     }
     await db.collection('analytics_events').add({
         eventName,
         params: params || {},
-        userId: ((_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid) || null,
+        userId: context.auth.uid,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
     });
     return { success: true };
@@ -213,8 +150,16 @@ exports.trackEvent = functions.https.onCall(async (data, context) => {
 // ============ VERIFICATION FUNCTIONS ============
 exports.onVerificationSubmitted = functions.firestore
     .document('verification_requests/{requestId}')
-    .onCreate(async (snap, context) => {
-    const request = snap.data();
+    .onWrite(async (change, context) => {
+    var _a;
+    if (!change.after.exists)
+        return;
+    const request = change.after.data();
+    if (!request)
+        return;
+    const previousStatus = change.before.exists ? (_a = change.before.data()) === null || _a === void 0 ? void 0 : _a.status : null;
+    if (request.status !== 'pending' || previousStatus === 'pending')
+        return;
     // Notify admins
     const adminsSnapshot = await db
         .collection('users')
@@ -275,6 +220,7 @@ exports.api = functions.https.onRequest(async (req, res) => {
 });
 // ============ Callable functions (V1 secure backend) ============
 var callables_1 = require("./callables");
+Object.defineProperty(exports, "syncPhoneVerification", { enumerable: true, get: function () { return callables_1.syncPhoneVerification; } });
 Object.defineProperty(exports, "onCreateShop", { enumerable: true, get: function () { return callables_1.onCreateShop; } });
 Object.defineProperty(exports, "submitVerification", { enumerable: true, get: function () { return callables_1.submitVerification; } });
 Object.defineProperty(exports, "reviewVerification", { enumerable: true, get: function () { return callables_1.reviewVerification; } });
@@ -293,6 +239,8 @@ Object.defineProperty(exports, "createReport", { enumerable: true, get: function
 Object.defineProperty(exports, "reviewReport", { enumerable: true, get: function () { return callables_1.reviewReport; } });
 Object.defineProperty(exports, "createExpense", { enumerable: true, get: function () { return callables_1.createExpense; } });
 Object.defineProperty(exports, "deleteExpense", { enumerable: true, get: function () { return callables_1.deleteExpense; } });
+Object.defineProperty(exports, "saveProduct", { enumerable: true, get: function () { return callables_1.saveProduct; } });
+Object.defineProperty(exports, "createChat", { enumerable: true, get: function () { return callables_1.createChat; } });
 Object.defineProperty(exports, "incrementProductViews", { enumerable: true, get: function () { return callables_1.incrementProductViews; } });
 Object.defineProperty(exports, "toggleShopFollow", { enumerable: true, get: function () { return callables_1.toggleShopFollow; } });
 Object.defineProperty(exports, "deleteProduct", { enumerable: true, get: function () { return callables_1.deleteProduct; } });

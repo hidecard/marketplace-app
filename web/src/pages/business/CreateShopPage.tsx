@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera, Globe, Facebook, Instagram, Menu } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../services/firebase';
+import { storage } from '../../services/firebase';
+import { FunctionsService } from '../../services/functions';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { generateSlug } from '../../utils/helpers';
@@ -33,14 +33,19 @@ export const CreateShopPage: React.FC = () => {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'cover') => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user) return;
+
+    if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) {
+      toast.error('Please choose an image smaller than 5 MB');
+      return;
+    }
 
     setUploadingCover(true);
 
     try {
       const timestamp = Date.now();
       const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-      const storageRef = ref(storage, `shops/temp/${fileName}`);
+      const storageRef = ref(storage, `users/${user.uid}/shop-drafts/${fileName}`);
       const snapshot = await uploadBytes(storageRef, file);
       const url = await getDownloadURL(snapshot.ref);
 
@@ -55,7 +60,7 @@ export const CreateShopPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !formData.name || !formData.phone || !formData.address) {
+    if (!user || !formData.name || !formData.phone || !formData.address || !formData.city || !formData.region) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -63,8 +68,7 @@ export const CreateShopPage: React.FC = () => {
     setLoading(true);
     try {
       const slug = generateSlug(formData.name);
-      const shopData = {
-        ownerId: user.uid,
+      const shopData = await FunctionsService.callOrThrow<{ id: string }>('onCreateShop', {
         name: formData.name,
         slug,
         description: formData.description,
@@ -81,31 +85,14 @@ export const CreateShopPage: React.FC = () => {
           tiktok: formData.tiktok || null,
           website: formData.website || null,
         },
-        verified: false,
-        verificationStatus: 'not_requested',
-        rating: 0,
-        totalReviews: 0,
-        totalProducts: 0,
-        totalSales: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      const docRef = await addDoc(collection(db, 'shops'), shopData);
-
-      // Add owner as member
-      await addDoc(collection(db, 'shops', docRef.id, 'members'), {
-        userId: user.uid,
-        role: 'owner',
-        joinedAt: serverTimestamp(),
       });
 
-      trackEvent('shop_created', { shop_id: docRef.id, shop_name: formData.name });
+      trackEvent('shop_created', { shop_id: shopData.id, shop_name: formData.name });
       toast.success('Shop created successfully!');
-      navigate('/business');
-    } catch (error) {
+      navigate('/business/verification');
+    } catch (error: any) {
       console.error('Error creating shop:', error);
-      toast.error('Failed to create shop');
+      toast.error(error?.message || 'Failed to create shop');
     } finally {
       setLoading(false);
     }

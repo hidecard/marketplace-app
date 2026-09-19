@@ -163,14 +163,11 @@ export const ProductDetailPage: React.FC = () => {
   const handleChat = async () => {
     if (!user || !product) return;
     try {
-      const chatRef = await addDoc(collection(db, 'chats'), {
-        participants: [user.uid, product.sellerId],
+      const chat = await FunctionsService.callOrThrow<{ id: string }>('createChat', {
         productId: product.id,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
       trackEvent('chat_started', { product_id: product.id, product_title: product.title });
-      navigate(`/chats/${chatRef.id}`);
+      navigate(`/chats/${chat.id}`);
     } catch (error) {
       toast.error('Failed to start chat');
     }

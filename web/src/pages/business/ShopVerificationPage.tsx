@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Shield, Camera, CheckCircle, Clock, XCircle, Menu } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../services/firebase';
+import { FunctionsService } from '../../services/functions';
 import { Shop, VerificationRequest } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -72,14 +73,24 @@ export const ShopVerificationPage: React.FC = () => {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || !shop) return;
+    if (!files || !shop || !user) return;
+
+    const selected = Array.from(files);
+    if (selected.some((file) => !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+      toast.error('Each verification photo must be an image smaller than 5 MB');
+      return;
+    }
+    if (photos.length + selected.length > 8) {
+      toast.error('You can upload up to 8 shop photos');
+      return;
+    }
 
     setUploading(true);
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
+      const uploadPromises = selected.map(async (file) => {
         const timestamp = Date.now();
         const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        const storageRef = ref(storage, `verifications/${shop.id}/${fileName}`);
+        const storageRef = ref(storage, `verifications/${user.uid}/${shop.id}/${fileName}`);
         const snapshot = await uploadBytes(storageRef, file);
         return getDownloadURL(snapshot.ref);
       });
@@ -99,17 +110,15 @@ export const ShopVerificationPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!shop || !formData.ownerName || !formData.phone || !formData.address) {
+    if (!shop || !formData.ownerName || !formData.phone || !formData.address || photos.length === 0) {
       toast.error('Please fill all required fields');
       return;
     }
 
     setLoading(true);
     try {
-      const verificationData = {
-        userId: user!.uid,
+      await FunctionsService.callOrThrow<{ id: string }>('submitVerification', {
         shopId: shop.id,
-        shopName: shop.name,
         ownerName: formData.ownerName,
         phone: formData.phone,
         email: formData.email || shop.email,
@@ -119,25 +128,14 @@ export const ShopVerificationPage: React.FC = () => {
         description: formData.description,
         facebookPage: formData.facebookPage,
         shopPhotos: photos,
-        status: 'pending',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      await addDoc(collection(db, 'verification_requests'), verificationData);
-
-      // Update shop verification status
-      await updateDoc(doc(db, 'shops', shop.id), {
-        verificationStatus: 'pending',
-        updatedAt: serverTimestamp(),
       });
 
       trackEvent('verification_requested', { shop_id: shop.id, shop_name: shop.name });
       toast.success('Verification request submitted!');
-      navigate('/business');
-    } catch (error) {
+      await fetchVerification();
+    } catch (error: any) {
       console.error('Error submitting verification:', error);
-      toast.error('Failed to submit verification');
+      toast.error(error?.message || 'Failed to submit verification');
     } finally {
       setLoading(false);
     }

@@ -13,6 +13,7 @@ export const translations = {
     notifications: 'Notifications',
     businessMode: 'Business Mode',
     sell: 'Sell Item',
+    addProduct: 'Add Product',
     help: 'Help & Support',
 
     // Marketplace
@@ -101,6 +102,7 @@ export const translations = {
     notifications: 'အသိပေးချက်များ',
     businessMode: 'စီးပွားရေးမုဒ်',
     sell: 'ပစ္စည်းတင်ရောင်းမည်',
+    addProduct: 'ကုန်ပစ္စည်းအသစ်ထည့်မည်',
     help: 'အကူအညီနှင့် ဝန်ဆောင်မှု',
 
     // Marketplace

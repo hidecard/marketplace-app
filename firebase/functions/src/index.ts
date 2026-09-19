@@ -4,7 +4,9 @@ import * as admin from 'firebase-admin';
 admin.initializeApp();
 
 const db = admin.firestore();
-const messaging = admin.messaging();
+const secureCallable = functions.runWith({
+  enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+}).https.onCall;
 
 // ============ USER FUNCTIONS ============
 
@@ -106,107 +108,29 @@ export const onOrderStatusChanged = functions.firestore
     }
   });
 
-// ============ STOCK FUNCTIONS ============
-
-export const updateStock = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const { productId, quantity, type, shopId } = data;
-
-  if (!productId || !quantity || !type || !shopId) {
-    throw new functions.https.HttpsError('invalid-argument', 'Missing required fields');
-  }
-
-  const productRef = db.collection('products').doc(productId);
-
-  await db.runTransaction(async (transaction) => {
-    const productDoc = await transaction.get(productRef);
-
-    if (!productDoc.exists) {
-      throw new functions.https.HttpsError('not-found', 'Product not found');
-    }
-
-    const productData = productDoc.data();
-    const currentStock = productData?.stock || 0;
-
-    let newStock: number;
-    if (type === 'increment') {
-      newStock = currentStock + quantity;
-    } else if (type === 'decrement') {
-      newStock = currentStock - quantity;
-      if (newStock < 0) {
-        throw new functions.https.HttpsError('failed-precondition', 'Insufficient stock');
-      }
-    } else {
-      newStock = quantity;
-    }
-
-    transaction.update(productRef, {
-      stock: newStock,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-
-    // Record inventory movement
-    const movementRef = db.collection('inventory_movements').doc();
-    transaction.set(movementRef, {
-      productId,
-      shopId,
-      type,
-      quantity,
-      previousStock: currentStock,
-      newStock,
-      userId: context.auth!.uid,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
-  });
-
-  return { success: true };
-});
-
-// ============ NOTIFICATION FUNCTIONS ============
-
-export const sendPushNotification = functions.https.onCall(async (data, context) => {
-  if (!context.auth) {
-    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  const { userId, title, body, data: notificationData } = data;
-
-  const userDoc = await db.collection('users').doc(userId).get();
-  const fcmToken = userDoc.data()?.fcmToken;
-
-  if (!fcmToken) {
-    return { success: false, message: 'No FCM token found' };
-  }
-
-  try {
-    await messaging.send({
-      token: fcmToken,
-      notification: { title, body },
-      data: notificationData || {},
-    });
-    return { success: true };
-  } catch (error) {
-    console.error('Error sending notification:', error);
-    return { success: false, message: 'Failed to send notification' };
-  }
-});
-
 // ============ ANALYTICS FUNCTIONS ============
 
-export const trackEvent = functions.https.onCall(async (data, context) => {
+export const trackEvent = secureCallable(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
   const { eventName, params } = data;
 
-  if (!eventName) {
+  const allowedEvents = new Set([
+    'sign_up', 'phone_verified', 'login', 'product_view', 'search', 'shop_view',
+    'favorite_added', 'chat_started', 'offer_sent', 'checkout_started',
+    'order_placed', 'order_completed', 'order_cancelled', 'shop_created',
+    'verification_requested', 'shop_verified', 'pos_opened', 'pos_sale_completed',
+    'receipt_printed',
+  ]);
+  if (typeof eventName !== 'string' || !allowedEvents.has(eventName)) {
     throw new functions.https.HttpsError('invalid-argument', 'Event name is required');
   }
 
   await db.collection('analytics_events').add({
     eventName,
     params: params || {},
-    userId: context.auth?.uid || null,
+    userId: context.auth.uid,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
   });
 
@@ -217,8 +141,12 @@ export const trackEvent = functions.https.onCall(async (data, context) => {
 
 export const onVerificationSubmitted = functions.firestore
   .document('verification_requests/{requestId}')
-  .onCreate(async (snap, context) => {
-    const request = snap.data();
+  .onWrite(async (change, context) => {
+    if (!change.after.exists) return;
+    const request = change.after.data();
+    if (!request) return;
+    const previousStatus = change.before.exists ? change.before.data()?.status : null;
+    if (request.status !== 'pending' || previousStatus === 'pending') return;
 
     // Notify admins
     const adminsSnapshot = await db
@@ -292,6 +220,7 @@ export const api = functions.https.onRequest(async (req, res) => {
 
 // ============ Callable functions (V1 secure backend) ============
 export {
+  syncPhoneVerification,
   onCreateShop,
   submitVerification,
   reviewVerification,
@@ -310,6 +239,8 @@ export {
   reviewReport,
   createExpense,
   deleteExpense,
+  saveProduct,
+  createChat,
   incrementProductViews,
   toggleShopFollow,
   deleteProduct,

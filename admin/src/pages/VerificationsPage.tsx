@@ -4,8 +4,8 @@ import { AdminLayout } from '../components/layout/AdminLayout';
 import { useCollection } from '../hooks/useCollection';
 import { VerificationRequest } from '../types';
 import { formatDate } from '../utils/helpers';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../services/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../services/firebase';
 import toast from 'react-hot-toast';
 
 export const VerificationsPage: React.FC = () => {
@@ -30,23 +30,8 @@ export const VerificationsPage: React.FC = () => {
 
   const handleApprove = async (item: VerificationRequest) => {
     try {
-      await updateDoc(doc(db, 'verification_requests', item.id), {
-        status: 'approved',
-        updatedAt: serverTimestamp(),
-      });
-      if (item.shopId) {
-        await updateDoc(doc(db, 'shops', item.shopId), {
-          verified: true,
-          verificationStatus: 'approved',
-          updatedAt: serverTimestamp(),
-        });
-      }
-      if (item.userId) {
-        await updateDoc(doc(db, 'users', item.userId), {
-          shopVerified: true,
-          updatedAt: serverTimestamp(),
-        });
-      }
+      const reviewVerification = httpsCallable(functions, 'reviewVerification');
+      await reviewVerification({ requestId: item.id, decision: 'approved', note: '' });
       toast.success('Verification approved and shop verified');
       refetch();
     } catch (error) {
@@ -56,17 +41,10 @@ export const VerificationsPage: React.FC = () => {
 
   const handleReject = async (item: VerificationRequest) => {
     try {
-      await updateDoc(doc(db, 'verification_requests', item.id), {
-        status: 'rejected',
-        updatedAt: serverTimestamp(),
-      });
-      if (item.shopId) {
-        await updateDoc(doc(db, 'shops', item.shopId), {
-          verified: false,
-          verificationStatus: 'rejected',
-          updatedAt: serverTimestamp(),
-        });
-      }
+      const note = window.prompt('Reason for rejection (shown to the shop owner):');
+      if (note === null) return;
+      const reviewVerification = httpsCallable(functions, 'reviewVerification');
+      await reviewVerification({ requestId: item.id, decision: 'rejected', note });
       toast.success('Verification rejected');
       refetch();
     } catch (error) {

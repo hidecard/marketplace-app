@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, X, Camera, Menu } from 'lucide-react';
-import { collection, query, where, getDocs, addDoc, doc, getDoc, updateDoc, serverTimestamp, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, orderBy } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../services/firebase';
+import { FunctionsService } from '../../services/functions';
 import { Category, Shop, Product } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -11,6 +12,7 @@ import toast from 'react-hot-toast';
 
 export const ProductFormPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { productId } = useParams<{ productId?: string }>();
   const { user } = useAuthStore();
   const [shop, setShop] = useState<Shop | null>(null);
@@ -33,6 +35,7 @@ export const ProductFormPage: React.FC = () => {
     sku: '',
     weight: '',
   });
+  const isBusinessListing = location.pathname.startsWith('/business/');
 
   useEffect(() => {
     fetchShop();
@@ -99,24 +102,24 @@ export const ProductFormPage: React.FC = () => {
     const files = e.target.files;
     if (!files || files.length === 0 || !user) return;
 
+    const selected = Array.from(files);
+    if (selected.some((file) => !file.type.startsWith('image/') || file.size > 5 * 1024 * 1024)) {
+      toast.error('Each product image must be smaller than 5 MB');
+      return;
+    }
+    if (images.length + selected.length > 8) {
+      toast.error('You can upload up to 8 product images');
+      return;
+    }
+
     setUploadingImages(true);
     try {
-      const uploadPromises = Array.from(files).map(async (file) => {
-        try {
-          const timestamp = Date.now();
-          const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-          const folderId = shop ? shop.id : user.uid;
-          const storageRef = ref(storage, `products/${folderId}/${fileName}`);
-          const snapshot = await uploadBytes(storageRef, file);
-          return await getDownloadURL(snapshot.ref);
-        } catch {
-          // Fallback to base64 Data URL for image upload robustness
-          return new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-          });
-        }
+      const uploadPromises = selected.map(async (file) => {
+        const timestamp = Date.now();
+        const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const storageRef = ref(storage, `users/${user.uid}/product-images/${fileName}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        return getDownloadURL(snapshot.ref);
       });
 
       const urls = await Promise.all(uploadPromises);
@@ -140,41 +143,49 @@ export const ProductFormPage: React.FC = () => {
       return;
     }
 
-    if (!shop && !user?.phoneVerified) {
+    if (!isBusinessListing && !user?.phoneVerified) {
       toast.error('Phone verification is required to sell items on Marketplace');
       navigate('/verify-phone');
+      return;
+    }
+    if (isBusinessListing && !shop) {
+      toast.error('A verified shop is required for Business products');
+      return;
+    }
+
+    const price = Number(formData.price);
+    const stock = Number(formData.stock);
+    const comparePrice = formData.comparePrice ? Number(formData.comparePrice) : null;
+    const costPrice = formData.costPrice ? Number(formData.costPrice) : null;
+    const weight = formData.weight ? Number(formData.weight) : null;
+    if (!Number.isInteger(price) || price <= 0 || !Number.isInteger(stock) || stock < 0) {
+      toast.error('Price must be a positive whole number and stock cannot be negative');
       return;
     }
 
     setLoading(true);
     try {
-      const isShopSeller = !!shop;
-      const productData = {
-        shopId: shop?.id || '',
-        sellerId: user!.uid,
-        sellerType: isShopSeller ? 'shop' : 'individual',
-        sellerName: isShopSeller ? shop!.name : (user!.displayName || 'Individual Seller'),
-        sellerPhone: isShopSeller ? shop!.phone : (user!.phoneNumber || ''),
+      const isShopSeller = isBusinessListing && !!shop;
+      const result = await FunctionsService.callOrThrow<{ id: string }>('saveProduct', {
+        productId: productId || null,
+        shopId: isShopSeller ? shop!.id : '',
         sellerCity: isShopSeller ? (shop!.city || 'Yangon') : (formData.city || 'Yangon'),
-        sellerPhoneVerified: true,
         brand: formData.brand || '',
         title: formData.title,
         description: formData.description,
-        price: Number(formData.price),
-        comparePrice: formData.comparePrice ? Number(formData.comparePrice) : null,
-        costPrice: formData.costPrice ? Number(formData.costPrice) : null,
+        price,
+        comparePrice,
+        costPrice,
         categoryId: formData.categoryId,
         condition: formData.condition,
-        stock: Number(formData.stock) || 1,
+        stock,
         sku: formData.sku || null,
-        weight: formData.weight ? Number(formData.weight) : null,
+        weight,
         images,
-        status: 'active',
-        updatedAt: serverTimestamp(),
-      };
+        idempotencyKey: generateIdempotencyKey(),
+      });
 
       if (isEdit && productId) {
-        await updateDoc(doc(db, 'products', productId), productData);
         toast.success('Product updated successfully!');
         if (isShopSeller) {
           navigate('/business/products');
@@ -182,16 +193,11 @@ export const ProductFormPage: React.FC = () => {
           navigate(`/product/${productId}`);
         }
       } else {
-        const docRef = await addDoc(collection(db, 'products'), {
-          ...productData,
-          views: 0,
-          createdAt: serverTimestamp(),
-        });
         toast.success(isShopSeller ? 'Product added to your shop!' : 'Item listed successfully as Individual Seller!');
         if (isShopSeller) {
           navigate('/business/products');
         } else {
-          navigate(`/product/${docRef.id}`);
+          navigate(`/product/${result.id}`);
         }
       }
     } catch (error) {
@@ -225,7 +231,7 @@ export const ProductFormPage: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="p-4 space-y-6">
         {/* Seller Info Banner */}
-        {shop ? (
+        {isBusinessListing && shop ? (
           <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
             <p className="font-semibold">Listing under Shop: {shop.name}</p>
             <p className="text-xs text-emerald-600 mt-0.5">This product will be linked to your shop and synchronized with your POS/inventory.</p>
@@ -442,3 +448,8 @@ export const ProductFormPage: React.FC = () => {
     </div>
   );
 };
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `product-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}

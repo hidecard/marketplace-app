@@ -15,6 +15,7 @@
     "build": "npm run build:web",
     "build:web": "npm run build -w web",
     "build:admin": "npm run build -w admin",
+    "build:functions": "npm run build --prefix firebase/functions",
     "build:all": "npm run build:web && npm run build:admin",
     "deploy": "npm run build && npx wrangler deploy",
     "deploy:web": "npm run build:web && firebase deploy --only hosting:web",
@@ -23,7 +24,10 @@
     "deploy:all": "npm run build:all && firebase deploy",
     "deploy:cloudflare": "npm run build:web && npx wrangler deploy",
     "lint": "npm run lint -w web && npm run lint -w admin",
-    "typecheck": "npm run typecheck -w web && npm run typecheck -w admin"
+    "lint:functions": "npm run lint --prefix firebase/functions",
+    "test:functions": "npm test --prefix firebase/functions",
+    "typecheck": "npm run typecheck -w web && npm run typecheck -w admin",
+    "ci": "npm run typecheck && npm run lint && npm run build:all && npm run build:functions && npm run lint:functions && npm run test:functions"
   },
   "devDependencies": {
     "firebase-tools": "^13.0.0",

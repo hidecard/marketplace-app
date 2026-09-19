@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Plus, Receipt, Menu } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
+import { FunctionsService } from '../../services/functions';
 import { Expense, Shop } from '../../types';
 import { formatCurrency, formatDate } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
@@ -63,13 +64,13 @@ export const ExpensesPage: React.FC = () => {
     e.preventDefault();
     if (!shop || !category || !amount) return;
     try {
-      await addDoc(collection(db, 'expenses'), {
+      await FunctionsService.callOrThrow('createExpense', {
         shopId: shop.id,
         category,
         amount: Number(amount),
-        description,
-        date: new Date(),
-        createdAt: serverTimestamp(),
+        note: description,
+        date: new Date().toISOString(),
+        idempotencyKey: generateIdempotencyKey(),
       });
       toast.success('Expense added');
       setShowForm(false);
@@ -205,3 +206,8 @@ export const ExpensesPage: React.FC = () => {
     </div>
   );
 };
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `expense-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}

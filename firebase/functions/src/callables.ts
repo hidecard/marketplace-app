@@ -3,6 +3,10 @@ import * as admin from 'firebase-admin';
 
 const db = admin.firestore();
 const messaging = admin.messaging();
+const secureCallable = functions.runWith({
+  // Turn this on in staging/production only after every client has a configured provider.
+  enforceAppCheck: process.env.ENFORCE_APP_CHECK === 'true',
+}).https.onCall;
 
 // ============ Helpers ============
 
@@ -62,6 +66,46 @@ function requirePositiveInt(value: any, field: string): number {
   return value;
 }
 
+function requireIdempotencyKey(value: any): string {
+  const key = requireString(value, 'idempotencyKey', 100);
+  if (!/^[A-Za-z0-9_-]+$/.test(key)) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'idempotencyKey may contain only letters, numbers, hyphens, and underscores'
+    );
+  }
+  return key;
+}
+
+function scopedId(uid: string, key: string): string {
+  return `${uid}_${key}`;
+}
+
+function requireStringArray(value: any, field: string, maxItems = 8): string[] {
+  if (!Array.isArray(value) || value.length === 0 || value.length > maxItems) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      `${field} must contain between 1 and ${maxItems} items`
+    );
+  }
+  return value.map((item, index) => requireString(item, `${field}[${index}]`, 1000));
+}
+
+async function requireOwnedShop(uid: string, shopId: string, requireVerified = false) {
+  const shopDoc = await db.collection('shops').doc(shopId).get();
+  if (!shopDoc.exists) {
+    throw new functions.https.HttpsError('not-found', 'Shop not found');
+  }
+  const shop = shopDoc.data()!;
+  if (shop.ownerId !== uid) {
+    throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
+  }
+  if (requireVerified && !(shop.verified === true && shop.verificationStatus === 'approved')) {
+    throw new functions.https.HttpsError('failed-precondition', 'Verified shop approval is required');
+  }
+  return shop;
+}
+
 // ============ Order state machine ============
 
 type OrderStatus =
@@ -91,7 +135,27 @@ function canBuyerCancel(status: string): boolean {
 
 // ============ onCreateShop ============
 
-export const onCreateShop = functions.https.onCall(async (data, context) => {
+export const syncPhoneVerification = secureCallable(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
+  const authUser = await admin.auth().getUser(uid);
+  if (!authUser.phoneNumber) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'No verified phone number is linked to this account'
+    );
+  }
+  await db.collection('users').doc(uid).set({
+    uid,
+    phoneNumber: authUser.phoneNumber,
+    phoneVerified: true,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return { phoneNumber: authUser.phoneNumber, phoneVerified: true };
+});
+
+// ============ onCreateShop ============
+
+export const onCreateShop = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const name = requireString(data.name, 'name', 80);
   const slugInput = optionalString(data.slug, 'slug', 60) ?? slugify(name);
@@ -106,6 +170,13 @@ export const onCreateShop = functions.https.onCall(async (data, context) => {
   const city = requireString(data.city, 'city', 80);
   const region = requireString(data.region, 'region', 80);
   const logo = optionalString(data.logo, 'logo', 500);
+  const coverImage = optionalString(data.coverImage, 'coverImage', 500);
+  const socialLinks = {
+    facebook: optionalString(data.socialLinks?.facebook, 'facebook', 300) ?? '',
+    instagram: optionalString(data.socialLinks?.instagram, 'instagram', 300) ?? '',
+    tiktok: optionalString(data.socialLinks?.tiktok, 'tiktok', 300) ?? '',
+    website: optionalString(data.socialLinks?.website, 'website', 300) ?? '',
+  };
 
   // Reject if the user already has a shop.
   const existing = await db.collection('shops')
@@ -128,6 +199,8 @@ export const onCreateShop = functions.https.onCall(async (data, context) => {
   const shopRef = db.collection('shops').doc();
   const memberRef = shopRef.collection('members').doc(uid);
   const userRef = db.collection('users').doc(uid);
+  const ownerLockRef = db.collection('shop_owners').doc(uid);
+  const slugLockRef = db.collection('shop_slugs').doc(slug);
 
   const shopData = {
     id: shopRef.id,
@@ -136,6 +209,7 @@ export const onCreateShop = functions.https.onCall(async (data, context) => {
     slug,
     description,
     logo: logo ?? null,
+    coverImage: coverImage ?? null,
     phone,
     email: email ?? '',
     address,
@@ -143,7 +217,7 @@ export const onCreateShop = functions.https.onCall(async (data, context) => {
     region,
     lat: null,
     lng: null,
-    socialLinks: { facebook: '', instagram: '', tiktok: '', website: '' },
+    socialLinks,
     verified: false,
     verificationStatus: 'not_requested',
     rating: 0,
@@ -163,68 +237,109 @@ export const onCreateShop = functions.https.onCall(async (data, context) => {
   };
 
   await db.runTransaction(async (tx) => {
+    const [ownerLock, slugLock] = await Promise.all([
+      tx.get(ownerLockRef),
+      tx.get(slugLockRef),
+    ]);
+    if (ownerLock.exists) {
+      throw new functions.https.HttpsError('already-exists', 'You already have a shop');
+    }
+    if (slugLock.exists) {
+      throw new functions.https.HttpsError('already-exists', 'Slug already in use');
+    }
     tx.set(shopRef, shopData);
     tx.set(memberRef, memberData);
-    tx.update(userRef, { shopVerified: false, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+    tx.set(ownerLockRef, { shopId: shopRef.id, ownerId: uid });
+    tx.set(slugLockRef, { shopId: shopRef.id, slug });
+    tx.set(userRef, {
+      shopVerified: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
   });
 
   // Set a custom claim so the user can read their own shop membership doc directly.
-  await admin.auth().setCustomUserClaims(uid, { shopId: shopRef.id, role: 'user' });
+  const authUser = await admin.auth().getUser(uid);
+  await admin.auth().setCustomUserClaims(uid, {
+    ...(authUser.customClaims ?? {}),
+    shopId: shopRef.id,
+  });
 
   return shopData;
 });
 
 // ============ submitVerification ============
 
-export const submitVerification = functions.https.onCall(async (data, context) => {
+export const submitVerification = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const shopId = requireString(data.shopId, 'shopId');
-  const nrcUrl = requireString(data.nrcUrl, 'nrcUrl', 500);
-  const licenseUrl = optionalString(data.licenseUrl, 'licenseUrl', 500);
-  const selfieUrl = requireString(data.selfieUrl, 'selfieUrl', 500);
-  const note = optionalString(data.note, 'note', 500);
+  const ownerName = requireString(data.ownerName, 'ownerName', 120);
+  const phone = requireString(data.phone, 'phone', 40);
+  const email = optionalString(data.email, 'email', 120) ?? '';
+  const address = requireString(data.address, 'address', 240);
+  const city = optionalString(data.city, 'city', 80) ?? '';
+  const region = optionalString(data.region, 'region', 80) ?? '';
+  const description = optionalString(data.description, 'description', 1000) ?? '';
+  const facebookPage = optionalString(data.facebookPage, 'facebookPage', 300) ?? '';
+  const shopPhotos = requireStringArray(data.shopPhotos, 'shopPhotos', 8);
 
   const shopRef = db.collection('shops').doc(shopId);
-  const shop = await shopRef.get();
-  if (!shop.exists) {
-    throw new functions.https.HttpsError('not-found', 'Shop not found');
-  }
-  if (shop.data()!.ownerId !== uid) {
-    throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
-  }
+  const requestRef = db.collection('verification_requests').doc(shopId);
 
-  const existing = await db.collection('verificationRequests')
-    .where('shopId', '==', shopId)
-    .where('status', '==', 'pending')
-    .limit(1)
-    .get();
-  if (!existing.empty) {
-    throw new functions.https.HttpsError('already-exists', 'A pending request already exists');
-  }
+  await db.runTransaction(async (tx) => {
+    const [shopSnap, requestSnap] = await Promise.all([
+      tx.get(shopRef),
+      tx.get(requestRef),
+    ]);
+    if (!shopSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Shop not found');
+    }
+    const shop = shopSnap.data()!;
+    if (shop.ownerId !== uid) {
+      throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
+    }
+    if (shop.verificationStatus === 'approved') {
+      throw new functions.https.HttpsError('failed-precondition', 'Shop is already verified');
+    }
+    if (requestSnap.exists && requestSnap.data()!.status === 'pending') {
+      throw new functions.https.HttpsError('already-exists', 'A pending request already exists');
+    }
 
-  const ref = db.collection('verificationRequests').doc();
-  await ref.set({
-    id: ref.id,
-    userId: uid,
-    shopId,
-    nrcUrl,
-    licenseUrl: licenseUrl ?? null,
-    selfieUrl,
-    note: note ?? '',
-    status: 'pending',
-    adminNote: null,
-    reviewedBy: null,
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    tx.set(requestRef, {
+      id: requestRef.id,
+      userId: uid,
+      shopId,
+      shopName: shop.name,
+      ownerName,
+      phone,
+      email,
+      address,
+      city,
+      region,
+      description,
+      facebookPage,
+      shopPhotos,
+      status: 'pending',
+      adminNote: null,
+      reviewedBy: null,
+      createdAt: requestSnap.exists
+        ? requestSnap.data()!.createdAt
+        : admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    tx.update(shopRef, {
+      verificationStatus: 'pending',
+      verified: false,
+      businessModeEnabled: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
   });
-  await shopRef.update({ verificationStatus: 'pending' });
 
-  return { id: ref.id };
+  return { id: requestRef.id };
 });
 
 // ============ reviewVerification (admin) ============
 
-export const reviewVerification = functions.https.onCall(async (data, context) => {
+export const reviewVerification = secureCallable(async (data, context) => {
   const adminUid = requireAuth({ auth: context.auth, data });
   const userDoc = await db.collection('users').doc(adminUid).get();
   if (userDoc.data()?.role !== 'admin') {
@@ -237,7 +352,7 @@ export const reviewVerification = functions.https.onCall(async (data, context) =
   }
   const note = optionalString(data.note, 'note', 500) ?? '';
 
-  const ref = db.collection('verificationRequests').doc(requestId);
+  const ref = db.collection('verification_requests').doc(requestId);
   const snap = await ref.get();
   if (!snap.exists) {
     throw new functions.https.HttpsError('not-found', 'Request not found');
@@ -247,49 +362,214 @@ export const reviewVerification = functions.https.onCall(async (data, context) =
     throw new functions.https.HttpsError('failed-precondition', 'Request already reviewed');
   }
 
-  await db.runTransaction(async (tx) => {
+  const ownerId = await db.runTransaction(async (tx) => {
+    const latestRequest = await tx.get(ref);
+    if (!latestRequest.exists || latestRequest.data()!.status !== 'pending') {
+      throw new functions.https.HttpsError('failed-precondition', 'Request already reviewed');
+    }
+    const latestRequestData = latestRequest.data()!;
+    const shopRef = db.collection('shops').doc(latestRequestData.shopId);
+    const shopSnap = await tx.get(shopRef);
+    if (!shopSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Shop not found');
+    }
+    const currentOwnerId = shopSnap.data()!.ownerId;
+
     tx.update(ref, {
       status: decision,
       adminNote: note,
       reviewedBy: adminUid,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
-    const shopRef = db.collection('shops').doc(request.shopId);
     if (decision === 'approved') {
       tx.update(shopRef, {
         verified: true,
         verificationStatus: 'approved',
+        businessModeEnabled: true,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      const shopSnap = await shopRef.get();
-      const ownerId = shopSnap.data()!.ownerId;
-      tx.update(db.collection('users').doc(ownerId), {
+      tx.update(db.collection('users').doc(currentOwnerId), {
         shopVerified: true,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
-      // Refresh custom claim so firestore rules see shopVerified.
-      const claims = (await admin.auth().getUser(ownerId)).customClaims ?? {};
-      await admin.auth().setCustomUserClaims(ownerId, { ...claims, shopVerified: true });
     } else {
       tx.update(shopRef, {
+        verified: false,
         verificationStatus: 'rejected',
+        businessModeEnabled: false,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.update(db.collection('users').doc(currentOwnerId), {
+        shopVerified: false,
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
+    return currentOwnerId;
+  });
+
+  const authUser = await admin.auth().getUser(ownerId);
+  await admin.auth().setCustomUserClaims(ownerId, {
+    ...(authUser.customClaims ?? {}),
+    shopVerified: decision === 'approved',
   });
 
   return { ok: true };
 });
 
+// ============ saveProduct (create/update) ============
+
+export const saveProduct = secureCallable(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
+  const productId = optionalString(data.productId, 'productId', 120);
+  const requestedShopId = optionalString(data.shopId, 'shopId', 120) ?? '';
+  const idempotencyKey = requireIdempotencyKey(data.idempotencyKey);
+  const title = requireString(data.title, 'title', 160);
+  const description = optionalString(data.description, 'description', 3000) ?? '';
+  const brand = optionalString(data.brand, 'brand', 120) ?? '';
+  const sellerCity = optionalString(data.sellerCity, 'sellerCity', 80) ?? '';
+  const categoryId = requireString(data.categoryId, 'categoryId', 120);
+  const price = requireMoneyInt(data.price, 'price');
+  if (price <= 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'price must be greater than zero');
+  }
+  const comparePrice = data.comparePrice == null
+    ? null
+    : requireMoneyInt(data.comparePrice, 'comparePrice');
+  const costPrice = data.costPrice == null
+    ? null
+    : requireMoneyInt(data.costPrice, 'costPrice');
+  const stock = requireMoneyInt(data.stock, 'stock');
+  const weight = data.weight == null ? null : requireMoneyInt(data.weight, 'weight');
+  const sku = optionalString(data.sku, 'sku', 120) ?? null;
+  const condition = requireString(data.condition, 'condition', 20);
+  if (!['new', 'used', 'refurbished'].includes(condition)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Invalid product condition');
+  }
+  if (data.images != null && (!Array.isArray(data.images) || data.images.length > 8)) {
+    throw new functions.https.HttpsError('invalid-argument', 'images must be an array with at most 8 items');
+  }
+  const images = (data.images ?? []).map((item: unknown, index: number) =>
+    requireString(item, `images[${index}]`, 1000)
+  );
+
+  const operationRef = db.collection('product_operations').doc(scopedId(uid, idempotencyKey));
+  const productRef = productId
+    ? db.collection('products').doc(productId)
+    : db.collection('products').doc();
+
+  return db.runTransaction(async (tx) => {
+    const operationSnap = await tx.get(operationRef);
+    if (operationSnap.exists) return operationSnap.data();
+
+    const existingSnap = productId ? await tx.get(productRef) : null;
+    if (productId && !existingSnap?.exists) {
+      throw new functions.https.HttpsError('not-found', 'Product not found');
+    }
+    const existing = existingSnap?.data();
+    if (existing && existing.sellerId !== uid) {
+      throw new functions.https.HttpsError('permission-denied', 'Not the product owner');
+    }
+
+    const currentShopId = existing?.shopId ?? '';
+    if (existing && currentShopId !== requestedShopId) {
+      throw new functions.https.HttpsError('failed-precondition', 'A product cannot be moved between seller accounts');
+    }
+
+    let sellerName = 'Individual Seller';
+    let sellerPhone = '';
+    let verifiedPhone = false;
+    if (requestedShopId) {
+      const shopRef = db.collection('shops').doc(requestedShopId);
+      const shopSnap = await tx.get(shopRef);
+      if (!shopSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Shop not found');
+      }
+      const shop = shopSnap.data()!;
+      if (shop.ownerId !== uid) {
+        throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
+      }
+      if (!(shop.verified === true && shop.verificationStatus === 'approved')) {
+        throw new functions.https.HttpsError('failed-precondition', 'Verified shop approval is required');
+      }
+      sellerName = shop.name;
+      sellerPhone = shop.phone ?? '';
+      verifiedPhone = true;
+    } else {
+      const userSnap = await tx.get(db.collection('users').doc(uid));
+      const user = userSnap.data();
+      if (!userSnap.exists || user?.phoneVerified !== true) {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'Phone verification is required for individual listings'
+        );
+      }
+      sellerName = user?.displayName || 'Individual Seller';
+      sellerPhone = user?.phoneNumber || '';
+      verifiedPhone = true;
+    }
+
+    const productData = {
+      shopId: requestedShopId,
+      sellerId: uid,
+      sellerType: requestedShopId ? 'shop' : 'individual',
+      sellerName,
+      sellerPhone,
+      sellerCity,
+      sellerPhoneVerified: verifiedPhone,
+      brand,
+      title,
+      description,
+      price,
+      comparePrice,
+      costPrice,
+      categoryId,
+      condition,
+      stock,
+      sku,
+      weight,
+      images,
+      status: existing?.status ?? 'active',
+      views: existing?.views ?? 0,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ...(existing ? {} : { createdAt: admin.firestore.FieldValue.serverTimestamp() }),
+    };
+
+    tx.set(productRef, productData, { merge: Boolean(existing) });
+    if (requestedShopId && (!existing || existing.stock !== stock)) {
+      const movementRef = db.collection('inventory_movements').doc(`product_${operationRef.id}`);
+      tx.set(movementRef, {
+        id: movementRef.id,
+        productId: productRef.id,
+        shopId: requestedShopId,
+        type: existing ? 'adjustment' : 'initial',
+        quantity: existing ? stock - (existing.stock ?? 0) : stock,
+        previousStock: existing?.stock ?? 0,
+        newStock: stock,
+        reason: existing ? 'product_edit' : 'product_create',
+        userId: uid,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    const result = { id: productRef.id, created: !existing };
+    tx.set(operationRef, {
+      ...result,
+      userId: uid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return result;
+  });
+});
+
 // ============ decrementStock (atomic) ============
 
-export const decrementStock = functions.https.onCall(async (data, context) => {
-  requireAuth({ auth: context.auth, data });
+export const decrementStock = secureCallable(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
   const productId = requireString(data.productId, 'productId');
   const qty = requirePositiveInt(data.quantity, 'quantity');
   const shopId = requireString(data.shopId, 'shopId');
   const reason = optionalString(data.reason, 'reason', 40) ?? 'order';
-  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
+  const idempotencyKey = requireIdempotencyKey(data.idempotencyKey);
+  await requireOwnedShop(uid, shopId, true);
 
   const result = await db.runTransaction(async (tx) => {
     const productRef = db.collection('products').doc(productId);
@@ -306,8 +586,8 @@ export const decrementStock = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('failed-precondition', 'Insufficient stock');
     }
 
-    // Idempotency: check the inventory_movements collection for an existing entry with this key.
-    const idemRef = db.collection('inventory_movements').doc(idempotencyKey);
+    // Idempotency keys are scoped to the authenticated actor.
+    const idemRef = db.collection('inventory_movements').doc(scopedId(uid, idempotencyKey));
     const idemSnap = await tx.get(idemRef);
     if (idemSnap.exists) {
       return { alreadyProcessed: true, newStock: currentStock };
@@ -323,7 +603,7 @@ export const decrementStock = functions.https.onCall(async (data, context) => {
       quantity: -qty,
       newStock,
       reason,
-      userId: context.auth!.uid,
+      userId: uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     return { alreadyProcessed: false, newStock };
@@ -340,11 +620,12 @@ interface OrderItemInput {
   variantId?: string;
 }
 
-export const createOrder = functions.https.onCall(async (data, context) => {
+export const createOrder = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const items: OrderItemInput[] = data.items;
   const address = data.address;
-  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
+  const idempotencyKey = requireIdempotencyKey(data.idempotencyKey);
+  const orderId = scopedId(uid, idempotencyKey);
 
   if (!Array.isArray(items) || items.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'items required');
@@ -354,13 +635,16 @@ export const createOrder = functions.https.onCall(async (data, context) => {
   }
 
   // Check idempotency first.
-  const idemRef = db.collection('orders').doc(idempotencyKey);
+  const idemRef = db.collection('orders').doc(orderId);
   const idemSnap = await idemRef.get();
   if (idemSnap.exists) {
     return idemSnap.data();
   }
 
   const result = await db.runTransaction(async (tx) => {
+    const existingOrder = await tx.get(idemRef);
+    if (existingOrder.exists) return existingOrder.data()!;
+
     // Group by shop. V1: all items must be from the same shop.
     const productRefs = items.map((i) => db.collection('products').doc(i.productId));
     const productSnaps = await tx.getAll(...productRefs);
@@ -372,9 +656,13 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       ...(s.data() as Record<string, any>),
       id: s.id,
     }));
-    const shopId = products[0].shopId;
-    if (!products.every((p) => p.shopId === shopId)) {
-      throw new functions.https.HttpsError('invalid-argument', 'All items must be from one shop');
+    const shopId = products[0].shopId ?? '';
+    const sellerId = products[0].sellerId;
+    if (!sellerId || !products.every((p) => (p.shopId ?? '') === shopId && p.sellerId === sellerId)) {
+      throw new functions.https.HttpsError('invalid-argument', 'All items must be from one seller');
+    }
+    if (sellerId === uid) {
+      throw new functions.https.HttpsError('failed-precondition', 'You cannot order your own listing');
     }
 
     // Validate stock + snapshot price/cost server-side.
@@ -400,8 +688,12 @@ export const createOrder = functions.https.onCall(async (data, context) => {
     });
 
     const subtotal = lineItems.reduce((s, l) => s + l.subtotal, 0);
-    const deliveryFee = requireMoneyInt(data.deliveryFee ?? 0, 'deliveryFee');
-    const discount = requireMoneyInt(data.discount ?? 0, 'discount');
+    // V1 is COD-only; promotions and delivery pricing are not client-authoritative.
+    const deliveryFee = 0;
+    const discount = 0;
+    if (data.paymentMethod != null && data.paymentMethod !== 'cod') {
+      throw new functions.https.HttpsError('invalid-argument', 'V1 marketplace orders support COD only');
+    }
     const total = subtotal + deliveryFee - discount;
     if (total < 0) {
       throw new functions.https.HttpsError('invalid-argument', 'Total cannot be negative');
@@ -411,9 +703,10 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       .toString().padStart(3, '0')}`;
 
     const order = {
-      id: idempotencyKey,
+      id: orderId,
       orderNumber,
-      customerId: uid,
+      buyerId: uid,
+      sellerId,
       shopId,
       items: lineItems,
       shippingAddress: address,
@@ -422,7 +715,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
       discount,
       total,
       status: 'pending' as OrderStatus,
-      paymentMethod: data.paymentMethod ?? 'cod',
+      paymentMethod: 'cod',
       paymentStatus: 'pending',
       note: optionalString(data.note, 'note', 500) ?? '',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -439,7 +732,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       const mvmtRef = db.collection('inventory_movements').doc(
-        `${idempotencyKey}-${l.productId}`
+        `${orderId}-${l.productId}`
       );
       tx.set(mvmtRef, {
         id: mvmtRef.id,
@@ -448,7 +741,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
         type: 'sale',
         quantity: -l.quantity,
         newStock: admin.firestore.FieldValue.increment(-l.quantity),
-        reason: `order:${idempotencyKey}`,
+        reason: `order:${orderId}`,
         userId: uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -459,10 +752,13 @@ export const createOrder = functions.https.onCall(async (data, context) => {
 
   // After commit, send FCM to the seller.
   try {
-    const shopDoc = await db.collection('shops').doc(result.shopId).get();
-    const ownerId = shopDoc.data()?.ownerId;
-    if (ownerId) {
-      const userDoc = await db.collection('users').doc(ownerId).get();
+    let recipientId = result.sellerId;
+    if (result.shopId) {
+      const shopDoc = await db.collection('shops').doc(result.shopId).get();
+      recipientId = shopDoc.data()?.ownerId ?? recipientId;
+    }
+    if (recipientId) {
+      const userDoc = await db.collection('users').doc(recipientId).get();
       const token = userDoc.data()?.fcmToken;
       if (token) {
         await messaging.send({
@@ -484,7 +780,7 @@ export const createOrder = functions.https.onCall(async (data, context) => {
 
 // ============ createPOSSale ============
 
-export const createPOSSale = functions.https.onCall(async (data, context) => {
+export const createPOSSale = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const shopId = requireString(data.shopId, 'shopId');
   const items: OrderItemInput[] = data.items;
@@ -492,23 +788,24 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'items required');
   }
 
-  // Verify shop ownership.
-  const shopDoc = await db.collection('shops').doc(shopId).get();
-  if (!shopDoc.exists) {
-    throw new functions.https.HttpsError('not-found', 'Shop not found');
-  }
-  if (shopDoc.data()!.ownerId !== uid) {
-    throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
-  }
+  await requireOwnedShop(uid, shopId, true);
 
-  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
+  const idempotencyKey = requireIdempotencyKey(data.idempotencyKey);
+  const saleId = scopedId(uid, idempotencyKey);
+  const paymentMethod = requireString(data.paymentMethod ?? 'cash', 'paymentMethod', 40);
+  if (!['cash', 'kbzpay', 'wavepay', 'bank_transfer', 'other'].includes(paymentMethod)) {
+    throw new functions.https.HttpsError('invalid-argument', 'Unsupported payment method');
+  }
 
   // Idempotency: a receipt with the same id should be returned.
-  const idemRef = db.collection('pos_sales').doc(idempotencyKey);
+  const idemRef = db.collection('pos_sales').doc(saleId);
   const idemSnap = await idemRef.get();
   if (idemSnap.exists) return idemSnap.data();
 
   const result = await db.runTransaction(async (tx) => {
+    const existingSale = await tx.get(idemRef);
+    if (existingSale.exists) return existingSale.data()!;
+
     const productRefs = items.map((i) => db.collection('products').doc(i.productId));
     const productSnaps = await tx.getAll(...productRefs);
     if (productSnaps.some((s) => !s.exists)) {
@@ -520,6 +817,9 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
     }));
     if (!products.every((p) => p.shopId === shopId)) {
       throw new functions.https.HttpsError('invalid-argument', 'Items must be from this shop');
+    }
+    if (!products.every((p) => !p.status || p.status === 'active')) {
+      throw new functions.https.HttpsError('failed-precondition', 'Inactive products cannot be sold');
     }
 
     const lineItems = products.map((p, idx) => {
@@ -544,6 +844,7 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
     });
 
     const subtotal = lineItems.reduce((s, l) => s + l.subtotal, 0);
+    const costOfGoodsSold = lineItems.reduce((s, l) => s + l.costPrice * l.quantity, 0);
     const discount = requireMoneyInt(data.discount ?? 0, 'discount');
     const tax = requireMoneyInt(data.tax ?? 0, 'tax');
     const total = subtotal - discount + tax;
@@ -552,7 +853,8 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
     }
 
     const sale = {
-      id: idempotencyKey,
+      id: saleId,
+      clientRequestId: idempotencyKey,
       shopId,
       cashierId: uid,
       items: lineItems,
@@ -560,9 +862,12 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
       discount,
       tax,
       total,
-      paymentMethod: data.paymentMethod ?? 'cash',
+      costOfGoodsSold,
+      grossProfit: subtotal - discount - costOfGoodsSold,
+      paymentMethod,
       customerPhone: optionalString(data.customerPhone, 'customerPhone', 40) ?? '',
       note: optionalString(data.note, 'note', 500) ?? '',
+      createdAtMs: Date.now(),
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     };
 
@@ -573,7 +878,7 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       const mvmtRef = db.collection('inventory_movements').doc(
-        `pos-${idempotencyKey}-${l.productId}`
+        `pos-${saleId}-${l.productId}`
       );
       tx.set(mvmtRef, {
         id: mvmtRef.id,
@@ -582,7 +887,7 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
         type: 'pos',
         quantity: -l.quantity,
         newStock: admin.firestore.FieldValue.increment(-l.quantity),
-        reason: `pos:${idempotencyKey}`,
+        reason: `pos:${saleId}`,
         userId: uid,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -595,7 +900,7 @@ export const createPOSSale = functions.https.onCall(async (data, context) => {
 
 // ============ updateOrderStatus ============
 
-export const updateOrderStatus = functions.https.onCall(async (data, context) => {
+export const updateOrderStatus = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const orderId = requireString(data.orderId, 'orderId');
   const to = requireString(data.status, 'status') as OrderStatus;
@@ -603,7 +908,7 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
     throw new functions.https.HttpsError('invalid-argument', 'unknown status');
   }
   const note = optionalString(data.note, 'note', 500) ?? '';
-  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
+  const idempotencyKey = requireIdempotencyKey(data.idempotencyKey);
 
   const result = await db.runTransaction(async (tx) => {
     const orderRef = db.collection('orders').doc(orderId);
@@ -619,7 +924,9 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
     if (!allowed) {
       if (order.buyerId === uid && to === 'cancelled' && canBuyerCancel(order.status)) {
         allowed = true;
-      } else {
+      } else if (order.sellerId === uid) {
+        allowed = true;
+      } else if (order.shopId) {
         const shopDoc = await tx.get(db.collection('shops').doc(order.shopId));
         allowed = shopDoc.exists && shopDoc.data()!.ownerId === uid;
       }
@@ -628,7 +935,7 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
       throw new functions.https.HttpsError('permission-denied', 'Not authorized');
     }
 
-    const idemRef = db.collection('order_status_history').doc(idempotencyKey);
+    const idemRef = db.collection('order_status_history').doc(scopedId(uid, idempotencyKey));
     const idemSnap = await tx.get(idemRef);
     if (idemSnap.exists) {
       return { ok: true, alreadyProcessed: true, status: order.status };
@@ -669,9 +976,9 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
 
   try {
     const orderDoc = await db.collection('orders').doc(orderId).get();
-    const customerId = orderDoc.data()?.customerId;
-    if (customerId) {
-      const userDoc = await db.collection('users').doc(customerId).get();
+    const buyerId = orderDoc.data()?.buyerId ?? orderDoc.data()?.customerId;
+    if (buyerId) {
+      const userDoc = await db.collection('users').doc(buyerId).get();
       const token = userDoc.data()?.fcmToken;
       if (token) {
         await messaging.send({
@@ -691,13 +998,13 @@ export const updateOrderStatus = functions.https.onCall(async (data, context) =>
 
 // ============ adjustStock (manual adjustment by shop owner) ============
 
-export const adjustStock = functions.https.onCall(async (data, context) => {
+export const adjustStock = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const productId = requireString(data.productId, 'productId');
   const shopId = requireString(data.shopId, 'shopId');
   const type = data.type;
   const qty = requirePositiveInt(data.quantity, 'quantity');
-  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
+  const idempotencyKey = requireIdempotencyKey(data.idempotencyKey);
   const reason = optionalString(data.reason, 'reason', 80) ?? 'manual';
 
   if (type !== 'increment' && type !== 'decrement' && type !== 'set') {
@@ -708,11 +1015,7 @@ export const adjustStock = functions.https.onCall(async (data, context) => {
   const userDoc = await db.collection('users').doc(uid).get();
   const isAdmin = userDoc.data()?.role === 'admin';
   if (!isAdmin) {
-    const shopRef = db.collection('shops').doc(shopId);
-    const shopDoc = await shopRef.get();
-    if (!shopDoc.exists || shopDoc.data()!.ownerId !== uid) {
-      throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
-    }
+    await requireOwnedShop(uid, shopId, true);
   }
 
   const result = await db.runTransaction(async (tx) => {
@@ -736,7 +1039,7 @@ export const adjustStock = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('failed-precondition', 'Stock cannot go below zero');
     }
 
-    const idemRef = db.collection('inventory_movements').doc(idempotencyKey);
+    const idemRef = db.collection('inventory_movements').doc(scopedId(uid, idempotencyKey));
     const idemSnap = await tx.get(idemRef);
     if (idemSnap.exists) {
       return { alreadyProcessed: true, newStock: current };
@@ -758,9 +1061,80 @@ export const adjustStock = functions.https.onCall(async (data, context) => {
   return result;
 });
 
+// ============ createChat ============
+
+export const createChat = secureCallable(async (data, context) => {
+  const uid = requireAuth({ auth: context.auth, data });
+  const orderId = optionalString(data.orderId, 'orderId', 120);
+  const productId = optionalString(data.productId, 'productId', 120);
+  const shopId = optionalString(data.shopId, 'shopId', 120);
+  if (!orderId && !productId && !shopId) {
+    throw new functions.https.HttpsError(
+      'invalid-argument',
+      'orderId, productId, or shopId is required'
+    );
+  }
+
+  let sellerId = '';
+  let resolvedProductId = productId ?? null;
+  let resolvedShopId = shopId ?? null;
+
+  if (orderId) {
+    const orderSnap = await db.collection('orders').doc(orderId).get();
+    if (!orderSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Order not found');
+    }
+    const order = orderSnap.data()!;
+    const buyerId = order.buyerId ?? order.customerId;
+    if (buyerId !== uid) {
+      throw new functions.https.HttpsError('permission-denied', 'Only the buyer can contact this seller');
+    }
+    resolvedShopId = order.shopId || null;
+    resolvedProductId = order.items?.[0]?.productId ?? null;
+    sellerId = order.sellerId ?? '';
+  }
+
+  if (resolvedShopId) {
+    const shopSnap = await db.collection('shops').doc(resolvedShopId).get();
+    if (!shopSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Shop not found');
+    }
+    sellerId = shopSnap.data()!.ownerId;
+  } else if (resolvedProductId) {
+    const productSnap = await db.collection('products').doc(resolvedProductId).get();
+    if (!productSnap.exists) {
+      throw new functions.https.HttpsError('not-found', 'Product not found');
+    }
+    sellerId = productSnap.data()!.sellerId;
+  }
+
+  if (!sellerId) {
+    throw new functions.https.HttpsError('failed-precondition', 'Seller could not be resolved');
+  }
+  if (sellerId === uid) {
+    throw new functions.https.HttpsError('failed-precondition', 'You cannot start a chat with yourself');
+  }
+
+  const participants = [uid, sellerId].sort();
+  const chatId = participants.join('_');
+  const chatRef = db.collection('chats').doc(chatId);
+  const existingChat = await chatRef.get();
+  await chatRef.set({
+    id: chatId,
+    participants,
+    ...(resolvedProductId ? { productId: resolvedProductId } : {}),
+    ...(resolvedShopId ? { shopId: resolvedShopId } : {}),
+    ...(orderId ? { orderId } : {}),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    ...(!existingChat.exists ? { createdAt: admin.firestore.FieldValue.serverTimestamp() } : {}),
+  }, { merge: true });
+
+  return { id: chatId };
+});
+
 // ============ sendChatMessage ============
 
-export const sendChatMessage = functions.https.onCall(async (data, context) => {
+export const sendChatMessage = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const chatId = requireString(data.chatId, 'chatId');
   const content = requireString(data.content, 'content', 2000);
@@ -836,7 +1210,7 @@ export const sendChatMessage = functions.https.onCall(async (data, context) => {
 
 // ============ setTyping ============
 
-export const setTyping = functions.https.onCall(async (data, context) => {
+export const setTyping = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const chatId = requireString(data.chatId, 'chatId');
   const typing = data.typing === true;
@@ -853,7 +1227,7 @@ export const setTyping = functions.https.onCall(async (data, context) => {
 
 // ============ markChatRead ============
 
-export const markChatRead = functions.https.onCall(async (data, context) => {
+export const markChatRead = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const chatId = requireString(data.chatId, 'chatId');
   const chatRef = db.collection('chats').doc(chatId);
@@ -875,7 +1249,7 @@ export const markChatRead = functions.https.onCall(async (data, context) => {
 
 // ============ createOffer ============
 
-export const createOffer = functions.https.onCall(async (data, context) => {
+export const createOffer = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const productId = requireString(data.productId, 'productId');
   const price = requireMoneyInt(data.price, 'price');
@@ -967,7 +1341,7 @@ export const createOffer = functions.https.onCall(async (data, context) => {
 
 // ============ respondToOffer ============
 
-export const respondToOffer = functions.https.onCall(async (data, context) => {
+export const respondToOffer = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const offerId = requireString(data.offerId, 'offerId');
   const decision = data.decision;
@@ -1034,7 +1408,7 @@ export const respondToOffer = functions.https.onCall(async (data, context) => {
 
 // ============ createReview (one per completed order) ============
 
-export const createReview = functions.https.onCall(async (data, context) => {
+export const createReview = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const orderId = requireString(data.orderId, 'orderId');
   const rating = requirePositiveInt(data.rating, 'rating');
@@ -1099,7 +1473,7 @@ export const createReview = functions.https.onCall(async (data, context) => {
 
 // ============ createReport ============
 
-export const createReport = functions.https.onCall(async (data, context) => {
+export const createReport = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const targetType = requireString(data.targetType, 'targetType');
   if (targetType !== 'product' && targetType !== 'shop' && targetType !== 'user' && targetType !== 'review') {
@@ -1138,7 +1512,7 @@ export const createReport = functions.https.onCall(async (data, context) => {
 
 // ============ reviewReport (admin) ============
 
-export const reviewReport = functions.https.onCall(async (data, context) => {
+export const reviewReport = secureCallable(async (data, context) => {
   const adminUid = requireAuth({ auth: context.auth, data });
   const userDoc = await db.collection('users').doc(adminUid).get();
   if (userDoc.data()?.role !== 'admin') {
@@ -1170,48 +1544,47 @@ export const reviewReport = functions.https.onCall(async (data, context) => {
 
 // ============ createExpense ============
 
-export const createExpense = functions.https.onCall(async (data, context) => {
+export const createExpense = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const shopId = requireString(data.shopId, 'shopId');
   const amount = requireMoneyInt(data.amount, 'amount');
   const category = requireString(data.category, 'category', 80);
   const note = optionalString(data.note, 'note', 500) ?? '';
   const date = optionalString(data.date, 'date', 40) ?? new Date().toISOString();
-  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
+  const idempotencyKey = requireIdempotencyKey(data.idempotencyKey);
 
   const userDoc = await db.collection('users').doc(uid).get();
   const isAdmin = userDoc.data()?.role === 'admin';
   if (!isAdmin) {
-    const shopDoc = await db.collection('shops').doc(shopId).get();
-    if (!shopDoc.exists || shopDoc.data()!.ownerId !== uid) {
-      throw new functions.https.HttpsError('permission-denied', 'Not the shop owner');
-    }
+    await requireOwnedShop(uid, shopId, true);
   }
 
-  const idemRef = db.collection('expenses').doc(idempotencyKey);
+  const expenseId = scopedId(uid, idempotencyKey);
+  const idemRef = db.collection('expenses').doc(expenseId);
   const idemSnap = await idemRef.get();
   if (idemSnap.exists) {
-    return { alreadyProcessed: true, id: idempotencyKey };
+    return { alreadyProcessed: true, id: expenseId };
   }
 
-  const ref = db.collection('expenses').doc(idempotencyKey);
+  const ref = db.collection('expenses').doc(expenseId);
   await ref.set({
-    id: idempotencyKey,
+    id: expenseId,
     shopId,
     amount,
     category,
     note,
+    description: note,
     date,
     userId: uid,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
-  return { alreadyProcessed: false, id: idempotencyKey };
+  return { alreadyProcessed: false, id: expenseId };
 });
 
 // ============ deleteExpense ============
 
-export const deleteExpense = functions.https.onCall(async (data, context) => {
+export const deleteExpense = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const expenseId = requireString(data.expenseId, 'expenseId');
 
@@ -1237,7 +1610,7 @@ export const deleteExpense = functions.https.onCall(async (data, context) => {
 
 // ============ incrementProductViews ============
 
-export const incrementProductViews = functions.https.onCall(async (data, _context) => {
+export const incrementProductViews = secureCallable(async (data, _context) => {
   const productId = requireString(data.productId, 'productId');
   const productRef = db.collection('products').doc(productId);
   await productRef.update({
@@ -1249,7 +1622,7 @@ export const incrementProductViews = functions.https.onCall(async (data, _contex
 
 // ============ toggleShopFollow ============
 
-export const toggleShopFollow = functions.https.onCall(async (data, context) => {
+export const toggleShopFollow = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const shopId = requireString(data.shopId, 'shopId');
   const follow = data.follow === true;
@@ -1297,7 +1670,7 @@ export const toggleShopFollow = functions.https.onCall(async (data, context) => 
 
 // ============ deleteProduct ============
 
-export const deleteProduct = functions.https.onCall(async (data, context) => {
+export const deleteProduct = secureCallable(async (data, context) => {
   const uid = requireAuth({ auth: context.auth, data });
   const productId = requireString(data.productId, 'productId');
 

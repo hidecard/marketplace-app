@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer, Scan, Menu, FileDown, AlertCircle } from 'lucide-react';
-import { collection, query, where, getDocs, serverTimestamp, addDoc, doc, runTransaction } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { FunctionsService } from '../../services/functions';
 import { Product, Shop } from '../../types';
@@ -128,6 +128,10 @@ export const POSPage: React.FC = () => {
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
         const shopData = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Shop;
+        if (!(shopData.verified === true && shopData.verificationStatus === 'approved')) {
+          navigate('/business/verification', { replace: true });
+          return;
+        }
         setShop(shopData);
         trackEvent('pos_opened', { shop_id: shopData.id, shop_name: shopData.name });
       }
@@ -256,70 +260,33 @@ export const POSPage: React.FC = () => {
     }
 
     try {
-      let createdAtMs = Date.now();
-      try {
-        const result = await FunctionsService.callOrThrow<any>('createPOSSale', {
-          shopId: shop.id,
-          items: cart.map((i) => ({
-            productId: i.product.id,
-            quantity: i.quantity,
-          })),
-          discount,
-          tax,
-          paymentMethod,
-          idempotencyKey: pending.id,
-        });
-        if (result?.createdAtMs) createdAtMs = result.createdAtMs;
-      } catch (fnErr: any) {
-        console.warn('Cloud Function unavailable, running direct Firestore atomic transaction:', fnErr);
-        // Direct Firestore atomic transaction fallback
-        await runTransaction(db, async (tx) => {
-          for (const item of cart) {
-            const productRef = doc(db, 'products', item.product.id);
-            const productDoc = await tx.get(productRef);
-            if (productDoc.exists()) {
-              const currentStock = productDoc.data().stock ?? 0;
-              tx.update(productRef, {
-                stock: Math.max(0, currentStock - item.quantity),
-                salesCount: (productDoc.data().salesCount ?? 0) + item.quantity,
-                updatedAt: serverTimestamp(),
-              });
-            }
-          }
-          const saleDocRef = doc(db, 'pos_sales', pending.id);
-          tx.set(saleDocRef, {
-            id: pending.id,
-            shopId: shop.id,
-            cashierId: user.uid,
-            items: pending.items.map(item => ({
-              ...item,
-              productId: cart.find(c => c.product.title === item.title)?.product.id || '',
-            })),
-            subtotal,
-            discount,
-            tax,
-            total,
-            paymentMethod,
-            createdAt: serverTimestamp(),
-          });
-        });
-      }
-
-      const confirmed: SaleSnapshot = {
-        id: pending.id,
+      const result = await FunctionsService.callOrThrow<Omit<SaleSnapshot, 'shopName'> & { createdAtMs?: number }>('createPOSSale', {
         shopId: shop.id,
-        shopName: shop.name,
-        items: pending.items,
-        subtotal,
+        items: cart.map((i) => ({
+          productId: i.product.id,
+          quantity: i.quantity,
+        })),
         discount,
         tax,
-        total,
         paymentMethod,
-        createdAtMs,
+        idempotencyKey: pending.id,
+      });
+
+      const confirmed: SaleSnapshot = {
+        id: result.id,
+        shopId: shop.id,
+        shopName: shop.name,
+        items: result.items,
+        subtotal: result.subtotal,
+        discount: result.discount,
+        tax: result.tax,
+        total: result.total,
+        paymentMethod: result.paymentMethod,
+        createdAtMs: result.createdAtMs ?? Date.now(),
       };
 
       setLastSale(confirmed);
-      trackEvent('pos_sale_completed', { sale_total: total, items_count: cart.length });
+      trackEvent('pos_sale_completed', { sale_total: confirmed.total, items_count: confirmed.items.length });
       toast.success('Sale completed!');
       setCart([]);
       setDiscount(0);
@@ -353,6 +320,7 @@ export const POSPage: React.FC = () => {
     receiptWindow.focus();
     try {
       receiptWindow.print();
+      trackEvent('receipt_printed', { sale_id: sale.id, shop_id: sale.shopId });
     } catch (err) {
       console.error('Print failed:', err);
       queueFailedPrint(sale, (err as Error)?.message ?? 'Unknown error');
@@ -360,27 +328,28 @@ export const POSPage: React.FC = () => {
     }
   };
 
-  const queueFailedPrint = async (sale: SaleSnapshot, reason: string) => {
-    if (!user) return;
+  const queueFailedPrint = (sale: SaleSnapshot, reason: string) => {
     try {
-      await addDoc(collection(db, 'printJobs'), {
+      const stored = window.localStorage.getItem('pendingPrintJobs');
+      const queue = stored ? JSON.parse(stored) : [];
+      queue.push({
         type: 'pos_receipt',
         saleId: sale.id,
         shopId: sale.shopId,
-        ownerId: user.uid,
         payload: sale,
         reason,
         status: 'pending',
-        createdAt: serverTimestamp(),
+        createdAt: new Date().toISOString(),
       });
+      window.localStorage.setItem('pendingPrintJobs', JSON.stringify(queue.slice(-20)));
     } catch (err) {
       console.error('Failed to queue print job:', err);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <div className="flex-1 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
+      <div className="flex-1 min-w-0 flex flex-col">
         <header className="sticky top-0 bg-white border-b border-gray-200 z-40 px-4 py-3">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
@@ -427,7 +396,7 @@ export const POSPage: React.FC = () => {
               <p className="text-gray-500">No products found</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
               {filteredProducts.map((product) => (
                 <button
                   key={product.id}
@@ -453,7 +422,7 @@ export const POSPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
+      <div className="w-full lg:w-80 bg-white border-t lg:border-t-0 lg:border-l border-gray-200 flex flex-col lg:max-h-screen">
         <div className="p-4 border-b border-gray-200">
           <h2 className="font-semibold text-gray-900">Current Sale</h2>
         </div>

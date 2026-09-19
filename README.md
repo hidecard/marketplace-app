@@ -43,11 +43,11 @@ marketplace-app/
 3. Set up environment variables:
    ```bash
    # For web app
-   cp web/.env.example web/.env
+   cp .env.example web/.env
    # Edit web/.env with your Firebase config
 
    # For admin app
-   cp admin/.env.example admin/.env
+   cp .env.example admin/.env
    # Edit admin/.env with your Firebase config
    ```
 
@@ -96,6 +96,20 @@ npm run deploy:web
 npm run deploy:admin
 npm run deploy:firebase
 ```
+
+### Automatic Web Deployment
+
+The production Web PWA is hosted at [marketplace-app.hidecard1500.workers.dev](https://marketplace-app.hidecard1500.workers.dev/). The workflow in `.github/workflows/deploy-cloudflare.yml` validates the Web app, admin app, Firebase Functions, unit tests, and Firebase Rules on every pull request and push. A successful push to `main` deploys the already-validated `web/dist` bundle to the existing `marketplace-app` Cloudflare Worker.
+
+Add these repository secrets under **GitHub → Settings → Secrets and variables → Actions**:
+
+- `CLOUDFLARE_API_TOKEN` — a scoped token with **Edit Cloudflare Workers** permission.
+- `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account that owns the `marketplace-app` Worker.
+- `FIREBASE_SERVICE_ACCOUNT` — a JSON service-account credential authorized to deploy Functions, Firestore indexes/rules, and Storage rules to `padaytharpin-app`.
+- `VITE_FIREBASE_VAPID_KEY` — required for Web push notifications.
+- `VITE_FIREBASE_APP_CHECK_KEY` — required before production App Check enforcement is enabled.
+
+The public Firebase Web configuration is supplied to CI as non-secret build configuration. It can be overridden with repository variables named `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, and `VITE_FIREBASE_MEASUREMENT_ID`. Set the repository variable `ENFORCE_APP_CHECK=true` only after valid App Check providers and both Web client keys have been configured and tested; it defaults to `false` to avoid locking out current clients during rollout.
 
 ## Features
 

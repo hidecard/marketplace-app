@@ -1,64 +1,77 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    // App Check enforcement for Storage is configured in Firebase Console.
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() && (
+        request.auth.token.get('admin', false) == true ||
+        request.auth.token.get('role', '') == 'admin' ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
     }
 
     function isShopOwner(shopId) {
-      return isAuthenticated() && firestore.exists(/databases/(default)/documents/shops/$(shopId)) &&
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/shops/$(shopId)) &&
         firestore.get(/databases/(default)/documents/shops/$(shopId)).data.ownerId == request.auth.uid;
     }
 
     function isShopMember(shopId) {
-      return isAuthenticated() && firestore.exists(/databases/(default)/documents/shops/$(shopId)/members/$(request.auth.uid));
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/shops/$(shopId)/members/$(request.auth.uid));
     }
 
-    function hasValidAppCheck() {
-      return request.app != null && request.app.verifyToken() != null;
+    function isChatParticipant(chatId) {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/chats/$(chatId)) &&
+        request.auth.uid in firestore.get(/databases/(default)/documents/chats/$(chatId)).data.participants;
+    }
+
+    function isValidImageUpload() {
+      return request.resource != null
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
     }
 
     match /users/{userId}/{allPaths=**} {
-      allow read: if isAuthenticated() && hasValidAppCheck();
-      allow write: if isAuthenticated() && request.auth.uid == userId && hasValidAppCheck();
+      allow read: if isAuthenticated();
+      allow write: if request.auth.uid == userId && isValidImageUpload();
     }
 
     match /shops/{shopId}/{allPaths=**} {
-      allow read: if isAuthenticated() && hasValidAppCheck();
-      allow write: if isAuthenticated() && (isShopOwner(shopId) || isShopMember(shopId) || isAdmin())
-        && hasValidAppCheck();
+      allow read: if isAuthenticated();
+      allow write: if (isShopOwner(shopId) || isShopMember(shopId) || isAdmin())
+        && isValidImageUpload();
     }
 
+    // Legacy product paths remain readable. New product uploads use the user's owned path.
     match /products/{productId}/{allPaths=**} {
-      allow read: if isAuthenticated() && hasValidAppCheck();
-      allow write: if isAuthenticated() && (
-        firestore.exists(/databases/(default)/documents/products/$(productId)) && (
-          firestore.get(/databases/(default)/documents/products/$(productId)).data.sellerId == request.auth.uid ||
-          firestore.get(/databases/(default)/documents/products/$(productId)).data.shopId != null &&
-          isShopOwner(firestore.get(/databases/(default)/documents/products/$(productId)).data.shopId)
-        )
-        || isAdmin()
-      ) && hasValidAppCheck();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || (
+        isAuthenticated()
+        && firestore.exists(/databases/(default)/documents/products/$(productId))
+        && firestore.get(/databases/(default)/documents/products/$(productId)).data.sellerId == request.auth.uid
+        && isValidImageUpload()
+      );
     }
 
     match /verifications/{userId}/{allPaths=**} {
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin())
-        && hasValidAppCheck();
-      allow write: if isAuthenticated() && request.auth.uid == userId && hasValidAppCheck();
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow write: if request.auth.uid == userId && isValidImageUpload();
     }
 
     match /chats/{chatId}/{allPaths=**} {
-      allow read: if isAuthenticated() && hasValidAppCheck();
-      allow write: if isAuthenticated() && hasValidAppCheck();
+      allow read: if isChatParticipant(chatId);
+      allow write: if isChatParticipant(chatId) && isValidImageUpload();
     }
 
     match /banners/{allPaths=**} {
-      allow read: if isAuthenticated() && hasValidAppCheck();
-      allow write: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageUpload();
     }
   }
 }
