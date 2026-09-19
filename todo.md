@@ -125,10 +125,12 @@
 - [ ] Add `VITE_FIREBASE_APP_CHECK_KEY` for the Web PWA.
 - [ ] Add the admin Web App Check key/provider configuration.
 - [x] Push the workflow to `main` and confirm the GitHub Actions quality job passes.
-- [ ] Pass the production deployment-secret preflight in GitHub Actions.
-- [ ] Confirm Firebase Functions, Firestore indexes/rules, and Storage rules deploy from CI.
-- [ ] Confirm the Cloudflare Worker deploy job succeeds from CI.
-- [ ] Confirm the production URL serves the new asset hash and not the previous bundle.
+- [x] Pass the production deployment-secret preflight in GitHub Actions.
+- [x] Confirm Firebase Functions, Firestore indexes/rules, and Storage rules deploy from CI.
+- [x] Initialize the Firebase Storage bucket and deploy hardened Storage Rules.
+- [x] Confirm the Cloudflare Worker deploy job succeeds from CI.
+- [x] Confirm the production URL serves the new `assets/index-BTU3S4HP.js` bundle rather than the previous asset.
+- [ ] Revoke every Cloudflare token and R2 access credential exposed during setup, create replacements, and update only the GitHub secrets/integrations that actually use them.
 - [ ] Add a custom domain only if a domain is selected; the current Workers URL already has managed HTTPS.
 
 ### App Check Rollout
@@ -205,4 +207,4 @@
 
 ## 5. Current Definition of Done
 
-The Web-first source is substantially hardened and all local checks pass, but the release is **not production-complete** until credentials are added, CI deploys the Firebase backend and Cloudflare Worker, production App Check is configured and enforced, automated authorization/concurrency tests are added, and staging QA is signed off.
+The Web-first source is substantially hardened, all automated checks pass, the Firebase backend/rules are deployed, and the Cloudflare Worker is serving the verified current bundle. Full production sign-off still requires rotating the setup credentials exposed outside GitHub Secrets, configuring and enforcing App Check, adding the listed authorization/concurrency tests, and completing staging QA.
