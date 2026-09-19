@@ -124,7 +124,8 @@
 - [ ] Add `VITE_FIREBASE_VAPID_KEY` for production Web push notifications.
 - [ ] Add `VITE_FIREBASE_APP_CHECK_KEY` for the Web PWA.
 - [ ] Add the admin Web App Check key/provider configuration.
-- [ ] Push/merge the workflow to `main` and confirm the GitHub Actions quality job passes.
+- [x] Push the workflow to `main` and confirm the GitHub Actions quality job passes.
+- [ ] Pass the production deployment-secret preflight in GitHub Actions.
 - [ ] Confirm Firebase Functions, Firestore indexes/rules, and Storage rules deploy from CI.
 - [ ] Confirm the Cloudflare Worker deploy job succeeds from CI.
 - [ ] Confirm the production URL serves the new asset hash and not the previous bundle.
