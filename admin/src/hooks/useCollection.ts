@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   collection,
   query,
@@ -31,25 +31,33 @@ export const useCollection = <T extends DocumentData>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const optionsRef = useRef(options);
+  const optionsKey = `${options.limit ?? ''}-${options.orderByField ?? ''}-${options.orderDirection ?? ''}-${options.whereField ?? ''}-${options.whereOperator ?? ''}-${typeof options.whereValue === 'object' ? (options.whereValue?.id ?? typeof options.whereValue) : options.whereValue}-${options.constraints?.length ?? 0}`;
+
+  useEffect(() => {
+    optionsRef.current = options;
+  }, [optionsKey]);
+
   const fetchData = useCallback(async () => {
+    const currentOptions = optionsRef.current;
     try {
       setLoading(true);
       const constraints: QueryConstraint[] = [];
 
-      if (options.whereField && options.whereOperator && options.whereValue !== undefined) {
-        constraints.push(where(options.whereField, options.whereOperator, options.whereValue));
+      if (currentOptions.whereField && currentOptions.whereOperator && currentOptions.whereValue !== undefined) {
+        constraints.push(where(currentOptions.whereField, currentOptions.whereOperator, currentOptions.whereValue));
       }
 
-      if (options.orderByField) {
-        constraints.push(orderBy(options.orderByField, options.orderDirection || 'desc'));
+      if (currentOptions.orderByField) {
+        constraints.push(orderBy(currentOptions.orderByField, currentOptions.orderDirection || 'desc'));
       }
 
-      if (options.limit) {
-        constraints.push(limit(options.limit));
+      if (currentOptions.limit) {
+        constraints.push(limit(currentOptions.limit));
       }
 
-      if (options.constraints) {
-        constraints.push(...options.constraints);
+      if (currentOptions.constraints) {
+        constraints.push(...currentOptions.constraints);
       }
 
       const q = query(collection(db, collectionName), ...constraints);
@@ -67,7 +75,7 @@ export const useCollection = <T extends DocumentData>(
     } finally {
       setLoading(false);
     }
-  }, [collectionName, options]);
+  }, [collectionName, optionsKey]);
 
   useEffect(() => {
     fetchData();
@@ -79,14 +87,21 @@ export const useCollection = <T extends DocumentData>(
 export const useCollectionCount = (collectionName: string, constraints?: QueryConstraint[]) => {
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const constraintsRef = useRef(constraints);
+  const constraintsLength = constraints?.length ?? 0;
+
+  useEffect(() => {
+    constraintsRef.current = constraints;
+  }, [constraintsLength]);
 
   useEffect(() => {
     const fetchCount = async () => {
       try {
         setLoading(true);
         let q = query(collection(db, collectionName));
-        if (constraints && constraints.length > 0) {
-          q = query(collection(db, collectionName), ...constraints);
+        const activeConstraints = constraintsRef.current;
+        if (activeConstraints && activeConstraints.length > 0) {
+          q = query(collection(db, collectionName), ...activeConstraints);
         }
         const snapshot = await getCountFromServer(q);
         setCount(snapshot.data().count);
@@ -98,7 +113,7 @@ export const useCollectionCount = (collectionName: string, constraints?: QueryCo
     };
 
     fetchCount();
-  }, [collectionName, constraints]);
+  }, [collectionName, constraintsLength]);
 
   return { count, loading };
 };

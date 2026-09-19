@@ -15,6 +15,7 @@ export const SearchPage: React.FC = () => {
   const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest');
   const [condition, setCondition] = useState(searchParams.get('condition') || '');
   const [verifiedOnly, setVerifiedOnly] = useState(searchParams.get('verified') === 'true');
+  const [locationFilter, setLocationFilter] = useState(searchParams.get('location') || '');
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
   const [products, setProducts] = useState<Product[]>([]);
@@ -35,10 +36,11 @@ export const SearchPage: React.FC = () => {
     if (sortBy !== 'newest') params.sort = sortBy;
     if (condition) params.condition = condition;
     if (verifiedOnly) params.verified = 'true';
+    if (locationFilter) params.location = locationFilter;
     if (minPrice) params.minPrice = minPrice;
     if (maxPrice) params.maxPrice = maxPrice;
     setSearchParams(params, { replace: true });
-  }, [searchQuery, selectedCategory, sortBy, condition, verifiedOnly, minPrice, maxPrice]);
+  }, [searchQuery, selectedCategory, sortBy, condition, verifiedOnly, locationFilter, minPrice, maxPrice]);
 
   const fetchCategories = async () => {
     try {
@@ -79,9 +81,56 @@ export const SearchPage: React.FC = () => {
           constraints.push(firestoreOrderBy('createdAt', 'desc'));
       }
 
-      const q = query(collection(db, 'products'), ...constraints);
-      const snapshot = await getDocs(q);
-      let data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      let data: Product[] = [];
+      try {
+        const q = query(collection(db, 'products'), ...constraints);
+        const snapshot = await getDocs(q);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      } catch (queryErr) {
+        // Fallback without compound constraints that require missing indexes
+        const fallbackConstraints: QueryConstraint[] = [];
+        if (selectedCategory) {
+          fallbackConstraints.push(where('categoryId', '==', selectedCategory));
+        }
+        const fallbackQ = query(collection(db, 'products'), ...fallbackConstraints);
+        const snapshot = await getDocs(fallbackQ);
+        data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+          .filter((p) => !p.status || p.status === 'active');
+
+        if (condition) {
+          data = data.filter((p) => p.condition === condition);
+        }
+
+        // Apply client-side sorting
+        if (sortBy === 'price_low') {
+          data.sort((a, b) => a.price - b.price);
+        } else if (sortBy === 'price_high') {
+          data.sort((a, b) => b.price - a.price);
+        } else if (sortBy === 'popular') {
+          data.sort((a, b) => (b.views || 0) - (a.views || 0));
+        } else {
+          data.sort((a, b) => {
+            const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
+            const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
+            return timeB - timeA;
+          });
+        }
+      }
+
+      // Fetch shops to evaluate verified shop filter and shop names
+      const verifiedShopSet = new Set<string>();
+      const shopMap = new Map<string, { name: string; verified: boolean; city?: string }>();
+      try {
+        const shopsSnapshot = await getDocs(collection(db, 'shops'));
+        shopsSnapshot.docs.forEach((doc) => {
+          const d = doc.data();
+          if (d.verified) verifiedShopSet.add(doc.id);
+          shopMap.set(doc.id, { name: d.name || '', verified: !!d.verified, city: d.city });
+        });
+      } catch (err) {
+        console.warn('Could not fetch shops for verification map:', err);
+      }
 
       if (minPrice) {
         data = data.filter((p) => p.price >= Number(minPrice));
@@ -89,14 +138,31 @@ export const SearchPage: React.FC = () => {
       if (maxPrice) {
         data = data.filter((p) => p.price <= Number(maxPrice));
       }
+      if (verifiedOnly) {
+        data = data.filter((p) => p.shopId && verifiedShopSet.has(p.shopId));
+      }
+      if (locationFilter) {
+        const locLower = locationFilter.toLowerCase();
+        data = data.filter((p) => {
+          const productCity = (p.sellerCity || '').toLowerCase();
+          const shopCity = (p.shopId ? shopMap.get(p.shopId)?.city || '' : '').toLowerCase();
+          return productCity.includes(locLower) || shopCity.includes(locLower);
+        });
+      }
 
       if (searchQuery) {
         const queryLower = searchQuery.toLowerCase();
-        data = data.filter(
-          (p) =>
+        data = data.filter((p) => {
+          const shopInfo = p.shopId ? shopMap.get(p.shopId) : undefined;
+          return (
             p.title.toLowerCase().includes(queryLower) ||
-            p.description?.toLowerCase().includes(queryLower)
-        );
+            p.description?.toLowerCase().includes(queryLower) ||
+            (p.brand && p.brand.toLowerCase().includes(queryLower)) ||
+            (p.sellerName && p.sellerName.toLowerCase().includes(queryLower)) ||
+            (p.sellerCity && p.sellerCity.toLowerCase().includes(queryLower)) ||
+            (shopInfo?.name && shopInfo.name.toLowerCase().includes(queryLower))
+          );
+        });
         trackEvent('search', { search_term: searchQuery, results_count: data.length });
       }
 
@@ -119,11 +185,12 @@ export const SearchPage: React.FC = () => {
     setSortBy('newest');
     setCondition('');
     setVerifiedOnly(false);
+    setLocationFilter('');
     setMinPrice('');
     setMaxPrice('');
   };
 
-  const hasActiveFilters = selectedCategory || sortBy !== 'newest' || condition || verifiedOnly || minPrice || maxPrice;
+  const hasActiveFilters = selectedCategory || sortBy !== 'newest' || condition || verifiedOnly || locationFilter || minPrice || maxPrice;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -214,6 +281,18 @@ export const SearchPage: React.FC = () => {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Location / City */}
+            <div className="mb-4">
+              <label className="text-sm font-medium text-gray-700 mb-2 block">City / Location</label>
+              <input
+                type="text"
+                placeholder="e.g. Yangon, Mandalay"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+              />
             </div>
 
             {/* Price Range */}

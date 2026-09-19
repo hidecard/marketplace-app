@@ -12,7 +12,7 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
 let recaptchaVerifier: RecaptchaVerifier | null = null;
-let recaptchaContainerId = 'phone-otp-recaptcha';
+const recaptchaContainerId = 'phone-otp-recaptcha';
 
 declare global {
   interface Window {

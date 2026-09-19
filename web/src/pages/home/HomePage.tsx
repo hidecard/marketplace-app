@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingCart, Bell, ChevronRight, Star, Shield, User } from 'lucide-react';
+import { Search, ShoppingCart, Bell, ChevronRight, Star, Shield, User, Globe, PlusCircle } from 'lucide-react';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Category, Shop } from '../../types';
 import { formatCurrency } from '../../utils/helpers';
 import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
+import { useLanguage } from '../../context/LanguageContext';
 import BannerAd from '../../components/ads/BannerAd';
 
 const bannerImages = [
@@ -19,6 +20,7 @@ export const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { items: cartItems } = useCartStore();
+  const { language, toggleLanguage, t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
@@ -54,34 +56,62 @@ export const HomePage: React.FC = () => {
 
   const fetchFeaturedProducts = async () => {
     try {
-      const q = query(
-        collection(db, 'products'),
-        where('status', '==', 'active'),
-        orderBy('views', 'desc'),
-        limit(10)
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      let data: Product[] = [];
+      try {
+        const q = query(
+          collection(db, 'products'),
+          where('status', '==', 'active'),
+          orderBy('views', 'desc'),
+          limit(10)
+        );
+        const snapshot = await getDocs(q);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      } catch (idxError: any) {
+        // Fallback if remote composite index is not created yet
+        const qFallback = query(collection(db, 'products'), limit(50));
+        const snapshot = await getDocs(qFallback);
+        data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+          .filter((p) => !p.status || p.status === 'active')
+          .sort((a, b) => (b.views || 0) - (a.views || 0))
+          .slice(0, 10);
+      }
       setFeaturedProducts(data);
     } catch (error) {
-      console.error('Error fetching featured products:', error);
+      console.warn('Error fetching featured products:', error);
     }
   };
 
   const fetchRecentProducts = async () => {
     try {
-      const q = query(
-        collection(db, 'products'),
-        where('status', '==', 'active'),
-        orderBy('createdAt', 'desc'),
-        limit(20)
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      let data: Product[] = [];
+      try {
+        const q = query(
+          collection(db, 'products'),
+          where('status', '==', 'active'),
+          orderBy('createdAt', 'desc'),
+          limit(20)
+        );
+        const snapshot = await getDocs(q);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      } catch (idxError: any) {
+        // Fallback if remote composite index is not created yet
+        const qFallback = query(collection(db, 'products'), limit(50));
+        const snapshot = await getDocs(qFallback);
+        data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+          .filter((p) => !p.status || p.status === 'active')
+          .sort((a, b) => {
+            const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
+            const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
+            return timeB - timeA;
+          })
+          .slice(0, 20);
+      }
       setRecentProducts(data);
-      setLoading(false);
     } catch (error) {
-      console.error('Error fetching recent products:', error);
+      console.warn('Error fetching recent products:', error);
+    } finally {
       setLoading(false);
     }
   };
@@ -118,23 +148,42 @@ export const HomePage: React.FC = () => {
               <div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center">
                 <ShoppingCart className="text-white" size={20} />
               </div>
-              <span className="text-lg font-bold text-gray-900">Marketplace</span>
+              <span className="text-lg font-bold text-gray-900">{t('marketplace')}</span>
             </Link>
             <div className="flex items-center gap-2">
-              <Link to="/notifications" className="p-2 rounded-full hover:bg-gray-100 relative">
-                <Bell size={22} className="text-gray-700" />
+              {/* Quick Sell Button */}
+              <Link
+                to="/sell"
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-700 hover:bg-primary-100 rounded-full text-xs font-semibold border border-primary-200"
+              >
+                <PlusCircle size={15} />
+                <span>{t('sell')}</span>
+              </Link>
+
+              {/* Language Switch */}
+              <button
+                onClick={toggleLanguage}
+                className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full border border-gray-200 bg-gray-50 hover:bg-gray-100 text-gray-700"
+                title={language === 'my' ? 'Switch to English' : 'မြန်မာဘာသာ'}
+              >
+                <Globe size={13} className="text-primary-600" />
+                <span>{language === 'my' ? 'မြန်မာ' : 'EN'}</span>
+              </button>
+
+              <Link to="/notifications" className="p-2 rounded-full hover:bg-gray-100 relative" aria-label="Notifications">
+                <Bell size={20} className="text-gray-700" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
               </Link>
-              <Link to="/cart" className="p-2 rounded-full hover:bg-gray-100 relative">
-                <ShoppingCart size={22} className="text-gray-700" />
+              <Link to="/cart" className="p-2 rounded-full hover:bg-gray-100 relative" aria-label="Cart">
+                <ShoppingCart size={20} className="text-gray-700" />
                 {cartItems.length > 0 && (
                   <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 text-white text-xs rounded-full flex items-center justify-center">
                     {cartItems.length}
                   </span>
                 )}
               </Link>
-              <Link to="/profile" className="p-2 rounded-full hover:bg-gray-100">
-                <User size={22} className="text-gray-700" />
+              <Link to="/profile" className="p-2 rounded-full hover:bg-gray-100" aria-label="Profile">
+                <User size={20} className="text-gray-700" />
               </Link>
             </div>
           </div>
@@ -142,10 +191,10 @@ export const HomePage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
             <input
               type="text"
-              placeholder="Search products, shops, categories..."
+              placeholder={t('searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-0 rounded-full focus:ring-2 focus:ring-primary-500 focus:bg-white"
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-0 rounded-full focus:ring-2 focus:ring-primary-500 focus:bg-white text-sm"
             />
           </form>
         </div>
@@ -159,14 +208,14 @@ export const HomePage: React.FC = () => {
           <div className="aspect-[4/1] bg-gradient-to-r from-primary-600 to-primary-400 flex items-center justify-center">
             <div className="text-center text-white px-4">
               <h2 className="text-xl font-bold mb-1">
-                {currentBanner === 0 && 'Welcome to Marketplace'}
-                {currentBanner === 1 && 'Free POS for Sellers'}
-                {currentBanner === 2 && 'Shop with Confidence'}
+                {currentBanner === 0 && (language === 'my' ? 'ပဒေသာပင် ဈေးကွက်မှ ကြိုဆိုပါသည်' : 'Welcome to Marketplace')}
+                {currentBanner === 1 && (language === 'my' ? 'အရောင်းဆိုင်များအတွက် အခမဲ့ POS' : 'Free POS for Sellers')}
+                {currentBanner === 2 && (language === 'my' ? 'ယုံကြည်စိတ်ချစွာ ဝယ်ယူနိုင်ပါသည်' : 'Shop with Confidence')}
               </h2>
               <p className="text-sm opacity-90">
-                {currentBanner === 0 && 'Buy and sell with trusted verified shops'}
-                {currentBanner === 1 && 'Manage your business with our free tools'}
-                {currentBanner === 2 && 'All verified shops are trusted and reliable'}
+                {currentBanner === 0 && (language === 'my' ? 'အတည်ပြုထားသော ယုံကြည်ရသည့် ဆိုင်များနှင့် စိတ်ချစွာ အရောင်းအဝယ်ပြုလုပ်ပါ' : 'Buy and sell with trusted verified shops')}
+                {currentBanner === 1 && (language === 'my' ? 'သင့်လုပ်ငန်းအရောင်းအဝယ်ကို အခမဲ့ ကိရိယာများဖြင့် စီမံခန့်ခွဲပါ' : 'Manage your business with our free tools')}
+                {currentBanner === 2 && (language === 'my' ? 'တရားဝင် စိစစ်အတည်ပြုထားသော ဆိုင်များမှ အရည်အသွေးပြည့် ပစ္စည်းများ' : 'All verified shops are trusted and reliable')}
               </p>
             </div>
           </div>
@@ -186,9 +235,9 @@ export const HomePage: React.FC = () => {
         {/* Categories */}
         <section className="mb-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Categories</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('categories')}</h2>
             <Link to="/categories" className="text-primary-600 text-sm font-medium flex items-center gap-1">
-              See all <ChevronRight size={16} />
+              {t('seeAll')} <ChevronRight size={16} />
             </Link>
           </div>
           {categories.length === 0 ? (
@@ -226,9 +275,9 @@ export const HomePage: React.FC = () => {
         {verifiedShops.length > 0 && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Verified Shops</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('verifiedShops')}</h2>
               <Link to="/shops" className="text-primary-600 text-sm font-medium flex items-center gap-1">
-                See all <ChevronRight size={16} />
+                {t('seeAll')} <ChevronRight size={16} />
               </Link>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
@@ -267,9 +316,9 @@ export const HomePage: React.FC = () => {
         {featuredProducts.length > 0 && (
           <section className="mb-6">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Popular Products</h2>
+              <h2 className="text-lg font-semibold text-gray-900">{t('featuredProducts')}</h2>
               <Link to="/search?sort=popular" className="text-primary-600 text-sm font-medium flex items-center gap-1">
-                See all <ChevronRight size={16} />
+                {t('seeAll')} <ChevronRight size={16} />
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3">
@@ -283,9 +332,9 @@ export const HomePage: React.FC = () => {
         {/* Recent Products */}
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">New Arrivals</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('recentProducts')}</h2>
             <Link to="/search?sort=newest" className="text-primary-600 text-sm font-medium flex items-center gap-1">
-              See all <ChevronRight size={16} />
+              {t('seeAll')} <ChevronRight size={16} />
             </Link>
           </div>
           {loading ? (
@@ -305,14 +354,18 @@ export const HomePage: React.FC = () => {
               <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ShoppingCart className="text-gray-400" size={32} />
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Products Yet</h3>
-              <p className="text-gray-500 mb-4">Be the first to list a product!</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {language === 'my' ? 'ပစ္စည်းများ မရှိသေးပါ' : 'No Products Yet'}
+              </h3>
+              <p className="text-gray-500 mb-4">
+                {language === 'my' ? 'ပထမဆုံး ပစ္စည်းတင်ရောင်းချသူ ဖြစ်လာပါ!' : 'Be the first to list a product!'}
+              </p>
               {user && (
                 <Link
                   to="/business/products/new"
                   className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-lg font-medium"
                 >
-                  Add Product
+                  {t('addProduct')}
                 </Link>
               )}
             </div>
@@ -323,17 +376,18 @@ export const HomePage: React.FC = () => {
               ))}
             </div>
           )}
-</section>
-        </main>
-      </div>
-    );
-  };
+        </section>
+      </main>
+    </div>
+  );
+};
 
 interface ProductCardProps {
   product: Product;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const { t } = useLanguage();
   return (
     <Link to={`/product/${product.id}`} className="bg-white rounded-xl overflow-hidden shadow-sm border border-gray-100">
       <div className="aspect-square bg-gray-100 relative">
@@ -345,12 +399,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
         )}
         {product.condition === 'used' && (
-          <span className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">
-            Used
+          <span className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full font-medium">
+            {t('conditionUsed')}
           </span>
         )}
         {product.comparePrice && product.comparePrice > product.price && (
-          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
+          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
             -{Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
           </span>
         )}
@@ -358,9 +412,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       <div className="p-3">
         <h3 className="text-sm font-medium text-gray-900 line-clamp-2 mb-1">{product.title}</h3>
         <div className="flex items-baseline gap-2">
-          <span className="text-base font-bold text-primary-600">{formatCurrency(product.price)} Ks</span>
+          <span className="text-base font-bold text-primary-600">{formatCurrency(product.price)} {t('currency')}</span>
           {product.comparePrice && product.comparePrice > product.price && (
-            <span className="text-xs text-gray-400 line-through">{formatCurrency(product.comparePrice)}</span>
+            <span className="text-xs text-gray-400 line-through">{formatCurrency(product.comparePrice)} {t('currency')}</span>
           )}
         </div>
       </div>

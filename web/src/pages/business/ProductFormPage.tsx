@@ -21,13 +21,15 @@ export const ProductFormPage: React.FC = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
+    brand: '',
+    city: 'Yangon',
     description: '',
     price: '',
     comparePrice: '',
     costPrice: '',
     categoryId: '',
     condition: 'new' as 'new' | 'used' | 'refurbished',
-    stock: '',
+    stock: '1',
     sku: '',
     weight: '',
   });
@@ -49,6 +51,8 @@ export const ProductFormPage: React.FC = () => {
         const product = productDoc.data() as Product;
         setFormData({
           title: product.title,
+          brand: product.brand || '',
+          city: product.sellerCity || 'Yangon',
           description: product.description,
           price: String(product.price),
           comparePrice: product.comparePrice ? String(product.comparePrice) : '',
@@ -93,20 +97,31 @@ export const ProductFormPage: React.FC = () => {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || !shop) return;
+    if (!files || files.length === 0 || !user) return;
 
     setUploadingImages(true);
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        const timestamp = Date.now();
-        const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        const storageRef = ref(storage, `products/${shop.id}/${fileName}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        return getDownloadURL(snapshot.ref);
+        try {
+          const timestamp = Date.now();
+          const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+          const folderId = shop ? shop.id : user.uid;
+          const storageRef = ref(storage, `products/${folderId}/${fileName}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          return await getDownloadURL(snapshot.ref);
+        } catch {
+          // Fallback to base64 Data URL for image upload robustness
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          });
+        }
       });
 
       const urls = await Promise.all(uploadPromises);
-      setImages([...images, ...urls]);
+      setImages((prev) => [...prev, ...urls]);
+      toast.success('Images uploaded');
     } catch (error) {
       toast.error('Failed to upload images');
     } finally {
@@ -120,16 +135,29 @@ export const ProductFormPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!shop || !formData.title || !formData.price || !formData.categoryId) {
+    if (!formData.title || !formData.price || !formData.categoryId) {
       toast.error('Please fill all required fields');
+      return;
+    }
+
+    if (!shop && !user?.phoneVerified) {
+      toast.error('Phone verification is required to sell items on Marketplace');
+      navigate('/verify-phone');
       return;
     }
 
     setLoading(true);
     try {
+      const isShopSeller = !!shop;
       const productData = {
-        shopId: shop.id,
+        shopId: shop?.id || '',
         sellerId: user!.uid,
+        sellerType: isShopSeller ? 'shop' : 'individual',
+        sellerName: isShopSeller ? shop!.name : (user!.displayName || 'Individual Seller'),
+        sellerPhone: isShopSeller ? shop!.phone : (user!.phoneNumber || ''),
+        sellerCity: isShopSeller ? (shop!.city || 'Yangon') : (formData.city || 'Yangon'),
+        sellerPhoneVerified: true,
+        brand: formData.brand || '',
         title: formData.title,
         description: formData.description,
         price: Number(formData.price),
@@ -137,7 +165,7 @@ export const ProductFormPage: React.FC = () => {
         costPrice: formData.costPrice ? Number(formData.costPrice) : null,
         categoryId: formData.categoryId,
         condition: formData.condition,
-        stock: Number(formData.stock) || 0,
+        stock: Number(formData.stock) || 1,
         sku: formData.sku || null,
         weight: formData.weight ? Number(formData.weight) : null,
         images,
@@ -148,15 +176,23 @@ export const ProductFormPage: React.FC = () => {
       if (isEdit && productId) {
         await updateDoc(doc(db, 'products', productId), productData);
         toast.success('Product updated successfully!');
-        navigate('/business/products');
+        if (isShopSeller) {
+          navigate('/business/products');
+        } else {
+          navigate(`/product/${productId}`);
+        }
       } else {
-        await addDoc(collection(db, 'products'), {
+        const docRef = await addDoc(collection(db, 'products'), {
           ...productData,
           views: 0,
           createdAt: serverTimestamp(),
         });
-        toast.success('Product added successfully!');
-        navigate('/business/products');
+        toast.success(isShopSeller ? 'Product added to your shop!' : 'Item listed successfully as Individual Seller!');
+        if (isShopSeller) {
+          navigate('/business/products');
+        } else {
+          navigate(`/product/${docRef.id}`);
+        }
       }
     } catch (error) {
       console.error('Error saving product:', error);
@@ -188,6 +224,21 @@ export const ProductFormPage: React.FC = () => {
       </header>
 
       <form onSubmit={handleSubmit} className="p-4 space-y-6">
+        {/* Seller Info Banner */}
+        {shop ? (
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-sm text-emerald-800">
+            <p className="font-semibold">Listing under Shop: {shop.name}</p>
+            <p className="text-xs text-emerald-600 mt-0.5">This product will be linked to your shop and synchronized with your POS/inventory.</p>
+          </div>
+        ) : (
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+            <p className="font-semibold">Individual Seller Listing (Phone Verified)</p>
+            <p className="text-xs text-blue-600 mt-0.5">
+              Selling as an individual seller. Buyers can browse, chat, and order with cash-on-delivery or direct pay.
+            </p>
+          </div>
+        )}
+
         {/* Images */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Product Images</label>
@@ -229,6 +280,31 @@ export const ProductFormPage: React.FC = () => {
             placeholder="Enter product title"
             required
           />
+        </div>
+
+        {/* Brand and City */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Brand (optional)</label>
+            <input
+              type="text"
+              value={formData.brand}
+              onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              placeholder="e.g. Apple, Samsung, or Unbranded"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">City / Location *</label>
+            <input
+              type="text"
+              value={formData.city}
+              onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              placeholder="e.g. Yangon, Mandalay"
+              required
+            />
+          </div>
         </div>
 
         {/* Description */}

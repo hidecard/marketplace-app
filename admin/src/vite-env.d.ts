@@ -1,4 +1,7 @@
 interface ImportMetaEnv {
+  readonly DEV?: boolean;
+  readonly PROD?: boolean;
+  readonly MODE?: string;
   readonly VITE_FIREBASE_API_KEY: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN: string;
   readonly VITE_FIREBASE_PROJECT_ID: string;

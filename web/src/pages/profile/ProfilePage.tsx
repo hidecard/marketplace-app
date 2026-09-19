@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingBag, Heart, MapPin, Store, LogOut, ChevronRight, Bell, Shield, HelpCircle, Settings, Edit } from 'lucide-react';
+import { ArrowLeft, ShoppingBag, Heart, MapPin, Store, LogOut, ChevronRight, Bell, Shield, HelpCircle, Settings, Edit, PlusCircle } from 'lucide-react';
 import { auth, db } from '../../services/firebase';
 import { useAuthStore } from '../../stores/authStore';
 import { doc, getDoc } from 'firebase/firestore';
@@ -43,6 +43,7 @@ export const ProfilePage: React.FC = () => {
   };
 
   const menuItems = [
+    { icon: PlusCircle, label: 'Sell an Item', path: '/business/products/new', color: 'text-amber-600', desc: 'List an item as individual seller or shop' },
     { icon: ShoppingBag, label: 'My Orders', path: '/orders', color: 'text-blue-600', desc: 'Track your orders' },
     { icon: Heart, label: 'Favorites', path: '/favorites', color: 'text-red-600', desc: 'Saved products' },
     { icon: MapPin, label: 'My Addresses', path: '/addresses', color: 'text-green-600', desc: 'Delivery addresses' },

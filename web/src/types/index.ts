@@ -50,8 +50,14 @@ export interface Shop {
 
 export interface Product {
   id: string;
-  shopId: string;
+  shopId?: string;
   sellerId: string;
+  sellerType?: 'individual' | 'shop';
+  sellerName?: string;
+  sellerPhone?: string;
+  sellerCity?: string;
+  sellerPhoneVerified?: boolean;
+  brand?: string;
   title: string;
   description: string;
   price: number;

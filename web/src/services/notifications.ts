@@ -28,11 +28,14 @@ export const requestNotificationPermission = async (userId: string): Promise<str
       }
     }
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
-    if (!vapidKey) {
-      console.warn('VITE_FIREBASE_VAPID_KEY not set; skipping FCM token retrieval');
+    if (!vapidKey || vapidKey.startsWith('your-') || vapidKey.includes('placeholder')) {
+      console.warn('VITE_FIREBASE_VAPID_KEY not set or is placeholder; skipping FCM token retrieval');
       return null;
     }
-    const token = await getToken(messaging, { vapidKey });
+    const token = await getToken(messaging, { vapidKey }).catch((err) => {
+      console.warn('Failed to retrieve FCM token:', err?.message || err);
+      return null;
+    });
     if (!token) return null;
 
     const userRef = doc(db, 'users', userId);

@@ -1,6 +1,7 @@
 import React from 'react';
 import { formatCurrency } from '../../utils/helpers';
 import { Product } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ProductCardProps {
   product: Product;
@@ -8,6 +9,14 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) => {
+  const { language, t } = useLanguage();
+
+  const getConditionLabel = () => {
+    if (product.condition === 'used') return t('conditionUsed');
+    if (product.condition === 'refurbished') return t('conditionRefurbished');
+    return t('conditionNew');
+  };
+
   return (
     <div
       onClick={onClick}
@@ -22,16 +31,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) =>
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
-            No Image
+            {language === 'my' ? 'ပုံမရှိပါ' : 'No Image'}
           </div>
         )}
         {product.condition === 'used' && (
-          <span className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded">
-            Used
+          <span className="absolute top-2 left-2 bg-yellow-500 text-white text-xs px-2 py-1 rounded font-medium">
+            {getConditionLabel()}
           </span>
         )}
         {product.comparePrice && product.comparePrice > product.price && (
-          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+          <span className="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-semibold">
             -{Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
           </span>
         )}
@@ -42,11 +51,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) =>
         </h3>
         <div className="flex items-baseline gap-2">
           <span className="text-lg font-bold text-primary-600">
-            {formatCurrency(product.price)} Ks
+            {formatCurrency(product.price)} {t('currency')}
           </span>
           {product.comparePrice && product.comparePrice > product.price && (
             <span className="text-sm text-gray-400 line-through">
-              {formatCurrency(product.comparePrice)} Ks
+              {formatCurrency(product.comparePrice)} {t('currency')}
             </span>
           )}
         </div>
@@ -54,3 +63,4 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onClick }) =>
     </div>
   );
 };
+

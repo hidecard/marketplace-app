@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, DollarSign, ShoppingBag, TrendingUp, Plus, BarChart3, FolderTree, FileText, Menu } from 'lucide-react';
+import { Package, DollarSign, ShoppingBag, TrendingUp, Plus, BarChart3, FolderTree, FileText, Menu, Boxes, Receipt, Users, ShieldCheck, Settings } from 'lucide-react';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { Product, Shop, Order, POSSale } from '../../types';
@@ -221,42 +221,72 @@ export const BusinessDashboardPage: React.FC = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-6 gap-3 mb-6">
-          <Link to="/business/products/new" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-6">
+          <Link to="/business/products/new" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
             <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
               <Plus className="text-primary-600" size={20} />
             </div>
-            <span className="text-xs text-gray-600 text-center">Add Product</span>
+            <span className="text-xs font-medium text-gray-700 text-center">Add Product</span>
           </Link>
-          <Link to="/business/pos" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
+          <Link to="/business/pos" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
             <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
               <DollarSign className="text-green-600" size={20} />
             </div>
-            <span className="text-xs text-gray-600 text-center">New Sale</span>
+            <span className="text-xs font-medium text-gray-700 text-center">POS Terminal</span>
           </Link>
-          <Link to="/business/orders" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
+          <Link to="/business/orders" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
               <ShoppingBag className="text-blue-600" size={20} />
             </div>
-            <span className="text-xs text-gray-600 text-center">Orders</span>
+            <span className="text-xs font-medium text-gray-700 text-center">Orders</span>
           </Link>
-          <Link to="/business/analytics" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
-            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-              <BarChart3 className="text-purple-600" size={20} />
+          <Link to="/business/inventory" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
+            <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+              <Boxes className="text-amber-600" size={20} />
             </div>
-            <span className="text-xs text-gray-600 text-center">Analytics</span>
+            <span className="text-xs font-medium text-gray-700 text-center">Inventory</span>
           </Link>
-          <Link to="/business/categories" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
+          <Link to="/business/expenses" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
+            <div className="w-10 h-10 bg-rose-100 rounded-full flex items-center justify-center">
+              <Receipt className="text-rose-600" size={20} />
+            </div>
+            <span className="text-xs font-medium text-gray-700 text-center">Expenses</span>
+          </Link>
+          <Link to="/business/customers" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
+            <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center">
+              <Users className="text-teal-600" size={20} />
+            </div>
+            <span className="text-xs font-medium text-gray-700 text-center">Customers</span>
+          </Link>
+          <Link to="/business/categories" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
             <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
               <FolderTree className="text-orange-600" size={20} />
             </div>
-            <span className="text-xs text-gray-600 text-center">Categories</span>
+            <span className="text-xs font-medium text-gray-700 text-center">Categories</span>
           </Link>
-          <Link to="/business/reports" className="flex flex-col items-center gap-2 bg-white rounded-xl p-4">
+          <Link to="/business/analytics" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
+            <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+              <BarChart3 className="text-purple-600" size={20} />
+            </div>
+            <span className="text-xs font-medium text-gray-700 text-center">Analytics</span>
+          </Link>
+          <Link to="/business/reports" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
             <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
               <FileText className="text-pink-600" size={20} />
             </div>
-            <span className="text-xs text-gray-600 text-center">Reports</span>
+            <span className="text-xs font-medium text-gray-700 text-center">Reports & P&L</span>
+          </Link>
+          <Link to="/business/verification" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
+            <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
+              <ShieldCheck className="text-indigo-600" size={20} />
+            </div>
+            <span className="text-xs font-medium text-gray-700 text-center">Verification</span>
+          </Link>
+          <Link to="/business/settings" className="flex flex-col items-center gap-2 bg-white rounded-xl p-3 sm:p-4 hover:shadow-sm transition-shadow">
+            <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center">
+              <Settings className="text-slate-600" size={20} />
+            </div>
+            <span className="text-xs font-medium text-gray-700 text-center">Settings</span>
           </Link>
         </div>
 

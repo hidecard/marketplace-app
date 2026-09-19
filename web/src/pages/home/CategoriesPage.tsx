@@ -49,17 +49,35 @@ export const CategoriesPage: React.FC = () => {
   const fetchProducts = async (categoryId: string) => {
     setLoading(true);
     try {
-      const q = query(
-        collection(db, 'products'),
-        where('categoryId', '==', categoryId),
-        where('status', '==', 'active'),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      let data: Product[] = [];
+      try {
+        const q = query(
+          collection(db, 'products'),
+          where('categoryId', '==', categoryId),
+          where('status', '==', 'active'),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      } catch (idxErr) {
+        // Fallback without requiring composite index
+        const qFallback = query(
+          collection(db, 'products'),
+          where('categoryId', '==', categoryId)
+        );
+        const snapshot = await getDocs(qFallback);
+        data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+          .filter((p) => !p.status || p.status === 'active')
+          .sort((a, b) => {
+            const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
+            const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
+            return timeB - timeA;
+          });
+      }
       setProducts(data);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.warn('Error fetching products:', error);
     } finally {
       setLoading(false);
     }

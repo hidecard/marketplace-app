@@ -9,6 +9,7 @@
     "shared"
   ],
   "scripts": {
+    "dev": "npm run dev -w web",
     "dev:web": "npm run dev -w web",
     "dev:admin": "npm run dev -w admin",
     "build": "npm run build:web",

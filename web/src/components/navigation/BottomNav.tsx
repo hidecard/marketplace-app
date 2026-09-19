@@ -1,14 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, ShoppingBag, MessageCircle, User } from 'lucide-react';
-
-const navItems = [
-  { path: '/', icon: Home, label: 'Home' },
-  { path: '/search', icon: Search, label: 'Search' },
-  { path: '/cart', icon: ShoppingBag, label: 'Cart' },
-  { path: '/chats', icon: MessageCircle, label: 'Chats' },
-  { path: '/profile', icon: User, label: 'Profile' },
-];
+import { useLanguage } from '../../context/LanguageContext';
 
 interface BottomNavProps {
   className?: string;
@@ -16,6 +9,15 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ className = '' }) => {
   const location = useLocation();
+  const { t } = useLanguage();
+
+  const navItems = [
+    { path: '/', icon: Home, label: t('home') },
+    { path: '/search', icon: Search, label: t('search') },
+    { path: '/cart', icon: ShoppingBag, label: t('cart') },
+    { path: '/chats', icon: MessageCircle, label: t('chats') },
+    { path: '/profile', icon: User, label: t('profile') },
+  ];
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -45,3 +47,4 @@ export const BottomNav: React.FC<BottomNavProps> = ({ className = '' }) => {
     </nav>
   );
 };
+

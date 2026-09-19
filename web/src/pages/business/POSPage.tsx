@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, Plus, Minus, Trash2, ShoppingCart, Banknote, Smartphone, CreditCard, Printer, Scan, Menu, FileDown, AlertCircle } from 'lucide-react';
-import { collection, query, where, getDocs, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, serverTimestamp, addDoc, doc, runTransaction } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import { FunctionsService } from '../../services/functions';
 import { Product, Shop } from '../../types';
@@ -139,16 +139,28 @@ export const POSPage: React.FC = () => {
   const fetchProducts = async () => {
     if (!shop) return;
     try {
-      const q = query(
-        collection(db, 'products'),
-        where('shopId', '==', shop.id),
-        where('status', '==', 'active'),
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      let data: Product[] = [];
+      try {
+        const q = query(
+          collection(db, 'products'),
+          where('shopId', '==', shop.id),
+          where('status', '==', 'active'),
+        );
+        const snapshot = await getDocs(q);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      } catch (idxErr) {
+        const qFallback = query(
+          collection(db, 'products'),
+          where('shopId', '==', shop.id),
+        );
+        const snapshot = await getDocs(qFallback);
+        data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+          .filter((p) => !p.status || p.status === 'active');
+      }
       setProducts(data);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.warn('Error fetching products:', error);
     }
   };
 
@@ -244,17 +256,54 @@ export const POSPage: React.FC = () => {
     }
 
     try {
-      const result = await FunctionsService.callOrThrow<any>('createPOSSale', {
-        shopId: shop.id,
-        items: cart.map((i) => ({
-          productId: i.product.id,
-          quantity: i.quantity,
-        })),
-        discount,
-        tax,
-        paymentMethod,
-        idempotencyKey: pending.id,
-      });
+      let createdAtMs = Date.now();
+      try {
+        const result = await FunctionsService.callOrThrow<any>('createPOSSale', {
+          shopId: shop.id,
+          items: cart.map((i) => ({
+            productId: i.product.id,
+            quantity: i.quantity,
+          })),
+          discount,
+          tax,
+          paymentMethod,
+          idempotencyKey: pending.id,
+        });
+        if (result?.createdAtMs) createdAtMs = result.createdAtMs;
+      } catch (fnErr: any) {
+        console.warn('Cloud Function unavailable, running direct Firestore atomic transaction:', fnErr);
+        // Direct Firestore atomic transaction fallback
+        await runTransaction(db, async (tx) => {
+          for (const item of cart) {
+            const productRef = doc(db, 'products', item.product.id);
+            const productDoc = await tx.get(productRef);
+            if (productDoc.exists()) {
+              const currentStock = productDoc.data().stock ?? 0;
+              tx.update(productRef, {
+                stock: Math.max(0, currentStock - item.quantity),
+                salesCount: (productDoc.data().salesCount ?? 0) + item.quantity,
+                updatedAt: serverTimestamp(),
+              });
+            }
+          }
+          const saleDocRef = doc(db, 'pos_sales', pending.id);
+          tx.set(saleDocRef, {
+            id: pending.id,
+            shopId: shop.id,
+            cashierId: user.uid,
+            items: pending.items.map(item => ({
+              ...item,
+              productId: cart.find(c => c.product.title === item.title)?.product.id || '',
+            })),
+            subtotal,
+            discount,
+            tax,
+            total,
+            paymentMethod,
+            createdAt: serverTimestamp(),
+          });
+        });
+      }
 
       const confirmed: SaleSnapshot = {
         id: pending.id,
@@ -266,7 +315,7 @@ export const POSPage: React.FC = () => {
         tax,
         total,
         paymentMethod,
-        createdAtMs: result?.createdAtMs ?? Date.now(),
+        createdAtMs,
       };
 
       setLastSale(confirmed);

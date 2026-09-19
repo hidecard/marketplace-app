@@ -42,31 +42,59 @@ export const CategoryDetailPage: React.FC = () => {
     if (!category) return;
     setLoading(true);
     try {
-      let q = query(
-        collection(db, 'products'),
-        where('categoryId', '==', category.id),
-        where('status', '==', 'active')
-      );
+      let data: Product[] = [];
+      try {
+        let q = query(
+          collection(db, 'products'),
+          where('categoryId', '==', category.id),
+          where('status', '==', 'active')
+        );
 
-      switch (sortBy) {
-        case 'price_low':
-          q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('price', 'asc'));
-          break;
-        case 'price_high':
-          q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('price', 'desc'));
-          break;
-        case 'popular':
-          q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('views', 'desc'));
-          break;
-        default:
-          q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('createdAt', 'desc'));
+        switch (sortBy) {
+          case 'price_low':
+            q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('price', 'asc'));
+            break;
+          case 'price_high':
+            q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('price', 'desc'));
+            break;
+          case 'popular':
+            q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('views', 'desc'));
+            break;
+          default:
+            q = query(collection(db, 'products'), where('categoryId', '==', category.id), where('status', '==', 'active'), orderBy('createdAt', 'desc'));
+        }
+
+        const snapshot = await getDocs(q);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      } catch (idxErr) {
+        // Fallback without requiring composite index
+        const qFallback = query(
+          collection(db, 'products'),
+          where('categoryId', '==', category.id)
+        );
+        const snapshot = await getDocs(qFallback);
+        data = snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+          .filter((p) => !p.status || p.status === 'active');
+
+        // Client-side sort
+        if (sortBy === 'price_low') {
+          data.sort((a, b) => a.price - b.price);
+        } else if (sortBy === 'price_high') {
+          data.sort((a, b) => b.price - a.price);
+        } else if (sortBy === 'popular') {
+          data.sort((a, b) => (b.views || 0) - (a.views || 0));
+        } else {
+          data.sort((a, b) => {
+            const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
+            const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
+            return timeB - timeA;
+          });
+        }
       }
-
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
       setProducts(data);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.warn('Error fetching products:', error);
     } finally {
       setLoading(false);
     }

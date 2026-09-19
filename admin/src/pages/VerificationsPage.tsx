@@ -28,34 +28,45 @@ export const VerificationsPage: React.FC = () => {
       v.ownerName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleApprove = async (id: string) => {
+  const handleApprove = async (item: VerificationRequest) => {
     try {
-      await updateDoc(doc(db, 'verification_requests', id), {
+      await updateDoc(doc(db, 'verification_requests', item.id), {
         status: 'approved',
         updatedAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, 'shops', id), {
-        verified: true,
-        verificationStatus: 'approved',
-        updatedAt: serverTimestamp(),
-      });
-      toast.success('Verification approved');
+      if (item.shopId) {
+        await updateDoc(doc(db, 'shops', item.shopId), {
+          verified: true,
+          verificationStatus: 'approved',
+          updatedAt: serverTimestamp(),
+        });
+      }
+      if (item.userId) {
+        await updateDoc(doc(db, 'users', item.userId), {
+          shopVerified: true,
+          updatedAt: serverTimestamp(),
+        });
+      }
+      toast.success('Verification approved and shop verified');
       refetch();
     } catch (error) {
       toast.error('Failed to approve verification');
     }
   };
 
-  const handleReject = async (id: string) => {
+  const handleReject = async (item: VerificationRequest) => {
     try {
-      await updateDoc(doc(db, 'verification_requests', id), {
+      await updateDoc(doc(db, 'verification_requests', item.id), {
         status: 'rejected',
         updatedAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, 'shops', id), {
-        verificationStatus: 'rejected',
-        updatedAt: serverTimestamp(),
-      });
+      if (item.shopId) {
+        await updateDoc(doc(db, 'shops', item.shopId), {
+          verified: false,
+          verificationStatus: 'rejected',
+          updatedAt: serverTimestamp(),
+        });
+      }
       toast.success('Verification rejected');
       refetch();
     } catch (error) {
@@ -170,14 +181,14 @@ export const VerificationsPage: React.FC = () => {
                       {verification.status === 'pending' && (
                         <div className="flex justify-end gap-2">
                           <button
-                            onClick={() => handleApprove(verification.id)}
+                            onClick={() => handleApprove(verification)}
                             className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
                             title="Approve"
                           >
                             <CheckCircle size={16} />
                           </button>
                           <button
-                            onClick={() => handleReject(verification.id)}
+                            onClick={() => handleReject(verification)}
                             className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
                             title="Reject"
                           >

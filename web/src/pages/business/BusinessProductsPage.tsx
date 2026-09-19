@@ -46,16 +46,31 @@ export const BusinessProductsPage: React.FC = () => {
     if (!shop) return;
     setLoading(true);
     try {
-      const q = query(
-        collection(db, 'products'),
-        where('shopId', '==', shop.id),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      let data: Product[] = [];
+      try {
+        const q = query(
+          collection(db, 'products'),
+          where('shopId', '==', shop.id),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+      } catch (idxErr) {
+        const qFallback = query(
+          collection(db, 'products'),
+          where('shopId', '==', shop.id)
+        );
+        const snapshot = await getDocs(qFallback);
+        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+        data.sort((a, b) => {
+          const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
+          const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
+          return timeB - timeA;
+        });
+      }
       setProducts(data);
     } catch (error) {
-      console.error('Error fetching products:', error);
+      console.warn('Error fetching products:', error);
     } finally {
       setLoading(false);
     }

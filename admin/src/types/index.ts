@@ -56,6 +56,11 @@ export interface Product {
   shopId: string | null;
   sellerId: string;
   sellerType: SellerType;
+  sellerName?: string;
+  sellerPhone?: string;
+  sellerCity?: string;
+  sellerPhoneVerified?: boolean;
+  brand?: string;
   title: string;
   description: string;
   price: number;

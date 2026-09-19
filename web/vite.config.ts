@@ -89,11 +89,11 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: true,
-    allowedHosts: true,
+    host: '0.0.0.0',
   },
   build: {
-    outDir: 'dist',
+    outDir: path.resolve(__dirname, '../dist'),
+    emptyOutDir: true,
     sourcemap: true,
   },
 });

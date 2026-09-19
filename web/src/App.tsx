@@ -40,6 +40,7 @@ import { BusinessCategoriesPage } from './pages/business/BusinessCategoriesPage'
 import { BusinessReportsPage } from './pages/business/BusinessReportsPage';
 import { NotFoundPage } from './pages/not-found/NotFoundPage';
 import { MainLayout } from './components/layout/MainLayout';
+import { LanguageProvider } from './context/LanguageContext';
 import { useAuth } from './hooks/useAuth';
 
 const LoadingSpinner = () => (
@@ -55,29 +56,33 @@ export const App: React.FC = () => {
   useAuth();
 
   return (
-    <BrowserRouter>
-      <Toaster position="top-center" />
-      <React.Suspense fallback={<LoadingSpinner />}>
-        <Routes>
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<LoginPage />} />
-          </Route>
+    <LanguageProvider>
+      <BrowserRouter>
+        <Toaster position="top-center" />
+        <React.Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route element={<AuthLayout />}>
+              <Route path="/login" element={<LoginPage />} />
+            </Route>
 
-          <Route element={<MainLayout />}>
-            {/* Public browsing */}
-            <Route path="/" element={<HomePage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/category/:slug" element={<CategoryDetailPage />} />
-            <Route path="/shops" element={<ShopsPage />} />
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/product/:productId" element={<ProductDetailPage />} />
-            <Route path="/shop/:shopId" element={<ShopPage />} />
-            <Route path="/help" element={<HelpSupportPage />} />
-          </Route>
+            <Route element={<MainLayout />}>
+              {/* Public browsing */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/categories" element={<CategoriesPage />} />
+              <Route path="/category/:slug" element={<CategoryDetailPage />} />
+              <Route path="/shops" element={<ShopsPage />} />
+              <Route path="/search" element={<SearchPage />} />
+              <Route path="/product/:productId" element={<ProductDetailPage />} />
+              <Route path="/shop/:shopId" element={<ShopPage />} />
+              <Route path="/help" element={<HelpSupportPage />} />
+            </Route>
 
-          <Route element={<ProtectedRoute />}>
-          <Route element={<MainLayout />}>
-            {/* Orders */}
+            <Route element={<ProtectedRoute />}>
+            <Route element={<MainLayout />}>
+              {/* Sell route for individual and shop sellers */}
+              <Route path="/sell" element={<ProductFormPage />} />
+
+              {/* Orders */}
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/orders/:orderId" element={<OrderDetailPage />} />
 
@@ -122,5 +127,6 @@ export const App: React.FC = () => {
         </Routes>
       </React.Suspense>
     </BrowserRouter>
-  );
+  </LanguageProvider>
+);
 };
