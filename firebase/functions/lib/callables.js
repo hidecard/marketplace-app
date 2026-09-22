@@ -583,7 +583,7 @@ exports.createOrder = secureCallable(async (data, context) => {
         return idemSnap.data();
     }
     const result = await db.runTransaction(async (tx) => {
-        var _a, _b;
+        var _a, _b, _c;
         const existingOrder = await tx.get(idemRef);
         if (existingOrder.exists)
             return existingOrder.data();
@@ -595,8 +595,12 @@ exports.createOrder = secureCallable(async (data, context) => {
         }
         const products = productSnaps.map((s) => (Object.assign(Object.assign({}, s.data()), { id: s.id })));
         const shopId = (_a = products[0].shopId) !== null && _a !== void 0 ? _a : '';
-        const sellerId = products[0].sellerId;
-        if (!sellerId || !products.every((p) => { var _a; return ((_a = p.shopId) !== null && _a !== void 0 ? _a : '') === shopId && p.sellerId === sellerId; })) {
+        let sellerId = products[0].sellerId;
+        if (!sellerId && shopId) {
+            const shopSnap = await tx.get(db.collection('shops').doc(shopId));
+            sellerId = (_b = shopSnap.data()) === null || _b === void 0 ? void 0 : _b.ownerId;
+        }
+        if (!sellerId || !products.every((p) => { var _a, _b; return ((_a = p.shopId) !== null && _a !== void 0 ? _a : '') === shopId && ((_b = p.sellerId) !== null && _b !== void 0 ? _b : sellerId) === sellerId; })) {
             throw new functions.https.HttpsError('invalid-argument', 'All items must be from one seller');
         }
         if (sellerId === uid) {
@@ -651,7 +655,7 @@ exports.createOrder = secureCallable(async (data, context) => {
             status: 'pending',
             paymentMethod: 'cod',
             paymentStatus: 'pending',
-            note: (_b = optionalString(data.note, 'note', 500)) !== null && _b !== void 0 ? _b : '',
+            note: (_c = optionalString(data.note, 'note', 500)) !== null && _c !== void 0 ? _c : '',
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         };
