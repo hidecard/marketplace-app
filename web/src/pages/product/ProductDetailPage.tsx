@@ -238,7 +238,7 @@ export const ProductDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen bg-gray-50 pb-[calc(10rem+env(safe-area-inset-bottom,0px))] lg:pb-24">
       {/* Header */}
       <header className="sticky top-0 bg-white/95 backdrop-blur z-40 border-b border-gray-100">
         <div className="flex items-center justify-between px-4 h-14">
@@ -457,7 +457,7 @@ export const ProductDetailPage: React.FC = () => {
       )}
 
       {/* Bottom Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex items-center gap-3 z-50">
+      <div className="fixed bottom-nav-offset lg:bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4 flex items-center gap-3 z-50">
         <button
           onClick={handleChat}
           className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50"

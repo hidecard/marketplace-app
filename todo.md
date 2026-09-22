@@ -1,6 +1,6 @@
 # Padetha Marketplace Project Todo List
 
-> **Last updated:** 2026-09-19
+> **Last updated:** 2026-09-22
 >
 > **Current priority:** Web PWA first. Flutter/Android work is intentionally deferred until the Web release is stable.
 > **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
@@ -172,8 +172,9 @@
 
 ### Web and Admin Product Work
 
-- [ ] Add a full admin verification detail view with evidence-photo gallery rather than list-only review.
-- [ ] Replace the rejection `prompt()` with a designed moderation dialog.
+- [x] Fix mobile BottomNav overlap with Cart/Product fixed action bars using shared safe-area-aware offsets and content spacing.
+- [x] Add a full admin verification detail view with evidence-photo gallery rather than list-only review.
+- [x] Replace the rejection `prompt()` with a designed moderation dialog.
 - [ ] Complete Burmese/English coverage for remaining hard-coded Web and admin strings.
 - [ ] Add locale-aware date, number, and Myanmar kyat formatting.
 - [ ] Add Web/admin error reporting such as Sentry.

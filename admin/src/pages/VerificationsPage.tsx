@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, CheckCircle, XCircle } from 'lucide-react';
+import { Search, CheckCircle, XCircle, Eye, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AdminLayout } from '../components/layout/AdminLayout';
 import { useCollection } from '../hooks/useCollection';
 import { VerificationRequest } from '../types';
@@ -11,6 +11,10 @@ import toast from 'react-hot-toast';
 export const VerificationsPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [selectedVerification, setSelectedVerification] = useState<VerificationRequest | null>(null);
+  const [rejectionTarget, setRejectionTarget] = useState<VerificationRequest | null>(null);
+  const [rejectionNote, setRejectionNote] = useState('');
+  const [selectedPhoto, setSelectedPhoto] = useState(0);
   const { data: verifications, loading, refetch } = useCollection<VerificationRequest>(
     'verification_requests',
     {
@@ -40,12 +44,21 @@ export const VerificationsPage: React.FC = () => {
   };
 
   const handleReject = async (item: VerificationRequest) => {
+    setRejectionTarget(item);
+    setRejectionNote(item.adminNote || '');
+  };
+
+  const submitRejection = async () => {
+    if (!rejectionTarget || !rejectionNote.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
     try {
-      const note = window.prompt('Reason for rejection (shown to the shop owner):');
-      if (note === null) return;
       const reviewVerification = httpsCallable(functions, 'reviewVerification');
-      await reviewVerification({ requestId: item.id, decision: 'rejected', note });
+      await reviewVerification({ requestId: rejectionTarget.id, decision: 'rejected', note: rejectionNote.trim() });
       toast.success('Verification rejected');
+      setRejectionTarget(null);
+      setRejectionNote('');
       refetch();
     } catch (error) {
       toast.error('Failed to reject verification');
@@ -159,6 +172,16 @@ export const VerificationsPage: React.FC = () => {
                       {verification.status === 'pending' && (
                         <div className="flex justify-end gap-2">
                           <button
+                            onClick={() => {
+                              setSelectedVerification(verification);
+                              setSelectedPhoto(0);
+                            }}
+                            className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                            title="View details"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
                             onClick={() => handleApprove(verification)}
                             className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
                             title="Approve"
@@ -174,6 +197,18 @@ export const VerificationsPage: React.FC = () => {
                           </button>
                         </div>
                       )}
+                      {verification.status !== 'pending' && (
+                        <button
+                          onClick={() => {
+                            setSelectedVerification(verification);
+                            setSelectedPhoto(0);
+                          }}
+                          className="p-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                          title="View details"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -182,6 +217,70 @@ export const VerificationsPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {selectedVerification && (
+        <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">{selectedVerification.shopName}</h2>
+                <p className="text-sm text-gray-500">Verification details and submitted evidence</p>
+              </div>
+              <button onClick={() => setSelectedVerification(null)} className="p-2 rounded-lg hover:bg-gray-100" aria-label="Close details">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+              <div>
+                <div className="aspect-video rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
+                  {selectedVerification.shopPhotos?.length ? (
+                    <img src={selectedVerification.shopPhotos[selectedPhoto]} alt={`${selectedVerification.shopName} evidence ${selectedPhoto + 1}`} className="w-full h-full object-contain" />
+                  ) : (
+                    <p className="text-sm text-gray-500">No evidence photos submitted</p>
+                  )}
+                </div>
+                {selectedVerification.shopPhotos?.length > 1 && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <button onClick={() => setSelectedPhoto((photo) => (photo - 1 + selectedVerification.shopPhotos.length) % selectedVerification.shopPhotos.length)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50" aria-label="Previous photo"><ChevronLeft size={18} /></button>
+                    <div className="flex gap-2 overflow-x-auto">
+                      {selectedVerification.shopPhotos.map((photo, index) => (
+                        <button key={photo} onClick={() => setSelectedPhoto(index)} className={`w-16 h-12 rounded-lg overflow-hidden border-2 ${index === selectedPhoto ? 'border-primary-600' : 'border-transparent'}`}>
+                          <img src={photo} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={() => setSelectedPhoto((photo) => (photo + 1) % selectedVerification.shopPhotos.length)} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50" aria-label="Next photo"><ChevronRight size={18} /></button>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div><p className="text-gray-500">Owner</p><p className="font-medium text-gray-900">{selectedVerification.ownerName}</p></div>
+                  <div><p className="text-gray-500">Phone</p><p className="font-medium text-gray-900">{selectedVerification.phone}</p></div>
+                  <div><p className="text-gray-500">Email</p><p className="font-medium text-gray-900 break-all">{selectedVerification.email}</p></div>
+                  <div><p className="text-gray-500">Location</p><p className="font-medium text-gray-900">{selectedVerification.city}, {selectedVerification.region}</p></div>
+                </div>
+                <div><p className="text-gray-500 mb-1">Address</p><p className="text-gray-900">{selectedVerification.address}</p></div>
+                <div><p className="text-gray-500 mb-1">Description</p><p className="text-gray-900 whitespace-pre-wrap">{selectedVerification.description || 'No description provided.'}</p></div>
+                {selectedVerification.adminNote && <div className="rounded-lg bg-red-50 p-3 text-red-800"><p className="font-medium">Admin note</p><p>{selectedVerification.adminNote}</p></div>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectionTarget && (
+        <div className="fixed inset-0 z-50 bg-black/50 p-4 flex items-center justify-center" role="dialog" aria-modal="true">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <div><h2 className="text-lg font-semibold text-gray-900">Reject verification</h2><p className="text-sm text-gray-500 mt-1">The shop owner will see this reason.</p></div>
+              <button onClick={() => setRejectionTarget(null)} className="p-2 rounded-lg hover:bg-gray-100" aria-label="Close rejection dialog"><X size={18} /></button>
+            </div>
+            <textarea value={rejectionNote} onChange={(event) => setRejectionNote(event.target.value)} rows={5} maxLength={500} autoFocus placeholder="Explain what needs to be corrected..." className="w-full rounded-xl border border-gray-300 p-3 text-sm focus:border-primary-500 focus:ring-primary-500" />
+            <div className="mt-4 flex justify-end gap-3"><button onClick={() => setRejectionTarget(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</button><button onClick={submitRejection} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700">Reject verification</button></div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

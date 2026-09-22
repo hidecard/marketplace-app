@@ -138,7 +138,7 @@ export const CartPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
+    <div className="min-h-screen bg-gray-50 pb-[calc(11rem+env(safe-area-inset-bottom,0px))] lg:pb-32">
       <header className="sticky top-0 bg-white border-b border-gray-200 z-40">
         <div className="flex items-center px-4 h-14">
           <Link to="/" className="p-2 -ml-2 rounded-full hover:bg-gray-100">
@@ -237,7 +237,7 @@ export const CartPage: React.FC = () => {
       </div>
 
       {/* Checkout Button */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4">
+      <div className="fixed bottom-nav-offset lg:bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-3 sm:p-4 z-40">
         <button
           onClick={handleCheckout}
           disabled={loading || !selectedAddress}

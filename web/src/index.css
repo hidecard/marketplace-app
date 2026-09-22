@@ -3,16 +3,38 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --mobile-bottom-nav-height: calc(4rem + env(safe-area-inset-bottom, 0px));
+  }
+
   body {
     @apply antialiased text-gray-900 bg-gray-50;
   }
 }
 
 @layer utilities {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pb-mobile-nav {
+    padding-bottom: calc(var(--mobile-bottom-nav-height) + 0.5rem);
+  }
+
+  .bottom-nav-offset {
+    bottom: var(--mobile-bottom-nav-height);
+  }
+
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+}
+
+@media (min-width: 1024px) {
+  .bottom-nav-offset {
+    bottom: 0;
   }
 }

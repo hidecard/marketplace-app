@@ -12,7 +12,7 @@ export const MainLayout: React.FC = () => {
       <div className="flex">
         <Sidebar />
         <div className={`flex-1 flex flex-col min-h-screen ${isBusinessRoute ? 'lg:ml-72' : ''}`}>
-          <main className={`flex-1 ${isBusinessRoute ? 'pb-6' : 'pb-20 lg:pb-6'}`}>
+          <main className={`flex-1 ${isBusinessRoute ? 'pb-6' : 'pb-mobile-nav lg:pb-6'}`}>
             <Outlet />
           </main>
         </div>
