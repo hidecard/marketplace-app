@@ -145,6 +145,7 @@ export const ProductDetailPage: React.FC = () => {
     addItem({
       productId: product.id,
       shopId: product.shopId || '',
+      sellerId: product.sellerId,
       title: product.title,
       image: product.images?.[0] || '',
       price: product.price,

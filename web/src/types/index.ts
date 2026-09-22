@@ -243,6 +243,7 @@ export interface InventoryMovement {
 export interface CartItem {
   productId: string;
   shopId: string;
+  sellerId?: string;
   title: string;
   image: string;
   price: number;

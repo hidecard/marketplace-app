@@ -76,6 +76,8 @@
 - [x] Route expense creation through its authorized callable.
 - [x] Improve POS layout for mobile/tablet widths.
 - [x] Record receipt-print intent and keep failed print payloads in a bounded local retry queue.
+- [x] Fix marketplace checkout for legacy products without sellerId by resolving the shop owner server-side.
+- [x] Split carts containing products from different sellers into separate COD orders.
 
 ### Chat, Notifications, and Trust Boundaries
 

@@ -79,33 +79,45 @@ export const CartPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const idempotencyKey = `order_${user.uid}_${Date.now()}`;
+      const groupedItems = new Map<string, typeof items>();
+      items.forEach((item) => {
+        const sellerGroup = item.sellerId || item.shopId || 'legacy-seller';
+        const group = groupedItems.get(sellerGroup) || [];
+        group.push(item);
+        groupedItems.set(sellerGroup, group);
+      });
+      const address = {
+        id: selectedAddress.id,
+        name: selectedAddress.name,
+        phone: selectedAddress.phone,
+        address: selectedAddress.address,
+        city: selectedAddress.city,
+        region: selectedAddress.region,
+        isDefault: selectedAddress.isDefault,
+      };
+      const orderResults = await Promise.all(
+        Array.from(groupedItems.entries()).map(([sellerGroup, sellerItems], groupIndex) =>
+          FunctionsService.callOrThrow<any>('createOrder', {
+            items: sellerItems.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              variantId: null,
+            })),
+            address,
+            idempotencyKey: `order_${user.uid}_${Date.now()}_${groupIndex}_${sellerGroup}`,
+            deliveryFee: 0,
+            discount: 0,
+            paymentMethod: 'cod',
+          })
+        )
+      );
 
-      const result = await FunctionsService.callOrThrow<any>('createOrder', {
-        items: items.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          variantId: null,
-        })),
-        address: {
-          id: selectedAddress.id,
-          name: selectedAddress.name,
-          phone: selectedAddress.phone,
-          address: selectedAddress.address,
-          city: selectedAddress.city,
-          region: selectedAddress.region,
-          isDefault: selectedAddress.isDefault,
-        },
-        idempotencyKey,
-        deliveryFee: 0,
-        discount: 0,
-        paymentMethod: 'cod',
+      orderResults.forEach((result) => {
+        trackEvent('order_placed', { order_number: result.orderNumber, total: result.total });
       });
 
-      trackEvent('order_placed', { order_number: result.orderNumber, total: getTotal() });
-
       clearCart();
-      toast.success('Order placed successfully!');
+      toast.success(orderResults.length > 1 ? `${orderResults.length} orders placed successfully!` : 'Order placed successfully!');
       navigate('/orders');
     } catch (error: any) {
       toast.error(error.message || 'Failed to place order');

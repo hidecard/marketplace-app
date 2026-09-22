@@ -657,8 +657,12 @@ export const createOrder = secureCallable(async (data, context) => {
       id: s.id,
     }));
     const shopId = products[0].shopId ?? '';
-    const sellerId = products[0].sellerId;
-    if (!sellerId || !products.every((p) => (p.shopId ?? '') === shopId && p.sellerId === sellerId)) {
+    let sellerId = products[0].sellerId;
+    if (!sellerId && shopId) {
+      const shopSnap = await tx.get(db.collection('shops').doc(shopId));
+      sellerId = shopSnap.data()?.ownerId;
+    }
+    if (!sellerId || !products.every((p) => (p.shopId ?? '') === shopId && (p.sellerId ?? sellerId) === sellerId)) {
       throw new functions.https.HttpsError('invalid-argument', 'All items must be from one seller');
     }
     if (sellerId === uid) {
