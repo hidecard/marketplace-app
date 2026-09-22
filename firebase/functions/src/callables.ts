@@ -264,7 +264,11 @@ export const onCreateShop = secureCallable(async (data, context) => {
     shopId: shopRef.id,
   });
 
-  return shopData;
+  return {
+    id: shopRef.id,
+    name: shopData.name,
+    slug: shopData.slug,
+  };
 });
 
 // ============ submitVerification ============

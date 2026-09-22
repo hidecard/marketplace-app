@@ -258,7 +258,11 @@ exports.onCreateShop = secureCallable(async (data, context) => {
     // Set a custom claim so the user can read their own shop membership doc directly.
     const authUser = await admin.auth().getUser(uid);
     await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, ((_l = authUser.customClaims) !== null && _l !== void 0 ? _l : {})), { shopId: shopRef.id }));
-    return shopData;
+    return {
+        id: shopRef.id,
+        name: shopData.name,
+        slug: shopData.slug,
+    };
 });
 // ============ submitVerification ============
 exports.submitVerification = secureCallable(async (data, context) => {
