@@ -37,6 +37,12 @@ service firebase.storage {
         && request.resource.contentType.matches('image/.*');
     }
 
+    // Product images are displayed on public marketplace pages, including for signed-out buyers.
+    match /product-images/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidImageUpload();
+    }
+
     match /users/{userId}/{allPaths=**} {
       allow read: if isAuthenticated();
       allow write: if request.auth.uid == userId && isValidImageUpload();

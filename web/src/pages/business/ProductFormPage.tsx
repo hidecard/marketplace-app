@@ -117,7 +117,7 @@ export const ProductFormPage: React.FC = () => {
       const uploadPromises = selected.map(async (file) => {
         const timestamp = Date.now();
         const fileName = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-        const storageRef = ref(storage, `users/${user.uid}/product-images/${fileName}`);
+        const storageRef = ref(storage, `product-images/${user.uid}/${fileName}`);
         const snapshot = await uploadBytes(storageRef, file);
         return getDownloadURL(snapshot.ref);
       });
@@ -125,8 +125,11 @@ export const ProductFormPage: React.FC = () => {
       const urls = await Promise.all(uploadPromises);
       setImages((prev) => [...prev, ...urls]);
       toast.success('Images uploaded');
-    } catch (error) {
-      toast.error('Failed to upload images');
+    } catch (error: any) {
+      console.error('Error uploading product images:', error);
+      toast.error(error?.code === 'storage/unauthorized'
+        ? 'Image upload is not authorized. Please sign in again.'
+        : error?.message || 'Failed to upload images');
     } finally {
       setUploadingImages(false);
     }
@@ -200,9 +203,9 @@ export const ProductFormPage: React.FC = () => {
           navigate(`/product/${result.id}`);
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving product:', error);
-      toast.error('Failed to save product');
+      toast.error(error?.message || 'Failed to save product');
     } finally {
       setLoading(false);
     }

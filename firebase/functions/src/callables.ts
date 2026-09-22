@@ -779,7 +779,13 @@ export const createOrder = secureCallable(async (data, context) => {
     // FCM failure should not roll back the order.
   }
 
-  return result;
+  return {
+    id: result.id,
+    orderNumber: result.orderNumber,
+    total: result.total,
+    sellerId: result.sellerId,
+    shopId: result.shopId,
+  };
 });
 
 // ============ createPOSSale ============

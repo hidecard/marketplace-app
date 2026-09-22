@@ -78,6 +78,9 @@
 - [x] Record receipt-print intent and keep failed print payloads in a bounded local retry queue.
 - [x] Fix marketplace checkout for legacy products without sellerId by resolving the shop owner server-side.
 - [x] Split carts containing products from different sellers into separate COD orders.
+- [x] Return a JSON-safe createOrder response so Firestore timestamp sentinels cannot surface as callable internal errors.
+- [x] Store new product images in a public marketplace-read namespace while retaining owner-only validated uploads.
+- [x] Show actionable upload/save errors in the product form instead of generic failure messages.
 
 ### Chat, Notifications, and Trust Boundaries
 
