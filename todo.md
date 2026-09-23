@@ -37,7 +37,8 @@
 - [x] Add an authenticated User boundary that preserves the intended destination and rejects suspended/banned accounts.
 - [x] Add a Seller/onboarding boundary that lets shop owners reach the dashboard and verification flow before approval.
 - [x] Keep seller operations behind the approved-and-verified shop middleware.
-- [x] Require an active Firestore `admin` role in both Admin login and Admin protected routes.
+- [x] Add an active Firestore `admin` role in both Admin login and Admin protected routes.
+- [x] Deploy the Admin SPA to a separate protected Worker at `marketplace-admin.hidecard1500.workers.dev`.
 
 ### Shop Creation, Verification, and Business Access
 

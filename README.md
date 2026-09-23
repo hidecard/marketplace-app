@@ -99,7 +99,7 @@ npm run deploy:firebase
 
 ### Automatic Web Deployment
 
-The production Web PWA is hosted at [marketplace-app.hidecard1500.workers.dev](https://marketplace-app.hidecard1500.workers.dev/). The workflow in `.github/workflows/deploy-cloudflare.yml` validates the Web app, admin app, Firebase Functions, unit tests, and Firebase Rules on every pull request and push. A successful push to `main` deploys the already-validated `web/dist` bundle to the existing `marketplace-app` Cloudflare Worker.
+The production Web PWA is hosted at [marketplace-app.hidecard1500.workers.dev](https://marketplace-app.hidecard1500.workers.dev/). The production Admin panel is hosted separately at [marketplace-admin.hidecard1500.workers.dev/login](https://marketplace-admin.hidecard1500.workers.dev/login). The workflow in `.github/workflows/deploy-cloudflare.yml` validates the Web app, admin app, Firebase Functions, unit tests, and Firebase Rules on every pull request and push. A successful push to `main` deploys the validated Web and Admin bundles to their separate Cloudflare Workers.
 
 Add these repository secrets under **GitHub → Settings → Secrets and variables → Actions**:
 
@@ -133,6 +133,8 @@ The public Firebase Web configuration is supplied to CI as non-secret build conf
 - Receipt printing (Bluetooth on Android)
 
 ### Admin Panel
+- Open the production Admin panel at [marketplace-admin.hidecard1500.workers.dev/login](https://marketplace-admin.hidecard1500.workers.dev/login).
+- The account must have `role: "admin"` and `status: "active"` in `users/{uid}`; a normal User or Seller account is intentionally rejected.
 - Platform analytics dashboard
 - User management
 - Shop verification approvals
