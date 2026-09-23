@@ -255,9 +255,20 @@ exports.onCreateShop = secureCallable(async (data, context) => {
             updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
     });
-    // Set a custom claim so the user can read their own shop membership doc directly.
-    const authUser = await admin.auth().getUser(uid);
-    await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, ((_l = authUser.customClaims) !== null && _l !== void 0 ? _l : {})), { shopId: shopRef.id }));
+    // Claims are a convenience cache, not part of shop creation correctness.
+    // Do not turn a committed shop into a client-visible INTERNAL error if Auth
+    // claims propagation is temporarily unavailable.
+    try {
+        const authUser = await admin.auth().getUser(uid);
+        await admin.auth().setCustomUserClaims(uid, Object.assign(Object.assign({}, ((_l = authUser.customClaims) !== null && _l !== void 0 ? _l : {})), { shopId: shopRef.id }));
+    }
+    catch (error) {
+        console.error('onCreateShop: custom claims update failed after commit', {
+            uid,
+            shopId: shopRef.id,
+            error,
+        });
+    }
     return {
         id: shopRef.id,
         name: shopData.name,
