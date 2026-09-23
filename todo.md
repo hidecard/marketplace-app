@@ -39,6 +39,8 @@
 - [x] Keep seller operations behind the approved-and-verified shop middleware.
 - [x] Add an active Firestore `admin` role in both Admin login and Admin protected routes.
 - [x] Deploy the Admin SPA to a separate protected Worker at `marketplace-admin.hidecard1500.workers.dev`.
+- [x] Fix Admin Tailwind/PostCSS configuration so production CSS utilities are emitted and loaded.
+- [x] Verify new users default to `role: user`, `status: active`; Firestore Rules reject client-created admin roles and protect role/status updates.
 
 ### Shop Creation, Verification, and Business Access
 
