@@ -13,7 +13,7 @@ export const ProtectedRoute: React.FC = () => {
     );
   }
 
-  if (!user || !isAdmin) {
+  if (!user || !isAdmin || user.status !== 'active') {
     return <Navigate to="/login" replace />;
   }
 

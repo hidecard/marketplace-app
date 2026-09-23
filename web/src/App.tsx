@@ -42,6 +42,7 @@ import { MainLayout } from './components/layout/MainLayout';
 import { LanguageProvider } from './context/LanguageContext';
 import { useAuth } from './hooks/useAuth';
 import { VerifiedBusinessRoute } from './pages/business/VerifiedBusinessRoute';
+import { SellerRoute } from './pages/business/SellerRoute';
 
 const LoadingSpinner = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -99,13 +100,15 @@ export const App: React.FC = () => {
             <Route path="/cart" element={<CartPage />} />
             <Route path="/offers" element={<OffersPage />} />
 
-              {/* Shop setup remains available before verification. */}
-              <Route path="/business/create-shop" element={<CreateShopPage />} />
-              <Route path="/business/verification" element={<ShopVerificationPage />} />
+              {/* Seller onboarding remains available before verification. */}
+              <Route element={<SellerRoute />}>
+                <Route path="/business" element={<BusinessDashboardPage />} />
+                <Route path="/business/create-shop" element={<CreateShopPage />} />
+                <Route path="/business/verification" element={<ShopVerificationPage />} />
+              </Route>
 
               {/* Business operations require an approved, verified shop. */}
               <Route element={<VerifiedBusinessRoute />}>
-                <Route path="/business" element={<BusinessDashboardPage />} />
                 <Route path="/business/pos" element={<POSPage />} />
                 <Route path="/business/products" element={<BusinessProductsPage />} />
                 <Route path="/business/products/new" element={<ProductFormPage />} />

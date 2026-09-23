@@ -1,6 +1,6 @@
 # Padetha Marketplace Project Todo List
 
-> **Last updated:** 2026-09-22
+> **Last updated:** 2026-09-23
 >
 > **Current priority:** Web PWA first. Flutter/Android work is intentionally deferred until the Web release is stable.
 > **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
@@ -34,6 +34,10 @@
 - [x] Add `syncPhoneVerification` so the backend updates `phoneVerified` only when Firebase Auth confirms a linked phone number.
 - [x] Remove the unused client-authoritative `phoneVerified` update path.
 - [x] Prevent normal users from changing protected role, status, phone-verification, and shop-verification fields in Firestore Rules.
+- [x] Add an authenticated User boundary that preserves the intended destination and rejects suspended/banned accounts.
+- [x] Add a Seller/onboarding boundary that lets shop owners reach the dashboard and verification flow before approval.
+- [x] Keep seller operations behind the approved-and-verified shop middleware.
+- [x] Require an active Firestore `admin` role in both Admin login and Admin protected routes.
 
 ### Shop Creation, Verification, and Business Access
 

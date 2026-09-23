@@ -17,7 +17,7 @@ export const useAuth = () => {
         if (userSnap.exists()) {
           const userData = { uid: userSnap.id, ...userSnap.data() } as User;
           setUser(userData);
-          setAdmin(userData.role === 'admin');
+          setAdmin(userData.role === 'admin' && userData.status === 'active');
         } else {
           setUser(null);
           setAdmin(false);

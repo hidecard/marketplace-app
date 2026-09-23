@@ -23,7 +23,7 @@ export const LoginPage: React.FC = () => {
       const userRef = doc(db, 'users', credential.user.uid);
       const userSnap = await getDoc(userRef);
 
-      if (userSnap.exists() && userSnap.data().role === 'admin') {
+      if (userSnap.exists() && userSnap.data().role === 'admin' && userSnap.data().status === 'active') {
         toast.success('Welcome, Admin!');
         navigate('/admin');
       } else {
