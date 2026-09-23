@@ -19,7 +19,8 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
 
     try {
-      const credential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      const email = formData.email.trim().toLowerCase();
+      const credential = await signInWithEmailAndPassword(auth, email, formData.password);
       const userRef = doc(db, 'users', credential.user.uid);
       const userSnap = await getDoc(userRef);
 
@@ -28,10 +29,24 @@ export const LoginPage: React.FC = () => {
         navigate('/admin');
       } else {
         await auth.signOut();
-        toast.error('Access denied. Admin only.');
+        toast.error(
+          userSnap.exists()
+            ? `Access denied: role=${String(userSnap.data().role ?? 'missing')}, status=${String(userSnap.data().status ?? 'missing')}`
+            : `Access denied: users/${credential.user.uid} document was not found`,
+        );
       }
     } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+      const code = String(error?.code || '');
+      const messages: Record<string, string> = {
+        'auth/invalid-credential': 'Email or password is incorrect.',
+        'auth/invalid-login-credentials': 'Email or password is incorrect.',
+        'auth/user-not-found': 'This email is not registered in Firebase Authentication.',
+        'auth/wrong-password': 'The Firebase Authentication password is incorrect.',
+        'auth/too-many-requests': 'Too many attempts. Reset the password or wait and try again.',
+        'permission-denied': 'Signed in, but Firestore denied access to the users role document.',
+      };
+      toast.error(messages[code] || error?.message || 'Authentication failed');
+      console.error('Admin login failed:', { code, message: error?.message });
     } finally {
       setLoading(false);
     }

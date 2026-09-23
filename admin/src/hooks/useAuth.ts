@@ -10,23 +10,30 @@ export const useAuth = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      if (firebaseUser) {
-        const userRef = doc(db, 'users', firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
+      try {
+        if (firebaseUser) {
+          const userRef = doc(db, 'users', firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
 
-        if (userSnap.exists()) {
-          const userData = { uid: userSnap.id, ...userSnap.data() } as User;
-          setUser(userData);
-          setAdmin(userData.role === 'admin' && userData.status === 'active');
+          if (userSnap.exists()) {
+            const userData = { uid: userSnap.id, ...userSnap.data() } as User;
+            setUser(userData);
+            setAdmin(userData.role === 'admin' && userData.status === 'active');
+          } else {
+            setUser(null);
+            setAdmin(false);
+          }
         } else {
           setUser(null);
           setAdmin(false);
         }
-      } else {
+      } catch (error) {
+        console.error('Admin role lookup failed:', error);
         setUser(null);
         setAdmin(false);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
