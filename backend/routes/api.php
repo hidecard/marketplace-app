@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ShopController;
@@ -43,6 +44,14 @@ Route::middleware(['auth:sanctum', 'seller'])->prefix('seller')->group(function 
     Route::post('/products', [ProductController::class, 'store']);
     Route::patch('/products/{product}', [ProductController::class, 'update']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+});
+
+Route::middleware(['auth:sanctum', 'verified.seller'])->prefix('business')->group(function (): void {
+    Route::get('/inventory', [BusinessController::class, 'inventory']);
+    Route::post('/inventory/adjust', [BusinessController::class, 'adjustInventory']);
+    Route::post('/pos/sales', [BusinessController::class, 'posSale']);
+    Route::get('/expenses', [BusinessController::class, 'expenses']);
+    Route::post('/expenses', [BusinessController::class, 'createExpense']);
 });
 
 Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {

@@ -33,6 +33,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->decimal('price', 15, 2);
+            $table->decimal('cost_price', 15, 2)->default(0);
             $table->unsignedInteger('stock')->default(0);
             $table->enum('condition', ['new', 'used', 'refurbished'])->default('new');
             $table->enum('status', ['active', 'inactive', 'sold', 'hidden'])->default('active')->index();

@@ -92,6 +92,7 @@ class ProductController extends Controller
             'name' => [$required, 'string', 'max:180'],
             'description' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'price' => [$required, 'numeric', 'min:0'],
+            'cost_price' => ['sometimes', 'numeric', 'min:0'],
             'stock' => [$required, 'integer', 'min:0', 'max:1000000'],
             'condition' => [$required, 'in:new,used,refurbished'],
             'status' => ['sometimes', 'in:active,inactive,sold,hidden'],

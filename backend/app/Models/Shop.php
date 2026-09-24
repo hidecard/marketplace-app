@@ -18,4 +18,7 @@ class Shop extends Model
     public function owner(): BelongsTo { return $this->belongsTo(User::class, 'owner_id'); }
     public function products(): HasMany { return $this->hasMany(Product::class); }
     public function verificationRequests(): HasMany { return $this->hasMany(VerificationRequest::class); }
+    public function inventoryMovements(): HasMany { return $this->hasMany(InventoryMovement::class); }
+    public function posSales(): HasMany { return $this->hasMany(PosSale::class); }
+    public function expenses(): HasMany { return $this->hasMany(Expense::class); }
 }

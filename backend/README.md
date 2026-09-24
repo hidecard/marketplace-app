@@ -94,6 +94,8 @@ Product and order APIs are now available for the migration boundary: public `GET
 
 Shop onboarding and verification APIs are also available: `GET/POST/PATCH /api/shop`, seller verification history/submission at `GET/POST /api/seller/verification`, and Admin moderation at `GET /api/admin/verifications` plus `POST /api/admin/verifications/{id}/review`. Creating a shop promotes an active normal user to `seller`; the shop remains unverified until an active admin approves a pending request. Rejected requests may be resubmitted, while duplicate pending requests are rejected atomically.
 
+Verified-seller business APIs are now available under `/api/business`: inventory listing and idempotent stock adjustment, transactional POS sales with server price/stock/COGS/gross-profit calculation, and idempotent expense creation/listing. All business routes require an active `seller` account whose shop is approved and verified; unverified sellers remain limited to onboarding and verification.
+
 ## Migration policy
 
 Do not delete the Firebase project, rules, Functions, or production secrets yet. The Web and Admin clients currently contain direct Firebase reads and writes. Each feature must first gain a Laravel endpoint, API client adapter, tests, and staging verification. Firebase can be removed only after the final data migration, cutover, rollback rehearsal, and production QA.

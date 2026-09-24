@@ -22,7 +22,8 @@
 - [x] Add Laravel product browsing, seller-owned product management, and transaction-based server-authoritative checkout endpoints.
 - [ ] Connect the Web product/order screens to the Laravel API without breaking Firebase fallback.
 - [x] Add Laravel shop creation, server-side seller promotion, verification submission, rejection/resubmission, and Admin approval endpoints.
-- [ ] Migrate chat, notifications, POS, inventory, and reports to Laravel.
+- [x] Add Laravel verified-seller inventory, transactional POS, and idempotent expense APIs.
+- [ ] Migrate chat, notifications, and reports to Laravel.
 - [ ] Create a Firebase-to-MySQL data migration and reconciliation script.
 - [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.
 
