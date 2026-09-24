@@ -98,6 +98,8 @@ Verified-seller business APIs are now available under `/api/business`: inventory
 
 Report summaries are available at `GET /api/business/reports/summary` for a verified seller's shop and `GET /api/admin/reports/summary` for all shops. Both accept optional `from` and `to` dates and return POS revenue/COGS/gross profit, marketplace order totals, expenses, net profit, and daily sales rows.
 
+Chat and notification APIs are now available behind active-user authentication. Conversations are created from an order, product, or shop context so the server resolves the real buyer/seller participant; only participants can list messages, send messages, or mark a conversation read. Notification inboxes are user-scoped and support unread counts, single read, and mark-all-read operations.
+
 ## Migration policy
 
 Do not delete the Firebase project, rules, Functions, or production secrets yet. The Web and Admin clients currently contain direct Firebase reads and writes. Each feature must first gain a Laravel endpoint, API client adapter, tests, and staging verification. Firebase can be removed only after the final data migration, cutover, rollback rehearsal, and production QA.
