@@ -5,6 +5,20 @@
 > **Current priority:** Web PWA first. Flutter/Android work is intentionally deferred until the Web release is stable.
 > **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
 
+## 0. Laravel + MySQL Migration
+
+- [x] Audit Firebase coupling across Web, Admin, and Functions before migration.
+- [x] Scaffold `backend/` as a Laravel 13 API with Sanctum token authentication.
+- [x] Add MySQL-compatible users, shops, products, orders, and order-items migrations.
+- [x] Enforce server-owned registration defaults: `role=user`, `status=active`, `phone_verified=false`.
+- [x] Add active-admin middleware requiring exactly `role=admin` and `status=active`.
+- [x] Validate Laravel migrations, API route registration, and the initial test suite.
+- [ ] Add the Web API client boundary and migrate authentication without breaking Firebase fallback.
+- [ ] Migrate product browsing, product save/upload, and server-authoritative checkout to Laravel endpoints.
+- [ ] Migrate shop verification, Admin moderation, chat, notifications, POS, inventory, and reports.
+- [ ] Create a Firebase-to-MySQL data migration and reconciliation script.
+- [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.
+
 ## 1. Completed in This Web-First Pass
 
 ### Web Build, Hosting, and CI
