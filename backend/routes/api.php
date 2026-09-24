@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ShopController;
 use App\Http\Controllers\Api\VerificationController;
 use Illuminate\Support\Facades\Route;
@@ -52,6 +53,7 @@ Route::middleware(['auth:sanctum', 'verified.seller'])->prefix('business')->grou
     Route::post('/pos/sales', [BusinessController::class, 'posSale']);
     Route::get('/expenses', [BusinessController::class, 'expenses']);
     Route::post('/expenses', [BusinessController::class, 'createExpense']);
+    Route::get('/reports/summary', [ReportController::class, 'summary']);
 });
 
 Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
@@ -68,4 +70,5 @@ Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function ()
     Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user()]));
     Route::get('/verifications', [VerificationController::class, 'index']);
     Route::post('/verifications/{verification}/review', [VerificationController::class, 'review']);
+    Route::get('/reports/summary', [ReportController::class, 'summary']);
 });

@@ -96,6 +96,8 @@ Shop onboarding and verification APIs are also available: `GET/POST/PATCH /api/s
 
 Verified-seller business APIs are now available under `/api/business`: inventory listing and idempotent stock adjustment, transactional POS sales with server price/stock/COGS/gross-profit calculation, and idempotent expense creation/listing. All business routes require an active `seller` account whose shop is approved and verified; unverified sellers remain limited to onboarding and verification.
 
+Report summaries are available at `GET /api/business/reports/summary` for a verified seller's shop and `GET /api/admin/reports/summary` for all shops. Both accept optional `from` and `to` dates and return POS revenue/COGS/gross profit, marketplace order totals, expenses, net profit, and daily sales rows.
+
 ## Migration policy
 
 Do not delete the Firebase project, rules, Functions, or production secrets yet. The Web and Admin clients currently contain direct Firebase reads and writes. Each feature must first gain a Laravel endpoint, API client adapter, tests, and staging verification. Firebase can be removed only after the final data migration, cutover, rollback rehearsal, and production QA.
