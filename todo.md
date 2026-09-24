@@ -21,7 +21,8 @@
 - [x] Add login throttling, Sanctum role abilities, inactive-account rejection, and authentication endpoint tests.
 - [x] Add Laravel product browsing, seller-owned product management, and transaction-based server-authoritative checkout endpoints.
 - [ ] Connect the Web product/order screens to the Laravel API without breaking Firebase fallback.
-- [ ] Migrate shop verification, Admin moderation, chat, notifications, POS, inventory, and reports.
+- [x] Add Laravel shop creation, server-side seller promotion, verification submission, rejection/resubmission, and Admin approval endpoints.
+- [ ] Migrate chat, notifications, POS, inventory, and reports to Laravel.
 - [ ] Create a Firebase-to-MySQL data migration and reconciliation script.
 - [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.
 

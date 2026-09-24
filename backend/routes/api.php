@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\ShopController;
+use App\Http\Controllers\Api\VerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->json([
@@ -28,8 +30,16 @@ Route::prefix('auth')->group(function (): void {
 
 Route::middleware(['auth:sanctum', 'active.user'])->get('/user/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user()]));
 
+Route::middleware(['auth:sanctum', 'active.user'])->prefix('shop')->group(function (): void {
+    Route::get('/me', [ShopController::class, 'showMine']);
+    Route::post('/', [ShopController::class, 'store']);
+    Route::patch('/me', [ShopController::class, 'updateMine']);
+});
+
 Route::middleware(['auth:sanctum', 'seller'])->prefix('seller')->group(function (): void {
     Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user(), 'shop' => $request->user()->shop]));
+    Route::get('/verification', [VerificationController::class, 'mine']);
+    Route::post('/verification', [VerificationController::class, 'submit']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::patch('/products/{product}', [ProductController::class, 'update']);
     Route::delete('/products/{product}', [ProductController::class, 'destroy']);
@@ -47,4 +57,6 @@ Route::middleware(['auth:sanctum', 'role:seller,admin'])->group(function (): voi
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function (): void {
     Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user()]));
+    Route::get('/verifications', [VerificationController::class, 'index']);
+    Route::post('/verifications/{verification}/review', [VerificationController::class, 'review']);
 });

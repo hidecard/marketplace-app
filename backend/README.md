@@ -92,6 +92,8 @@ Roles are explicit and server-enforced: `user` is the default marketplace accoun
 
 Product and order APIs are now available for the migration boundary: public `GET /api/products` and `GET /api/products/{product}`, seller-owned product create/update/hide endpoints, `GET/POST /api/orders`, and seller/admin order status updates. Checkout locks products inside a MySQL transaction, reads price and seller identity from the database, decrements stock, accepts COD only, and replays an existing order for the same idempotency key without consuming stock twice.
 
+Shop onboarding and verification APIs are also available: `GET/POST/PATCH /api/shop`, seller verification history/submission at `GET/POST /api/seller/verification`, and Admin moderation at `GET /api/admin/verifications` plus `POST /api/admin/verifications/{id}/review`. Creating a shop promotes an active normal user to `seller`; the shop remains unverified until an active admin approves a pending request. Rejected requests may be resubmitted, while duplicate pending requests are rejected atomically.
+
 ## Migration policy
 
 Do not delete the Firebase project, rules, Functions, or production secrets yet. The Web and Admin clients currently contain direct Firebase reads and writes. Each feature must first gain a Laravel endpoint, API client adapter, tests, and staging verification. Firebase can be removed only after the final data migration, cutover, rollback rehearsal, and production QA.
