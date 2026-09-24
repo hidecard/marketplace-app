@@ -86,7 +86,9 @@ DB_PASSWORD=change-me
 
 ## API foundation
 
-The initial API includes `GET /api/health`, `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`, and an active-admin protected `GET /api/admin/me`. Registration owns the defaults `role=user`, `status=active`, and `phone_verified=false`. The first MySQL-compatible tables are `users`, `shops`, `products`, `orders`, and `order_items`.
+The initial API includes `GET /api/health`, `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`, `GET /api/user/me`, seller-protected `GET /api/seller/me`, and admin-protected `GET /api/admin/me`. Registration owns the defaults `role=user`, `status=active`, and `phone_verified=false`. The first MySQL-compatible tables are `users`, `shops`, `products`, `orders`, and `order_items`.
+
+Roles are explicit and server-enforced: `user` is the default marketplace account, `seller` is granted by a future server-side shop/onboarding flow, and `admin` is reserved for administrative operations. Every role middleware also requires `status=active`; suspended and banned accounts are rejected before role checks. The aliases are `active.user`, `seller`, `admin`, and parameterized `role:user,seller,admin`.
 
 ## Migration policy
 

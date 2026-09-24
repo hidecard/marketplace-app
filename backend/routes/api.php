@@ -18,6 +18,12 @@ Route::prefix('auth')->group(function (): void {
     });
 });
 
-Route::middleware(['auth:sanctum', 'active.admin'])->prefix('admin')->group(function (): void {
+Route::middleware(['auth:sanctum', 'active.user'])->get('/user/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user()]));
+
+Route::middleware(['auth:sanctum', 'seller'])->prefix('seller')->group(function (): void {
+    Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user(), 'shop' => $request->user()->shop]));
+});
+
+Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function (): void {
     Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user()]));
 });

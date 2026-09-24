@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('phone_number')->nullable()->index();
             $table->boolean('phone_verified')->default(false);
-            $table->enum('role', ['user', 'admin'])->default('user')->index();
+            $table->enum('role', ['user', 'seller', 'admin'])->default('user')->index();
             $table->enum('status', ['active', 'suspended', 'banned'])->default('active')->index();
             $table->string('password');
             $table->rememberToken();

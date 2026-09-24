@@ -14,6 +14,7 @@
 - [x] Add active-admin middleware requiring exactly `role=admin` and `status=active`.
 - [x] Validate Laravel migrations, API route registration, and the initial test suite.
 - [ ] Add the Web API client boundary and migrate authentication without breaking Firebase fallback.
+- [x] Add Laravel `user`, `seller`, and `admin` roles with active-status enforcement middleware and feature tests.
 - [ ] Migrate product browsing, product save/upload, and server-authoritative checkout to Laravel endpoints.
 - [ ] Migrate shop verification, Admin moderation, chat, notifications, POS, inventory, and reports.
 - [ ] Create a Firebase-to-MySQL data migration and reconciliation script.

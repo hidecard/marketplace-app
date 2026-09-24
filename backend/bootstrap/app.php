@@ -1,6 +1,9 @@
 <?php
 
-use App\Http\Middleware\EnsureActiveAdmin;
+use App\Http\Middleware\EnsureActiveUser;
+use App\Http\Middleware\EnsureAdmin;
+use App\Http\Middleware\EnsureRole;
+use App\Http\Middleware\EnsureSeller;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,7 +17,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['active.admin' => EnsureActiveAdmin::class]);
+        $middleware->alias([
+            'role' => EnsureRole::class,
+            'active.user' => EnsureActiveUser::class,
+            'seller' => EnsureSeller::class,
+            'admin' => EnsureAdmin::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
