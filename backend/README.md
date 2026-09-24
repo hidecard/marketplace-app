@@ -93,3 +93,15 @@ Roles are explicit and server-enforced: `user` is the default marketplace accoun
 ## Migration policy
 
 Do not delete the Firebase project, rules, Functions, or production secrets yet. The Web and Admin clients currently contain direct Firebase reads and writes. Each feature must first gain a Laravel endpoint, API client adapter, tests, and staging verification. Firebase can be removed only after the final data migration, cutover, rollback rehearsal, and production QA.
+
+
+## Database migration and seed data
+
+The initial migration creates role-aware `users` (`user`, `seller`, `admin`) plus `shops`, `products`, `orders`, and `order_items`. Run the schema and default data with:
+
+```bash
+php artisan migrate:fresh
+php artisan db:seed
+```
+
+`DefaultAccountsSeeder` is idempotent and creates an active Admin, Seller, and User. It also creates an approved demo shop and one active demo product for the Seller. Set `SEED_ADMIN_PASSWORD`, `SEED_SELLER_PASSWORD`, and `SEED_USER_PASSWORD` in the environment before seeding. Production seeding refuses to run when any password is missing; local development uses clearly temporary passwords only when `APP_ENV` is not `production`.
