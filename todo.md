@@ -17,6 +17,8 @@
 - [x] Seed a verified demo Seller shop and active demo product for local checkout testing.
 - [ ] Add the Web API client boundary and migrate authentication without breaking Firebase fallback.
 - [x] Add Laravel `user`, `seller`, and `admin` roles with active-status enforcement middleware and feature tests.
+- [x] Add Laravel authentication endpoints for register, login, current user, profile update, password change, logout, and logout-all.
+- [x] Add login throttling, Sanctum role abilities, inactive-account rejection, and authentication endpoint tests.
 - [ ] Migrate product browsing, product save/upload, and server-authoritative checkout to Laravel endpoints.
 - [ ] Migrate shop verification, Admin moderation, chat, notifications, POS, inventory, and reports.
 - [ ] Create a Firebase-to-MySQL data migration and reconciliation script.

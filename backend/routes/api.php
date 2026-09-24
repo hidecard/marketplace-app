@@ -11,10 +11,13 @@ Route::get('/health', fn () => response()->json([
 
 Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+    Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/logout-all', [AuthController::class, 'logoutAll']);
+        Route::patch('/profile', [AuthController::class, 'updateProfile']);
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
     });
 });
 
