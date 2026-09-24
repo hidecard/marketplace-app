@@ -26,7 +26,7 @@ class ReportController extends Controller
         $sales = PosSale::query()->whereBetween('created_at', [$from, $to]);
         $orders = Order::query()->whereBetween('created_at', [$from, $to]);
         $expenses = Expense::query()->whereDate('expense_date', '>=', $from->toDateString())->whereDate('expense_date', '<=', $to->toDateString());
-        if (!$user->isAdmin()) {
+        if (! $user->isAdmin()) {
             $shopId = $user->shop->id;
             $sales->where('shop_id', $shopId);
             $orders->where('seller_id', $user->id);

@@ -13,7 +13,7 @@ interface LaravelOrder {
   payment_method: 'cash' | 'kbzpay' | 'wavepay' | 'bank_transfer' | 'other' | 'cod';
   payment_status: 'pending' | 'paid' | 'refunded';
   status: 'pending' | 'confirmed' | 'preparing' | 'shipped' | 'out_for_delivery' | 'delivered' | 'completed' | 'cancelled' | 'rejected';
-  shipping_address: {
+  delivery_address: {
     label: string;
     name: string;
     phone: string;
@@ -26,31 +26,44 @@ interface LaravelOrder {
   updated_at: string;
 }
 
-interface LaravelOrderItem {
-  id: number;
-  order_id: number;
-  product_id: number;
-  title: string;
-  image: string;
-  price: number;
-  quantity: number;
-  subtotal: number;
+interface LaravelPaginatedResponse<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+interface LaravelSingleResponse<T> {
+  order?: T;
+}
+
+interface LaravelCreateResponse<T> {
+  order?: T;
+  replayed?: boolean;
 }
 
 class OrderApiService {
+  private baseUrl = import.meta.env.VITE_LARAVEL_API_URL || 'http://localhost:8000/api';
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...options.headers,
+      ...options.headers as Record<string, string>,
     };
 
-    if (laravelApi['token']) {
-      headers['Authorization'] = `Bearer ${laravelApi['token']}`;
+    if (laravelApi.isAuthenticated) {
+      const token = (laravelApi as any).token;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API_URL || 'http://localhost:8000/api'}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers,
       });
@@ -69,16 +82,18 @@ class OrderApiService {
 
   async getOrders(params?: { status?: string; page?: number }): Promise<LaravelOrder[] | null> {
     const queryString = new URLSearchParams(params as any).toString();
-    return this.request<LaravelOrder[]>(`/orders${queryString ? `?${queryString}` : ''}`);
+    const response = await this.request<LaravelPaginatedResponse<LaravelOrder>>(`/orders${queryString ? `?${queryString}` : ''}`);
+    return response?.data ?? null;
   }
 
   async getOrder(id: number): Promise<LaravelOrder | null> {
-    return this.request<LaravelOrder>(`/orders/${id}`);
+    const response = await this.request<LaravelSingleResponse<LaravelOrder>>(`/orders/${id}`);
+    return response?.order ?? null;
   }
 
   async createOrder(data: {
     items: Array<{ product_id: number; quantity: number }>;
-    shipping_address: {
+    delivery_address: {
       label: string;
       name: string;
       phone: string;
@@ -87,18 +102,21 @@ class OrderApiService {
       region: string;
     };
     note?: string;
+    idempotency_key: string;
   }): Promise<LaravelOrder | null> {
-    return this.request<LaravelOrder>('/orders', {
+    const response = await this.request<LaravelCreateResponse<LaravelOrder>>('/orders', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return response?.order ?? null;
   }
 
   async updateOrderStatus(id: number, status: string): Promise<LaravelOrder | null> {
-    return this.request<LaravelOrder>(`/orders/${id}/status`, {
+    const response = await this.request<LaravelSingleResponse<LaravelOrder>>(`/orders/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
+    return response?.order ?? null;
   }
 
   get isEnabled(): boolean {

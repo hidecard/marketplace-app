@@ -16,20 +16,45 @@ interface LaravelProduct {
   updated_at: string;
 }
 
+interface LaravelPaginatedResponse<T> {
+  data: T[];
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
+}
+
+interface LaravelSingleResponse<T> {
+  product?: T;
+  order?: T;
+}
+
+interface LaravelCreateResponse<T> {
+  product?: T;
+}
+
 class ProductApiService {
+  private baseUrl = import.meta.env.VITE_LARAVEL_API_URL || 'http://localhost:8000/api';
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...options.headers,
+      ...options.headers as Record<string, string>,
     };
 
-    if (laravelApi['token']) {
-      headers['Authorization'] = `Bearer ${laravelApi['token']}`;
+    if (laravelApi.isAuthenticated) {
+      // Access token via the service's internal state
+      const token = (laravelApi as any).token;
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_LARAVEL_API_URL || 'http://localhost:8000/api'}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
         ...options,
         headers,
       });
@@ -48,25 +73,29 @@ class ProductApiService {
 
   async getProducts(params?: { category_id?: number; search?: string; page?: number }): Promise<LaravelProduct[] | null> {
     const queryString = new URLSearchParams(params as any).toString();
-    return this.request<LaravelProduct[]>(`/products${queryString ? `?${queryString}` : ''}`);
+    const response = await this.request<LaravelPaginatedResponse<LaravelProduct>>(`/products${queryString ? `?${queryString}` : ''}`);
+    return response?.data ?? null;
   }
 
   async getProduct(id: number): Promise<LaravelProduct | null> {
-    return this.request<LaravelProduct>(`/products/${id}`);
+    const response = await this.request<LaravelSingleResponse<LaravelProduct>>(`/products/${id}`);
+    return response?.product ?? null;
   }
 
   async createProduct(data: Partial<LaravelProduct>): Promise<LaravelProduct | null> {
-    return this.request<LaravelProduct>('/seller/products', {
+    const response = await this.request<LaravelCreateResponse<LaravelProduct>>('/seller/products', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+    return response?.product ?? null;
   }
 
   async updateProduct(id: number, data: Partial<LaravelProduct>): Promise<LaravelProduct | null> {
-    return this.request<LaravelProduct>(`/seller/products/${id}`, {
+    const response = await this.request<LaravelCreateResponse<LaravelProduct>>(`/seller/products/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+    return response?.product ?? null;
   }
 
   async deleteProduct(id: number): Promise<boolean> {

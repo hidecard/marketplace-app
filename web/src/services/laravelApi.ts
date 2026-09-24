@@ -53,10 +53,10 @@ class LaravelApiService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...options.headers,
+      ...options.headers as Record<string, string>,
     };
 
     if (this.token) {
@@ -89,7 +89,7 @@ class LaravelApiService {
     password_confirmation: string;
     phone_number?: string;
   }): Promise<ApiResponse<{ user: LaravelUser; token: string; ability: string }>> {
-    const response = await this.request('/auth/register', {
+    const response = await this.request<{ user: LaravelUser; token: string; ability: string }>('/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -102,7 +102,7 @@ class LaravelApiService {
   }
 
   async login(email: string, password: string): Promise<ApiResponse<{ user: LaravelUser; token: string; ability: string }>> {
-    const response = await this.request('/auth/login', {
+    const response = await this.request<{ user: LaravelUser; token: string; ability: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
@@ -115,7 +115,7 @@ class LaravelApiService {
   }
 
   async logout(): Promise<ApiResponse<void>> {
-    const response = await this.request('/auth/logout', {
+    const response = await this.request<void>('/auth/logout', {
       method: 'POST',
     });
 
@@ -124,7 +124,7 @@ class LaravelApiService {
   }
 
   async logoutAll(): Promise<ApiResponse<void>> {
-    const response = await this.request('/auth/logout-all', {
+    const response = await this.request<void>('/auth/logout-all', {
       method: 'POST',
     });
 
@@ -133,11 +133,11 @@ class LaravelApiService {
   }
 
   async getCurrentUser(): Promise<ApiResponse<{ user: LaravelUser }>> {
-    return this.request('/auth/me');
+    return this.request<{ user: LaravelUser }>('/auth/me');
   }
 
   async updateProfile(data: { name?: string; phone_number?: string }): Promise<ApiResponse<{ user: LaravelUser }>> {
-    return this.request('/auth/profile', {
+    return this.request<{ user: LaravelUser }>('/auth/profile', {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -148,7 +148,7 @@ class LaravelApiService {
     password: string;
     password_confirmation: string;
   }): Promise<ApiResponse<{ user: LaravelUser; token: string; ability: string }>> {
-    const response = await this.request('/auth/change-password', {
+    const response = await this.request<{ user: LaravelUser; token: string; ability: string }>('/auth/change-password', {
       method: 'POST',
       body: JSON.stringify(data),
     });

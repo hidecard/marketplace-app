@@ -82,12 +82,13 @@ export const CartPage: React.FC = () => {
     try {
       if (orderApi.isEnabled) {
         // Use Laravel API for order creation
+        const idempotencyKey = `order_${user.uid}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
         const order = await orderApi.createOrder({
           items: items.map((item) => ({
             product_id: parseInt(item.productId),
             quantity: item.quantity,
           })),
-          shipping_address: {
+          delivery_address: {
             label: selectedAddress.label,
             name: selectedAddress.name,
             phone: selectedAddress.phone,
@@ -96,6 +97,7 @@ export const CartPage: React.FC = () => {
             region: selectedAddress.region,
           },
           note: '',
+          idempotency_key: idempotencyKey,
         });
 
         if (order) {

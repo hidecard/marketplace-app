@@ -11,9 +11,10 @@ class EnsureActiveAdmin
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
-        if (!$user || $user->role !== 'admin' || $user->status !== 'active') {
+        if (! $user || $user->role !== 'admin' || $user->status !== 'active') {
             return response()->json(['message' => 'Active admin access is required.'], 403);
         }
+
         return $next($request);
     }
 }

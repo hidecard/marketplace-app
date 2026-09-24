@@ -1,6 +1,6 @@
 # Padetha Marketplace Project Todo List
 
-> **Last updated:** 2026-09-24
+> **Last updated:** 2026-09-25
 >
 > **Current priority:** Laravel + MySQL backend migration, followed by Web/Admin API cutover. Flutter/Android work remains deferred until the Web release is stable.
 > **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
@@ -12,7 +12,7 @@
 - [x] Add MySQL-compatible users, shops, products, orders, and order-items migrations.
 - [x] Enforce server-owned registration defaults: `role=user`, `status=active`, `phone_verified=false`.
 - [x] Add active-admin middleware requiring exactly `role=admin` and `status=active`.
-- [x] Validate Laravel migrations, API route registration, and the initial test suite.
+- [x] Validate Laravel migrations, API route registration, and the full backend test suite.
 - [x] Create idempotent Admin, Seller, and User seed data with environment-controlled passwords.
 - [x] Seed a verified demo Seller shop and active demo product for local checkout testing.
 - [x] Add the Web API client boundary and migrate authentication without breaking Firebase fallback.
@@ -20,6 +20,8 @@
 - [x] Add Laravel authentication endpoints for register, login, current user, profile update, password change, logout, and logout-all.
 - [x] Add login throttling, Sanctum role abilities, inactive-account rejection, and authentication endpoint tests.
 - [x] Add Laravel product browsing, seller-owned product management, and transaction-based server-authoritative checkout endpoints.
+- [x] Add admin bypass for inventory/POS/product operations and authorized expense deletion with feature tests.
+- [x] Scope idempotency uniqueness to buyer/shop for orders, inventory, POS, and expenses with regression tests.
 - [x] Connect the Web product/order screens to the Laravel API without breaking Firebase fallback.
 - [x] Add Laravel shop creation, server-side seller promotion, verification submission, rejection/resubmission, and Admin approval endpoints.
 - [x] Add Laravel verified-seller inventory, transactional POS, and idempotent expense APIs.
@@ -150,6 +152,9 @@
 - [x] Firestore and Storage Rules emulator compilation.
 - [x] `git diff --check`.
 - [x] Wrangler deployment dry-run.
+- [x] Laravel migration validation against MySQL and SQLite.
+- [x] Laravel Pint formatting for changed PHP files.
+- [x] Laravel full test suite: 36 tests, 128 assertions.
 
 ## 2. Still Pending — Required Before Production Sign-Off
 
@@ -201,8 +206,10 @@
 - [x] Add caller-scoped idempotency to offer creation/response.
 - [x] Add caller-scoped idempotency to review and report creation.
 - [x] Complete a second callable-by-callable authorization audit, including all admin-only paths.
-- [ ] Add server-owned delivery-fee configuration if paid delivery is introduced; V1 currently forces COD and a zero server fee.
-- [ ] Add explicit promotion/coupon models before allowing order discounts; V1 ignores buyer-supplied discounts.
+- [x] Scope idempotency uniqueness to buyer/shop for orders, inventory, POS, and expenses, with regression tests.
+- [x] Add admin bypasses for inventory/POS/product operations and authorized expense deletion.
+- [x] Add server-owned delivery-fee configuration with admin management endpoints.
+- [x] Add explicit promotion/coupon models with order discount support (percentage/fixed, usage limits, validation).
 - [x] Add retention/cleanup jobs for operation locks, analytics events, old notifications, rejected evidence, and local print retries.
 - [x] Add rate limits/abuse controls for chat, offers, reports, reviews, follows, and analytics events.
 - [x] Add pagination to large Web and admin collection screens.
@@ -245,4 +252,4 @@
 
 ## 5. Current Definition of Done
 
-The Web-first source is substantially hardened, all automated checks pass, the Firebase backend/rules are deployed, and the Cloudflare Worker is serving the verified current bundle. Full production sign-off still requires rotating the setup credentials exposed outside GitHub Secrets, configuring and enforcing App Check, adding the listed authorization/concurrency tests, and completing staging QA.
+The Web-first source is substantially hardened, all automated checks pass (Web TypeScript/lint/build, Admin TypeScript/lint/build, Firebase Functions TypeScript/lint/tests, Laravel backend full test suite 36/36, Laravel migrations validated on MySQL and SQLite, Pint formatting), the Firebase backend/rules are deployed, and the Cloudflare Worker is serving the verified current bundle. Laravel backend now includes password reset endpoints, delivery fee configuration, and coupon/promotion models with discount support. Full production sign-off still requires rotating the setup credentials exposed outside GitHub Secrets, configuring and enforcing App Check, adding the listed authorization/concurrency tests, and completing staging QA.

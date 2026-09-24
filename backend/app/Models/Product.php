@@ -14,6 +14,13 @@ class Product extends Model
         return ['price' => 'decimal:2', 'cost_price' => 'decimal:2', 'images' => 'array'];
     }
 
-    public function seller(): BelongsTo { return $this->belongsTo(User::class, 'seller_id'); }
-    public function shop(): BelongsTo { return $this->belongsTo(Shop::class); }
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'seller_id');
+    }
+
+    public function shop(): BelongsTo
+    {
+        return $this->belongsTo(Shop::class);
+    }
 }

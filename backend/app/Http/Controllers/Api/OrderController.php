@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Coupon;
+use App\Models\CouponRedemption;
+use App\Models\DeliveryFee;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +22,7 @@ class OrderController extends Controller
         $query = Order::with('items.product')->latest();
         if ($user->isSeller()) {
             $query->where('seller_id', $user->id);
-        } elseif (!$user->isAdmin()) {
+        } elseif (! $user->isAdmin()) {
             $query->where('buyer_id', $user->id);
         }
 
@@ -29,6 +32,7 @@ class OrderController extends Controller
     public function show(Request $request, Order $order): JsonResponse
     {
         $this->authorizeOrder($request, $order);
+
         return response()->json(['order' => $order->load('items.product', 'shop')]);
     }
 
@@ -44,13 +48,13 @@ class OrderController extends Controller
             'delivery_address.address' => ['required', 'string', 'max:1000'],
             'payment_method' => ['required', 'in:cod'],
             'idempotency_key' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9._:-]+$/'],
+            'coupon_code' => ['nullable', 'string', 'max:50'],
         ]);
 
-        $existing = Order::where('idempotency_key', $data['idempotency_key'])->first();
+        $existing = Order::where('idempotency_key', $data['idempotency_key'])
+            ->where('buyer_id', $request->user()->id)
+            ->first();
         if ($existing) {
-            if ((int) $existing->buyer_id !== (int) $request->user()->id) {
-                throw ValidationException::withMessages(['idempotency_key' => ['This idempotency key belongs to another buyer.']]);
-            }
             return response()->json(['order' => $existing->load('items.product', 'shop'), 'replayed' => true]);
         }
 
@@ -82,18 +86,40 @@ class OrderController extends Controller
                 $product->decrement('stock', $quantity);
             }
 
+            // Calculate delivery fee
+            $deliveryFee = DeliveryFee::getApplicableFee($subtotal);
+
+            // Validate and calculate coupon discount
+            $discount = 0;
+            $coupon = null;
+            if (! empty($data['coupon_code'])) {
+                $coupon = Coupon::where('code', $data['coupon_code'])->first();
+                if (! $coupon) {
+                    throw ValidationException::withMessages(['coupon_code' => ['Invalid coupon code.']]);
+                }
+                [$valid, $message] = $coupon->isValidForOrder($subtotal, $request->user()->id);
+                if (! $valid) {
+                    throw ValidationException::withMessages(['coupon_code' => [$message]]);
+                }
+                $discount = $coupon->calculateDiscount($subtotal);
+            }
+
+            $total = $subtotal + $deliveryFee - $discount;
+
             $order = Order::create([
                 'order_number' => 'ORD-'.strtoupper(Str::random(10)),
                 'buyer_id' => $request->user()->id,
                 'seller_id' => $sellerId,
                 'shop_id' => $shopId,
                 'subtotal' => $subtotal,
-                'delivery_fee' => 0,
-                'total' => $subtotal,
+                'delivery_fee' => $deliveryFee,
+                'discount' => $discount,
+                'total' => $total,
                 'payment_method' => 'cod',
                 'status' => 'pending',
                 'delivery_address' => $data['delivery_address'],
                 'idempotency_key' => $data['idempotency_key'],
+                'coupon_id' => $coupon?->id,
             ]);
 
             foreach ($products as [$product, $quantity]) {
@@ -105,6 +131,17 @@ class OrderController extends Controller
                 ]);
             }
 
+            // Record coupon redemption
+            if ($coupon && $discount > 0) {
+                CouponRedemption::create([
+                    'coupon_id' => $coupon->id,
+                    'user_id' => $request->user()->id,
+                    'order_id' => $order->id,
+                    'discount_amount' => $discount,
+                ]);
+                $coupon->increment('used_count');
+            }
+
             return $order;
         });
 
@@ -114,7 +151,7 @@ class OrderController extends Controller
     public function updateStatus(Request $request, Order $order): JsonResponse
     {
         $user = $request->user();
-        if (!$user->isAdmin() && ((int) $order->seller_id !== (int) $user->id)) {
+        if (! $user->isAdmin() && ((int) $order->seller_id !== (int) $user->id)) {
             abort(403, 'Only the order seller or an admin can update status.');
         }
 
@@ -128,18 +165,19 @@ class OrderController extends Controller
             'completed' => [],
             'cancelled' => [],
         ];
-        if (!in_array($data['status'], $allowed[$order->status] ?? [], true)) {
+        if (! in_array($data['status'], $allowed[$order->status] ?? [], true)) {
             throw ValidationException::withMessages(['status' => ["Cannot move order from {$order->status} to {$data['status']}."]]);
         }
 
         $order->update(['status' => $data['status']]);
+
         return response()->json(['order' => $order->fresh()->load('items.product', 'shop')]);
     }
 
     private function authorizeOrder(Request $request, Order $order): void
     {
         $user = $request->user();
-        if (!$user->isAdmin() && (int) $order->buyer_id !== (int) $user->id && (int) $order->seller_id !== (int) $user->id) {
+        if (! $user->isAdmin() && (int) $order->buyer_id !== (int) $user->id && (int) $order->seller_id !== (int) $user->id) {
             abort(403, 'You do not have access to this order.');
         }
     }

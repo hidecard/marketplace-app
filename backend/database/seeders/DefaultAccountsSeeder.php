@@ -38,7 +38,7 @@ class DefaultAccountsSeeder extends Seeder
         ];
 
         foreach ($credentials as $type => $account) {
-            if (!$account['password']) {
+            if (! $account['password']) {
                 if (app()->environment('production')) {
                     throw new RuntimeException('SEED_'.strtoupper($type).'_PASSWORD must be set before seeding production data.');
                 }

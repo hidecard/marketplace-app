@@ -19,7 +19,7 @@ class ProductController extends Controller
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
             $query->where(fn ($builder) => $builder
-                ->where('name', 'like', "%{$search}%")
+                ->where('title', 'like', "%{$search}%")
                 ->orWhere('description', 'like', "%{$search}%"));
         }
         if ($request->filled('category_id')) {
@@ -45,16 +45,17 @@ class ProductController extends Controller
     {
         $data = $this->validatedProduct($request);
         $data['seller_id'] = $request->user()->id;
-        $data['slug'] = $this->uniqueSlug($data['name']);
+        $data['slug'] = $this->uniqueSlug($data['title']);
 
-        if (!empty($data['shop_id'])) {
+        if (! empty($data['shop_id'])) {
             $shop = $request->user()->shop;
-            if (!$shop || (int) $shop->id !== (int) $data['shop_id'] || !$shop->verified) {
+            if (! $shop || (int) $shop->id !== (int) $data['shop_id'] || ! $shop->verified) {
                 return response()->json(['message' => 'Only an approved shop owner can create shop products.'], 403);
             }
         }
 
         $product = Product::create($data);
+
         return response()->json(['product' => $product], 201);
     }
 
@@ -62,8 +63,8 @@ class ProductController extends Controller
     {
         $this->authorizeProduct($request, $product);
         $data = $this->validatedProduct($request, true);
-        if (isset($data['name']) && $data['name'] !== $product->name) {
-            $data['slug'] = $this->uniqueSlug($data['name'], $product->id);
+        if (isset($data['title']) && $data['title'] !== $product->title) {
+            $data['slug'] = $this->uniqueSlug($data['title'], $product->id);
         }
         unset($data['seller_id'], $data['shop_id']);
         $product->update($data);
@@ -73,14 +74,18 @@ class ProductController extends Controller
 
     public function destroy(Request $request, Product $product): JsonResponse
     {
-        $this->authorizeProduct($request, $product);
+        $user = $request->user();
+        if (! $user->isAdmin() && (int) $product->seller_id !== (int) $user->id) {
+            abort(403, 'You do not own this product.');
+        }
         $product->update(['status' => 'hidden']);
+
         return response()->json(['message' => 'Product hidden']);
     }
 
     private function authorizeProduct(Request $request, Product $product): void
     {
-        if (!$request->user()->isAdmin() && (int) $product->seller_id !== (int) $request->user()->id) {
+        if (! $request->user()->isAdmin() && (int) $product->seller_id !== (int) $request->user()->id) {
             abort(403, 'You do not own this product.');
         }
     }
@@ -88,8 +93,9 @@ class ProductController extends Controller
     private function validatedProduct(Request $request, bool $partial = false): array
     {
         $required = $partial ? 'sometimes' : 'required';
+
         return $request->validate([
-            'name' => [$required, 'string', 'max:180'],
+            'title' => [$required, 'string', 'max:180'],
             'description' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'price' => [$required, 'numeric', 'min:0'],
             'cost_price' => ['sometimes', 'numeric', 'min:0'],
@@ -112,6 +118,7 @@ class ProductController extends Controller
             $slug = "{$base}-{$counter}";
             $counter++;
         }
+
         return $slug;
     }
 }

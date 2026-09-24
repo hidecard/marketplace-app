@@ -17,6 +17,7 @@ class VerificationController extends Controller
     {
         $shop = $request->user()->shop;
         abort_unless($shop, 404, 'Create a shop before submitting verification.');
+
         return response()->json(['requests' => $shop->verificationRequests()->latest()->get()]);
     }
 
@@ -42,6 +43,7 @@ class VerificationController extends Controller
             }
 
             $lockedShop->update(['verification_status' => 'pending', 'rejection_note' => null]);
+
             return VerificationRequest::create([
                 'shop_id' => $lockedShop->id,
                 'submitted_by' => $request->user()->id,
@@ -60,6 +62,7 @@ class VerificationController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->string('status')->toString());
         }
+
         return response()->json($query->paginate(min($request->integer('per_page', 20), 100)));
     }
 

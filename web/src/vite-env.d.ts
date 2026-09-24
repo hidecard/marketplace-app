@@ -12,6 +12,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_VAPID_KEY: string;
   readonly VITE_FIREBASE_APP_CHECK_KEY: string;
   readonly VITE_USE_EMULATORS: string;
+  readonly VITE_LARAVEL_API_URL: string;
+  readonly VITE_USE_LARAVEL_API: string;
 }
 
 interface ImportMeta {

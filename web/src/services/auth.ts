@@ -120,7 +120,8 @@ export const AuthService = {
 
   async sendPasswordReset(email: string): Promise<void> {
     if (laravelApi.isEnabled) {
-      // Laravel password reset would need to be implemented
+      // TODO: Implement Laravel password reset when backend route is available
+      // Backend currently lacks /auth/forgot-password and /auth/reset-password endpoints
       throw new Error('Password reset not yet implemented for Laravel API');
     }
     await sendPasswordResetEmail(auth, email);

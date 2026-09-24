@@ -12,11 +12,11 @@ class EnsureRole
     {
         $user = $request->user();
 
-        if (!$user || !$user->isActive()) {
+        if (! $user || ! $user->isActive()) {
             return response()->json(['message' => 'An active authenticated account is required.'], 403);
         }
 
-        if (!in_array($user->role, $roles, true)) {
+        if (! in_array($user->role, $roles, true)) {
             return response()->json([
                 'message' => 'You do not have permission to access this resource.',
                 'required_roles' => $roles,

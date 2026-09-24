@@ -15,6 +15,7 @@ class ShopController extends Controller
     public function showMine(Request $request): JsonResponse
     {
         $shop = $request->user()->shop()->with('verificationRequests')->first();
+
         return response()->json(['shop' => $shop]);
     }
 
@@ -43,7 +44,7 @@ class ShopController extends Controller
                 'verification_status' => 'pending',
                 'verified' => false,
             ]);
-            if (!$owner->isAdmin()) {
+            if (! $owner->isAdmin()) {
                 $owner->update(['role' => User::ROLE_SELLER]);
             }
 
@@ -80,6 +81,7 @@ class ShopController extends Controller
             $slug = "{$base}-{$counter}";
             $counter++;
         }
+
         return $slug;
     }
 }

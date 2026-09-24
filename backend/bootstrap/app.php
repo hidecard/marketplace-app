@@ -4,7 +4,9 @@ use App\Http\Middleware\EnsureActiveUser;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureRole;
 use App\Http\Middleware\EnsureSeller;
+use App\Http\Middleware\EnsureSellerOrAdmin;
 use App\Http\Middleware\EnsureVerifiedSeller;
+use App\Http\Middleware\EnsureVerifiedSellerOrAdmin;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -22,7 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => EnsureRole::class,
             'active.user' => EnsureActiveUser::class,
             'seller' => EnsureSeller::class,
+            'seller.or.admin' => EnsureSellerOrAdmin::class,
             'verified.seller' => EnsureVerifiedSeller::class,
+            'verified.seller.or.admin' => EnsureVerifiedSellerOrAdmin::class,
             'admin' => EnsureAdmin::class,
         ]);
     })

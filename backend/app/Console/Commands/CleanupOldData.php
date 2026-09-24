@@ -8,7 +8,6 @@ use App\Models\VerificationRequest;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 
 #[Signature('cleanup:old-data {--days=30 : Number of days to retain data}')]
 #[Description('Clean up old data including operation locks, notifications, and rejected evidence')]
@@ -68,7 +67,7 @@ class CleanupOldData extends Command
     {
         // Keep only the last 90 days of inventory movements
         $movementCutoff = now()->subDays(90);
-        
+
         $deleted = InventoryMovement::where('created_at', '<', $movementCutoff)
             ->delete();
 

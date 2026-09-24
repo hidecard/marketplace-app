@@ -23,6 +23,7 @@ class ScheduleCleanup extends Command
         $this->info(Artisan::output());
 
         $this->info('Scheduled cleanup completed successfully.');
+
         return 0;
     }
 }

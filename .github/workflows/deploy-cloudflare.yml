@@ -52,6 +52,26 @@ jobs:
       - name: Install Functions dependencies
         run: npm ci --prefix firebase/functions
 
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+
+      - name: Install Laravel dependencies
+        run: composer install --working-dir=backend --no-interaction --prefer-dist
+
+      - name: Validate Laravel migrations
+        working-directory: backend
+        run: php artisan migrate:fresh --force --database=sqlite
+
+      - name: Format and test Laravel backend
+        working-directory: backend
+        run: |
+          vendor/bin/pint --dirty --format agent
+          php artisan test --compact
+
       - name: Typecheck Web and Admin
         run: npm run typecheck
 

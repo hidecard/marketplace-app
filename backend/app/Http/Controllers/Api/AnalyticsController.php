@@ -35,7 +35,7 @@ class AnalyticsController extends Controller
         ];
 
         $eventName = $data['event_name'];
-        if (!in_array($eventName, $allowedEvents)) {
+        if (! in_array($eventName, $allowedEvents)) {
             return response()->json(['message' => 'Invalid event type'], 400);
         }
 

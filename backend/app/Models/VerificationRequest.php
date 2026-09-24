@@ -14,7 +14,18 @@ class VerificationRequest extends Model
         return ['evidence' => 'array', 'reviewed_at' => 'datetime'];
     }
 
-    public function shop(): BelongsTo { return $this->belongsTo(Shop::class); }
-    public function submitter(): BelongsTo { return $this->belongsTo(User::class, 'submitted_by'); }
-    public function reviewer(): BelongsTo { return $this->belongsTo(User::class, 'reviewed_by'); }
+    public function shop(): BelongsTo
+    {
+        return $this->belongsTo(Shop::class);
+    }
+
+    public function submitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
 }

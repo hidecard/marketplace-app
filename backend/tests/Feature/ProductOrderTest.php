@@ -18,13 +18,13 @@ class ProductOrderTest extends TestCase
         $user = User::factory()->create(['role' => User::ROLE_USER]);
         Sanctum::actingAs($user);
         $this->postJson('/api/seller/products', [
-            'name' => 'Blocked Product', 'price' => 100, 'stock' => 1, 'condition' => 'new',
+            'title' => 'Blocked Product', 'price' => 100, 'stock' => 1, 'condition' => 'new',
         ])->assertForbidden();
 
         $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
         Sanctum::actingAs($seller);
         $this->postJson('/api/seller/products', [
-            'name' => 'Seller Product', 'price' => 100, 'stock' => 3, 'condition' => 'new',
+            'title' => 'Seller Product', 'price' => 100, 'stock' => 3, 'condition' => 'new',
         ])->assertCreated()->assertJsonPath('product.seller_id', $seller->id);
     }
 
@@ -34,7 +34,7 @@ class ProductOrderTest extends TestCase
         $buyer = User::factory()->create(['role' => User::ROLE_USER]);
         $product = Product::create([
             'seller_id' => $seller->id,
-            'name' => 'Authoritative Product',
+            'title' => 'Authoritative Product',
             'slug' => 'authoritative-product',
             'price' => 1250,
             'stock' => 4,
@@ -67,7 +67,7 @@ class ProductOrderTest extends TestCase
         Sanctum::actingAs($seller);
 
         $this->postJson('/api/seller/products', [
-            'name' => 'Shop Product', 'price' => 100, 'stock' => 1, 'condition' => 'new', 'shop_id' => $shop->id,
+            'title' => 'Shop Product', 'price' => 100, 'stock' => 1, 'condition' => 'new', 'shop_id' => $shop->id,
         ])->assertForbidden();
     }
 }

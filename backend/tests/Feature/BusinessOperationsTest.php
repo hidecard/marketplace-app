@@ -17,7 +17,8 @@ class BusinessOperationsTest extends TestCase
     {
         $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
         $shop = Shop::create(['owner_id' => $seller->id, 'name' => 'Verified Shop', 'slug' => 'verified-shop', 'phone' => '+9591', 'address' => 'Yangon', 'verified' => true, 'verification_status' => 'approved']);
-        $product = Product::create(['seller_id' => $seller->id, 'shop_id' => $shop->id, 'name' => 'POS Product', 'slug' => 'pos-product', 'price' => 1000, 'cost_price' => 600, 'stock' => 10, 'condition' => 'new', 'status' => 'active']);
+        $product = Product::create(['seller_id' => $seller->id, 'shop_id' => $shop->id, 'title' => 'POS Product', 'slug' => 'pos-product', 'price' => 1000, 'cost_price' => 600, 'stock' => 10, 'condition' => 'new', 'status' => 'active']);
+
         return [$seller, $shop, $product];
     }
 
