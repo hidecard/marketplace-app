@@ -1,8 +1,8 @@
 # Padetha Marketplace Project Todo List
 
-> **Last updated:** 2026-09-23
+> **Last updated:** 2026-09-24
 >
-> **Current priority:** Web PWA first. Flutter/Android work is intentionally deferred until the Web release is stable.
+> **Current priority:** Laravel + MySQL backend migration, followed by Web/Admin API cutover. Flutter/Android work remains deferred until the Web release is stable.
 > **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
 
 ## 0. Laravel + MySQL Migration
