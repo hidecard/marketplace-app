@@ -19,7 +19,8 @@
 - [x] Add Laravel `user`, `seller`, and `admin` roles with active-status enforcement middleware and feature tests.
 - [x] Add Laravel authentication endpoints for register, login, current user, profile update, password change, logout, and logout-all.
 - [x] Add login throttling, Sanctum role abilities, inactive-account rejection, and authentication endpoint tests.
-- [ ] Migrate product browsing, product save/upload, and server-authoritative checkout to Laravel endpoints.
+- [x] Add Laravel product browsing, seller-owned product management, and transaction-based server-authoritative checkout endpoints.
+- [ ] Connect the Web product/order screens to the Laravel API without breaking Firebase fallback.
 - [ ] Migrate shop verification, Admin moderation, chat, notifications, POS, inventory, and reports.
 - [ ] Create a Firebase-to-MySQL data migration and reconciliation script.
 - [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.

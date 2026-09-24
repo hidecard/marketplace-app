@@ -90,6 +90,8 @@ The initial API includes `GET /api/health`, `POST /api/auth/register`, throttled
 
 Roles are explicit and server-enforced: `user` is the default marketplace account, `seller` is granted by a future server-side shop/onboarding flow, and `admin` is reserved for administrative operations. Every role middleware also requires `status=active`; suspended and banned accounts are rejected before role checks. The aliases are `active.user`, `seller`, `admin`, and parameterized `role:user,seller,admin`.
 
+Product and order APIs are now available for the migration boundary: public `GET /api/products` and `GET /api/products/{product}`, seller-owned product create/update/hide endpoints, `GET/POST /api/orders`, and seller/admin order status updates. Checkout locks products inside a MySQL transaction, reads price and seller identity from the database, decrements stock, accepts COD only, and replays an existing order for the same idempotency key without consuming stock twice.
+
 ## Migration policy
 
 Do not delete the Firebase project, rules, Functions, or production secrets yet. The Web and Admin clients currently contain direct Firebase reads and writes. Each feature must first gain a Laravel endpoint, API client adapter, tests, and staging verification. Firebase can be removed only after the final data migration, cutover, rollback rehearsal, and production QA.

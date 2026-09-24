@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\ProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', fn () => response()->json([
@@ -8,6 +10,9 @@ Route::get('/health', fn () => response()->json([
     'service' => 'marketplace-api',
     'database' => config('database.default'),
 ]));
+
+Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/{product}', [ProductController::class, 'show']);
 
 Route::prefix('auth')->group(function (): void {
     Route::post('/register', [AuthController::class, 'register']);
@@ -25,6 +30,19 @@ Route::middleware(['auth:sanctum', 'active.user'])->get('/user/me', fn (\Illumin
 
 Route::middleware(['auth:sanctum', 'seller'])->prefix('seller')->group(function (): void {
     Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user(), 'shop' => $request->user()->shop]));
+    Route::post('/products', [ProductController::class, 'store']);
+    Route::patch('/products/{product}', [ProductController::class, 'update']);
+    Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+});
+
+Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
+    Route::get('/orders', [OrderController::class, 'index']);
+    Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/{order}', [OrderController::class, 'show']);
+});
+
+Route::middleware(['auth:sanctum', 'role:seller,admin'])->group(function (): void {
+    Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
 });
 
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function (): void {
