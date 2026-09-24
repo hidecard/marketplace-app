@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\OrderController;
@@ -36,13 +37,14 @@ Route::middleware(['auth:sanctum', 'active.user'])->get('/user/me', fn (\Illumin
 
 Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
     Route::get('/conversations', [ChatController::class, 'index']);
-    Route::post('/conversations', [ChatController::class, 'store']);
+    Route::post('/conversations', [ChatController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/conversations/{conversation}/messages', [ChatController::class, 'messages']);
-    Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send']);
-    Route::post('/conversations/{conversation}/read', [ChatController::class, 'markRead']);
+    Route::post('/conversations/{conversation}/messages', [ChatController::class, 'send'])->middleware('throttle:60,1');
+    Route::post('/conversations/{conversation}/read', [ChatController::class, 'markRead'])->middleware('throttle:30,1');
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+    Route::post('/analytics/track', [AnalyticsController::class, 'track'])->middleware('throttle:100,1');
 });
 
 Route::middleware(['auth:sanctum', 'active.user'])->prefix('shop')->group(function (): void {
@@ -54,24 +56,24 @@ Route::middleware(['auth:sanctum', 'active.user'])->prefix('shop')->group(functi
 Route::middleware(['auth:sanctum', 'seller'])->prefix('seller')->group(function (): void {
     Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user(), 'shop' => $request->user()->shop]));
     Route::get('/verification', [VerificationController::class, 'mine']);
-    Route::post('/verification', [VerificationController::class, 'submit']);
-    Route::post('/products', [ProductController::class, 'store']);
-    Route::patch('/products/{product}', [ProductController::class, 'update']);
-    Route::delete('/products/{product}', [ProductController::class, 'destroy']);
+    Route::post('/verification', [VerificationController::class, 'submit'])->middleware('throttle:5,1');
+    Route::post('/products', [ProductController::class, 'store'])->middleware('throttle:20,1');
+    Route::patch('/products/{product}', [ProductController::class, 'update'])->middleware('throttle:30,1');
+    Route::delete('/products/{product}', [ProductController::class, 'destroy'])->middleware('throttle:10,1');
 });
 
 Route::middleware(['auth:sanctum', 'verified.seller'])->prefix('business')->group(function (): void {
     Route::get('/inventory', [BusinessController::class, 'inventory']);
-    Route::post('/inventory/adjust', [BusinessController::class, 'adjustInventory']);
-    Route::post('/pos/sales', [BusinessController::class, 'posSale']);
+    Route::post('/inventory/adjust', [BusinessController::class, 'adjustInventory'])->middleware('throttle:30,1');
+    Route::post('/pos/sales', [BusinessController::class, 'posSale'])->middleware('throttle:60,1');
     Route::get('/expenses', [BusinessController::class, 'expenses']);
-    Route::post('/expenses', [BusinessController::class, 'createExpense']);
+    Route::post('/expenses', [BusinessController::class, 'createExpense'])->middleware('throttle:20,1');
     Route::get('/reports/summary', [ReportController::class, 'summary']);
 });
 
 Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
     Route::get('/orders', [OrderController::class, 'index']);
-    Route::post('/orders', [OrderController::class, 'store']);
+    Route::post('/orders', [OrderController::class, 'store'])->middleware('throttle:10,1');
     Route::get('/orders/{order}', [OrderController::class, 'show']);
 });
 
@@ -82,6 +84,6 @@ Route::middleware(['auth:sanctum', 'role:seller,admin'])->group(function (): voi
 Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function (): void {
     Route::get('/me', fn (\Illuminate\Http\Request $request) => response()->json(['user' => $request->user()]));
     Route::get('/verifications', [VerificationController::class, 'index']);
-    Route::post('/verifications/{verification}/review', [VerificationController::class, 'review']);
+    Route::post('/verifications/{verification}/review', [VerificationController::class, 'review'])->middleware('throttle:30,1');
     Route::get('/reports/summary', [ReportController::class, 'summary']);
 });

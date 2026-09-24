@@ -33,7 +33,7 @@
     "ci": "npm run typecheck && npm run lint && npm run build:all && npm run build:functions && npm run lint:functions && npm run test:functions"
   },
   "devDependencies": {
-    "firebase-tools": "^13.0.0",
+    "firebase-tools": "^14.23.0",
     "wrangler": "4.131.0"
   },
   "engines": {

@@ -29,7 +29,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('seller_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('shop_id')->nullable()->constrained('shops')->nullOnDelete();
-            $table->string('name');
+            $table->string('title');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->decimal('price', 15, 2);

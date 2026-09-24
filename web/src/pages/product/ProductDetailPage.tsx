@@ -9,6 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
 import { trackEvent } from '../../services/analytics';
 import { FunctionsService } from '../../services/functions';
+import { productApi } from '../../services/productApi';
 import toast from 'react-hot-toast';
 import QRModal from '../../components/offer/QRModal';
 
@@ -36,19 +37,48 @@ export const ProductDetailPage: React.FC = () => {
   const fetchProduct = async () => {
     if (!productId) return;
     try {
-      const productDoc = await getDoc(doc(db, 'products', productId));
-      if (productDoc.exists()) {
-        const productData = { id: productDoc.id, ...productDoc.data() } as Product;
+      let productData: Product | null = null;
+      
+      if (productApi.isEnabled) {
+        const laravelProduct = await productApi.getProduct(parseInt(productId));
+        if (laravelProduct) {
+          productData = {
+            id: String(laravelProduct.id),
+            title: laravelProduct.title,
+            description: laravelProduct.description,
+            price: laravelProduct.price,
+            stock: laravelProduct.stock,
+            categoryId: String(laravelProduct.category_id),
+            sellerId: String(laravelProduct.seller_id),
+            shopId: laravelProduct.shop_id ? String(laravelProduct.shop_id) : undefined,
+            images: laravelProduct.images,
+            condition: laravelProduct.condition,
+            status: laravelProduct.status,
+            views: 0,
+            createdAt: new Date(laravelProduct.created_at),
+            updatedAt: new Date(laravelProduct.updated_at),
+          } as Product;
+        }
+      } else {
+        const productDoc = await getDoc(doc(db, 'products', productId));
+        if (productDoc.exists()) {
+          productData = { id: productDoc.id, ...productDoc.data() } as Product;
+        }
+      }
+      
+      if (productData) {
         setProduct(productData);
         trackEvent('product_view', { product_id: productData.id, product_title: productData.title, price: productData.price });
 
-        // Increment view count safely
-        FunctionsService.call('incrementProductViews', {
-          productId: productData.id,
-        }).catch(() => {});
+        // Increment view count safely (only for Firebase)
+        if (!productApi.isEnabled) {
+          FunctionsService.call('incrementProductViews', {
+            productId: productData.id,
+          }).catch(() => {});
+        }
 
-        // Fetch shop
-        if (productData.shopId) {
+        // Fetch shop (only for Firebase)
+        if (!productApi.isEnabled && productData.shopId) {
           try {
             const shopDoc = await getDoc(doc(db, 'shops', productData.shopId));
             if (shopDoc.exists()) {
@@ -60,40 +90,42 @@ export const ProductDetailPage: React.FC = () => {
         }
 
         // Fetch related products (with resilient fallback for compound indexes)
-        try {
-          let relatedDocs: Product[] = [];
+        if (!productApi.isEnabled) {
           try {
-            const relatedQuery = query(
-              collection(db, 'products'),
-              where('categoryId', '==', productData.categoryId),
-              where('status', '==', 'active'),
-              orderBy('createdAt', 'desc'),
-            );
-            const relatedSnapshot = await getDocs(relatedQuery);
-            relatedDocs = relatedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
-          } catch (idxErr) {
-            // Fallback without compound index requirement
-            const fallbackQuery = query(
-              collection(db, 'products'),
-              where('categoryId', '==', productData.categoryId)
-            );
-            const relatedSnapshot = await getDocs(fallbackQuery);
-            relatedDocs = relatedSnapshot.docs
-              .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
-              .filter((p) => !p.status || p.status === 'active')
-              .sort((a, b) => {
-                const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
-                const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
-                return timeB - timeA;
-              });
-          }
+            let relatedDocs: Product[] = [];
+            try {
+              const relatedQuery = query(
+                collection(db, 'products'),
+                where('categoryId', '==', productData.categoryId),
+                where('status', '==', 'active'),
+                orderBy('createdAt', 'desc'),
+              );
+              const relatedSnapshot = await getDocs(relatedQuery);
+              relatedDocs = relatedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+            } catch (idxErr) {
+              // Fallback without compound index requirement
+              const fallbackQuery = query(
+                collection(db, 'products'),
+                where('categoryId', '==', productData.categoryId)
+              );
+              const relatedSnapshot = await getDocs(fallbackQuery);
+              relatedDocs = relatedSnapshot.docs
+                .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+                .filter((p) => !p.status || p.status === 'active')
+                .sort((a, b) => {
+                  const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
+                  const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
+                  return timeB - timeA;
+                });
+            }
 
-          const related = relatedDocs
-            .filter((p) => p.id !== productId)
-            .slice(0, 4);
-          setRelatedProducts(related);
-        } catch (relatedErr) {
-          console.warn('Error fetching related products:', relatedErr);
+            const related = relatedDocs
+              .filter((p) => p.id !== productId)
+              .slice(0, 4);
+            setRelatedProducts(related);
+          } catch (relatedErr) {
+            console.warn('Error fetching related products:', relatedErr);
+          }
         }
       }
     } catch (error) {

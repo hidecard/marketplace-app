@@ -1282,6 +1282,14 @@ export const createOffer = secureCallable(async (data, context) => {
   }
   const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
 
+  // Idempotency: caller-scoped to prevent duplicate offers
+  const scopedKey = scopedId(uid, idempotencyKey);
+  const offerRef = db.collection('offers').doc(scopedKey);
+  const existingOffer = await offerRef.get();
+  if (existingOffer.exists) {
+    return { id: scopedKey, chatId: existingOffer.data()?.chatId, alreadyProcessed: true };
+  }
+
   const productRef = db.collection('products').doc(productId);
   const productSnap = await productRef.get();
   if (!productSnap.exists) {
@@ -1305,10 +1313,8 @@ export const createOffer = secureCallable(async (data, context) => {
   if (!existing.empty) {
     throw new functions.https.HttpsError('already-exists', 'You already have an active offer on this product');
   }
-
-  const offerRef = db.collection('offers').doc(idempotencyKey);
   await offerRef.set({
-    id: idempotencyKey,
+    id: scopedKey,
     productId,
     buyerId: uid,
     sellerId,
@@ -1324,7 +1330,7 @@ export const createOffer = secureCallable(async (data, context) => {
   sorted.sort();
   const chatId = sorted.join('_');
   const chatRef = db.collection('chats').doc(chatId);
-  const msgRef = chatRef.collection('messages').doc(`${idempotencyKey}-offer`);
+  const msgRef = chatRef.collection('messages').doc(`${scopedKey}-offer`);
 
   const batch = db.batch();
   batch.set(chatRef, {
@@ -1355,12 +1361,12 @@ export const createOffer = secureCallable(async (data, context) => {
       await messaging.send({
         token,
         notification: { title: 'New offer', body: `${price} Ks on ${product.title}` },
-        data: { type: 'offer', productId, offerId: idempotencyKey },
+        data: { type: 'offer', productId, offerId: scopedKey },
       });
     }
   } catch (_) { /* ignore */ }
 
-  return { id: idempotencyKey, chatId };
+  return { id: scopedKey, chatId, alreadyProcessed: false };
 });
 
 // ============ respondToOffer ============
@@ -1391,11 +1397,12 @@ export const respondToOffer = secureCallable(async (data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'Offer is already closed');
   }
 
-  // Idempotency: refuse the same decision twice.
-  const idemRef = db.collection('offer_decisions').doc(idempotencyKey);
+  // Idempotency: caller-scoped to refuse the same decision twice.
+  const scopedKey = scopedId(uid, idempotencyKey);
+  const idemRef = db.collection('offer_decisions').doc(scopedKey);
   const idemSnap = await idemRef.get();
   if (idemSnap.exists) {
-    return { ok: true, alreadyProcessed: true, status: offer.status };
+    return { ok: true, alreadyProcessed: true, status: offer.status, idempotencyKey: scopedKey };
   }
 
   await db.runTransaction(async (tx) => {
@@ -1405,7 +1412,7 @@ export const respondToOffer = secureCallable(async (data, context) => {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     tx.set(idemRef, {
-      id: idempotencyKey,
+      id: scopedKey,
       offerId,
       actor: uid,
       decision,
@@ -1427,7 +1434,7 @@ export const respondToOffer = secureCallable(async (data, context) => {
     }
   } catch (_) { /* ignore */ }
 
-  return { ok: true, alreadyProcessed: false, status: decision };
+  return { ok: true, alreadyProcessed: false, status: decision, idempotencyKey: scopedKey };
 });
 
 // ============ createReview (one per completed order) ============
@@ -1445,13 +1452,14 @@ export const createReview = secureCallable(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'imageUrls must be an array');
   }
   const finalImages = (imageUrls as unknown[] | undefined)?.filter((u): u is string => typeof u === 'string') ?? [];
+  const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
 
-  // Idempotency: doc id = `${orderId}_${uid}`.
-  const reviewId = `${orderId}_${uid}`;
-  const reviewRef = db.collection('reviews').doc(reviewId);
+  // Idempotency: caller-scoped to prevent duplicate reviews
+  const scopedKey = scopedId(uid, idempotencyKey);
+  const reviewRef = db.collection('reviews').doc(scopedKey);
   const existing = await reviewRef.get();
   if (existing.exists) {
-    throw new functions.https.HttpsError('already-exists', 'You already reviewed this order');
+    return { id: scopedKey, alreadyProcessed: true };
   }
 
   const orderRef = db.collection('orders').doc(orderId);
@@ -1469,7 +1477,7 @@ export const createReview = secureCallable(async (data, context) => {
 
   await db.runTransaction(async (tx) => {
     tx.set(reviewRef, {
-      id: reviewId,
+      id: scopedKey,
       orderId,
       productId: order.productId ?? (order.items && order.items[0] && order.items[0].productId) ?? null,
       shopId: order.shopId,
@@ -1492,7 +1500,7 @@ export const createReview = secureCallable(async (data, context) => {
     });
   });
 
-  return { id: reviewId };
+  return { id: scopedKey, alreadyProcessed: false };
 });
 
 // ============ createReport ============
@@ -1508,20 +1516,26 @@ export const createReport = secureCallable(async (data, context) => {
   const description = optionalString(data.description, 'description', 2000) ?? '';
   const idempotencyKey = requireString(data.idempotencyKey, 'idempotencyKey', 80);
 
-  // Idempotency: one report per (user, target) per hour to prevent spam.
-  const existing = await db.collection('reports')
+  // Idempotency: caller-scoped to prevent duplicate reports
+  const scopedKey = scopedId(uid, idempotencyKey);
+  const ref = db.collection('reports').doc(scopedKey);
+  const existing = await ref.get();
+  if (existing.exists) {
+    return { id: scopedKey, alreadyProcessed: true };
+  }
+
+  // Additional spam protection: one report per (user, target) per hour
+  const recentReports = await db.collection('reports')
     .where('reporterId', '==', uid)
     .where('targetId', '==', targetId)
     .where('status', '==', 'pending')
     .limit(1)
     .get();
-  if (!existing.empty) {
+  if (!recentReports.empty && recentReports.docs[0].id !== scopedKey) {
     throw new functions.https.HttpsError('already-exists', 'You already reported this target');
   }
-
-  const ref = db.collection('reports').doc(idempotencyKey);
   await ref.set({
-    id: idempotencyKey,
+    id: scopedKey,
     reporterId: uid,
     targetType,
     targetId,
@@ -1531,7 +1545,7 @@ export const createReport = secureCallable(async (data, context) => {
     adminNote: null,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
-  return { id: idempotencyKey };
+  return { id: scopedKey, alreadyProcessed: false };
 });
 
 // ============ reviewReport (admin) ============

@@ -9,6 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
 import { useLanguage } from '../../context/LanguageContext';
 import BannerAd from '../../components/ads/BannerAd';
+import { productApi } from '../../services/productApi';
 
 const bannerImages = [
   'https://via.placeholder.com/800x200/3B82F6/FFFFFF?text=Welcome+to+Marketplace',
@@ -57,25 +58,49 @@ export const HomePage: React.FC = () => {
   const fetchFeaturedProducts = async () => {
     try {
       let data: Product[] = [];
-      try {
-        const q = query(
-          collection(db, 'products'),
-          where('status', '==', 'active'),
-          orderBy('views', 'desc'),
-          limit(10)
-        );
-        const snapshot = await getDocs(q);
-        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
-      } catch (idxError: any) {
-        // Fallback if remote composite index is not created yet
-        const qFallback = query(collection(db, 'products'), limit(50));
-        const snapshot = await getDocs(qFallback);
-        data = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
-          .filter((p) => !p.status || p.status === 'active')
-          .sort((a, b) => (b.views || 0) - (a.views || 0))
-          .slice(0, 10);
+      
+      if (productApi.isEnabled) {
+        const laravelProducts = await productApi.getProducts();
+        if (laravelProducts) {
+          data = laravelProducts.map((lp) => ({
+            id: String(lp.id),
+            title: lp.title,
+            description: lp.description,
+            price: lp.price,
+            stock: lp.stock,
+            categoryId: String(lp.category_id),
+            sellerId: String(lp.seller_id),
+            shopId: lp.shop_id ? String(lp.shop_id) : undefined,
+            images: lp.images,
+            condition: lp.condition,
+            status: lp.status,
+            views: 0,
+            createdAt: new Date(lp.created_at),
+            updatedAt: new Date(lp.updated_at),
+          } as Product));
+        }
+      } else {
+        try {
+          const q = query(
+            collection(db, 'products'),
+            where('status', '==', 'active'),
+            orderBy('views', 'desc'),
+            limit(10)
+          );
+          const snapshot = await getDocs(q);
+          data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+        } catch (idxError: any) {
+          // Fallback if remote composite index is not created yet
+          const qFallback = query(collection(db, 'products'), limit(50));
+          const snapshot = await getDocs(qFallback);
+          data = snapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+            .filter((p) => !p.status || p.status === 'active')
+            .sort((a, b) => (b.views || 0) - (a.views || 0))
+            .slice(0, 10);
+        }
       }
+      
       setFeaturedProducts(data);
     } catch (error) {
       console.warn('Error fetching featured products:', error);
@@ -85,29 +110,53 @@ export const HomePage: React.FC = () => {
   const fetchRecentProducts = async () => {
     try {
       let data: Product[] = [];
-      try {
-        const q = query(
-          collection(db, 'products'),
-          where('status', '==', 'active'),
-          orderBy('createdAt', 'desc'),
-          limit(20)
-        );
-        const snapshot = await getDocs(q);
-        data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
-      } catch (idxError: any) {
-        // Fallback if remote composite index is not created yet
-        const qFallback = query(collection(db, 'products'), limit(50));
-        const snapshot = await getDocs(qFallback);
-        data = snapshot.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
-          .filter((p) => !p.status || p.status === 'active')
-          .sort((a, b) => {
-            const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
-            const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
-            return timeB - timeA;
-          })
-          .slice(0, 20);
+      
+      if (productApi.isEnabled) {
+        const laravelProducts = await productApi.getProducts();
+        if (laravelProducts) {
+          data = laravelProducts.map((lp) => ({
+            id: String(lp.id),
+            title: lp.title,
+            description: lp.description,
+            price: lp.price,
+            stock: lp.stock,
+            categoryId: String(lp.category_id),
+            sellerId: String(lp.seller_id),
+            shopId: lp.shop_id ? String(lp.shop_id) : undefined,
+            images: lp.images,
+            condition: lp.condition,
+            status: lp.status,
+            views: 0,
+            createdAt: new Date(lp.created_at),
+            updatedAt: new Date(lp.updated_at),
+          } as Product));
+        }
+      } else {
+        try {
+          const q = query(
+            collection(db, 'products'),
+            where('status', '==', 'active'),
+            orderBy('createdAt', 'desc'),
+            limit(20)
+          );
+          const snapshot = await getDocs(q);
+          data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+        } catch (idxError: any) {
+          // Fallback if remote composite index is not created yet
+          const qFallback = query(collection(db, 'products'), limit(50));
+          const snapshot = await getDocs(qFallback);
+          data = snapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() } as Product))
+            .filter((p) => !p.status || p.status === 'active')
+            .sort((a, b) => {
+              const timeA = new Date((a.createdAt as any)?.toDate?.() || a.createdAt).getTime() || 0;
+              const timeB = new Date((b.createdAt as any)?.toDate?.() || b.createdAt).getTime() || 0;
+              return timeB - timeA;
+            })
+            .slice(0, 20);
+        }
       }
+      
       setRecentProducts(data);
     } catch (error) {
       console.warn('Error fetching recent products:', error);

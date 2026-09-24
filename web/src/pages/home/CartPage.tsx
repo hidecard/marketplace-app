@@ -9,6 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
 import { trackEvent } from '../../services/analytics';
 import { FunctionsService } from '../../services/functions';
+import { orderApi } from '../../services/orderApi';
 import toast from 'react-hot-toast';
 
 export const CartPage: React.FC = () => {
@@ -79,46 +80,75 @@ export const CartPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const groupedItems = new Map<string, typeof items>();
-      items.forEach((item) => {
-        const sellerGroup = item.sellerId || item.shopId || 'legacy-seller';
-        const group = groupedItems.get(sellerGroup) || [];
-        group.push(item);
-        groupedItems.set(sellerGroup, group);
-      });
-      const address = {
-        id: selectedAddress.id,
-        name: selectedAddress.name,
-        phone: selectedAddress.phone,
-        address: selectedAddress.address,
-        city: selectedAddress.city,
-        region: selectedAddress.region,
-        isDefault: selectedAddress.isDefault,
-      };
-      const orderResults = await Promise.all(
-        Array.from(groupedItems.entries()).map(([sellerGroup, sellerItems], groupIndex) =>
-          FunctionsService.callOrThrow<any>('createOrder', {
-            items: sellerItems.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              variantId: null,
-            })),
-            address,
-            idempotencyKey: `order_${user.uid}_${Date.now()}_${groupIndex}_${sellerGroup}`,
-            deliveryFee: 0,
-            discount: 0,
-            paymentMethod: 'cod',
-          })
-        )
-      );
+      if (orderApi.isEnabled) {
+        // Use Laravel API for order creation
+        const order = await orderApi.createOrder({
+          items: items.map((item) => ({
+            product_id: parseInt(item.productId),
+            quantity: item.quantity,
+          })),
+          shipping_address: {
+            label: selectedAddress.label,
+            name: selectedAddress.name,
+            phone: selectedAddress.phone,
+            address: selectedAddress.address,
+            city: selectedAddress.city,
+            region: selectedAddress.region,
+          },
+          note: '',
+        });
 
-      orderResults.forEach((result) => {
-        trackEvent('order_placed', { order_number: result.orderNumber, total: result.total });
-      });
+        if (order) {
+          trackEvent('order_placed', { order_number: order.order_number, total: order.total });
+          clearCart();
+          toast.success('Order placed successfully!');
+          navigate('/orders');
+        } else {
+          toast.error('Failed to place order');
+        }
+      } else {
+        // Use Firebase Functions for order creation
+        const groupedItems = new Map<string, typeof items>();
+        items.forEach((item) => {
+          const sellerGroup = item.sellerId || item.shopId || 'legacy-seller';
+          const group = groupedItems.get(sellerGroup) || [];
+          group.push(item);
+          groupedItems.set(sellerGroup, group);
+        });
+        const address = {
+          id: selectedAddress.id,
+          name: selectedAddress.name,
+          phone: selectedAddress.phone,
+          address: selectedAddress.address,
+          city: selectedAddress.city,
+          region: selectedAddress.region,
+          isDefault: selectedAddress.isDefault,
+        };
+        const orderResults = await Promise.all(
+          Array.from(groupedItems.entries()).map(([sellerGroup, sellerItems], groupIndex) =>
+            FunctionsService.callOrThrow<any>('createOrder', {
+              items: sellerItems.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                variantId: null,
+              })),
+              address,
+              idempotencyKey: `order_${user.uid}_${Date.now()}_${groupIndex}_${sellerGroup}`,
+              deliveryFee: 0,
+              discount: 0,
+              paymentMethod: 'cod',
+            })
+          )
+        );
 
-      clearCart();
-      toast.success(orderResults.length > 1 ? `${orderResults.length} orders placed successfully!` : 'Order placed successfully!');
-      navigate('/orders');
+        orderResults.forEach((result) => {
+          trackEvent('order_placed', { order_number: result.orderNumber, total: result.total });
+        });
+
+        clearCart();
+        toast.success(orderResults.length > 1 ? `${orderResults.length} orders placed successfully!` : 'Order placed successfully!');
+        navigate('/orders');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to place order');
     } finally {

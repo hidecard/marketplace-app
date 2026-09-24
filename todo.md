@@ -15,17 +15,17 @@
 - [x] Validate Laravel migrations, API route registration, and the initial test suite.
 - [x] Create idempotent Admin, Seller, and User seed data with environment-controlled passwords.
 - [x] Seed a verified demo Seller shop and active demo product for local checkout testing.
-- [ ] Add the Web API client boundary and migrate authentication without breaking Firebase fallback.
+- [x] Add the Web API client boundary and migrate authentication without breaking Firebase fallback.
 - [x] Add Laravel `user`, `seller`, and `admin` roles with active-status enforcement middleware and feature tests.
 - [x] Add Laravel authentication endpoints for register, login, current user, profile update, password change, logout, and logout-all.
 - [x] Add login throttling, Sanctum role abilities, inactive-account rejection, and authentication endpoint tests.
 - [x] Add Laravel product browsing, seller-owned product management, and transaction-based server-authoritative checkout endpoints.
-- [ ] Connect the Web product/order screens to the Laravel API without breaking Firebase fallback.
+- [x] Connect the Web product/order screens to the Laravel API without breaking Firebase fallback.
 - [x] Add Laravel shop creation, server-side seller promotion, verification submission, rejection/resubmission, and Admin approval endpoints.
 - [x] Add Laravel verified-seller inventory, transactional POS, and idempotent expense APIs.
 - [x] Add seller-scoped and admin-wide Laravel report summaries for POS, marketplace orders, expenses, and net profit.
 - [x] Add Laravel participant-scoped chat, message read state, notification inbox, unread counts, and read APIs.
-- [ ] Create a Firebase-to-MySQL data migration and reconciliation script.
+- [x] Create a Firebase-to-MySQL data migration and reconciliation script.
 - [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.
 
 ## 1. Completed in This Web-First Pass
@@ -198,14 +198,14 @@
 
 ### Backend Follow-Up
 
-- [ ] Add caller-scoped idempotency to offer creation/response.
-- [ ] Add caller-scoped idempotency to review and report creation.
-- [ ] Complete a second callable-by-callable authorization audit, including all admin-only paths.
+- [x] Add caller-scoped idempotency to offer creation/response.
+- [x] Add caller-scoped idempotency to review and report creation.
+- [x] Complete a second callable-by-callable authorization audit, including all admin-only paths.
 - [ ] Add server-owned delivery-fee configuration if paid delivery is introduced; V1 currently forces COD and a zero server fee.
 - [ ] Add explicit promotion/coupon models before allowing order discounts; V1 ignores buyer-supplied discounts.
-- [ ] Add retention/cleanup jobs for operation locks, analytics events, old notifications, rejected evidence, and local print retries.
-- [ ] Add rate limits/abuse controls for chat, offers, reports, reviews, follows, and analytics events.
-- [ ] Add pagination to large Web and admin collection screens.
+- [x] Add retention/cleanup jobs for operation locks, analytics events, old notifications, rejected evidence, and local print retries.
+- [x] Add rate limits/abuse controls for chat, offers, reports, reviews, follows, and analytics events.
+- [x] Add pagination to large Web and admin collection screens.
 
 ### Web and Admin Product Work
 
