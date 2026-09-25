@@ -46,6 +46,8 @@
 - [x] Laravel session auth shares active user role/status through Inertia props.
 - [x] Legacy Firebase/Cloudflare workflow is disabled; Laravel artifact CI is now the repository workflow.
 - [x] Backend suite passes: 36 tests and 128 assertions; Inertia production build passes.
+- [x] Add Inertia seller shop creation and verification submission pages with role-protected Laravel routes.
+- [x] Add Inertia Admin verification moderation page with evidence links and approve/reject actions.
 - [ ] Port the remaining existing marketplace, seller, Admin, chat, notification, POS, inventory, report, upload, and moderation UI into Inertia pages.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
