@@ -7,3 +7,7 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+:root { color-scheme: light; }
+body { margin: 0; min-width: 320px; }
+button, a, input { transition: all 160ms ease; }

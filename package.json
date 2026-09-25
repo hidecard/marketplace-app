@@ -9,28 +9,13 @@
     "shared"
   ],
   "scripts": {
-    "dev": "npm run dev -w web",
-    "dev:web": "npm run dev -w web",
-    "dev:admin": "npm run dev -w admin",
-    "build": "npm run build:web",
-    "build:web": "npm run build -w web",
-    "build:admin": "npm run build -w admin",
-    "build:functions": "npm run build --prefix firebase/functions",
+    "dev": "npm run dev:backend",
     "dev:backend": "cd backend && php artisan serve --host=0.0.0.0 --port=8000",
+    "build": "npm run build:backend",
+    "build:backend": "npm run build --prefix backend",
     "migrate:backend": "cd backend && php artisan migrate --force",
     "test:backend": "cd backend && php artisan test",
-    "build:all": "npm run build:web && npm run build:admin",
-    "deploy": "npm run build && npx wrangler deploy",
-    "deploy:web": "npm run build:web && firebase deploy --only hosting:web",
-    "deploy:admin": "npm run build:admin && firebase deploy --only hosting:admin",
-    "deploy:firebase": "firebase deploy --only firestore,functions,storage",
-    "deploy:all": "npm run build:all && firebase deploy",
-    "deploy:cloudflare": "npm run build:web && npx wrangler deploy",
-    "lint": "npm run lint -w web && npm run lint -w admin",
-    "lint:functions": "npm run lint --prefix firebase/functions",
-    "test:functions": "npm test --prefix firebase/functions",
-    "typecheck": "npm run typecheck -w web && npm run typecheck -w admin",
-    "ci": "npm run typecheck && npm run lint && npm run build:all && npm run build:functions && npm run lint:functions && npm run test:functions"
+    "ci": "npm run test:backend && npm run build:backend"
   },
   "devDependencies": {
     "firebase-tools": "^14.23.0",

@@ -1,0 +1,82 @@
+name: Laravel Inertia CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: laravel-inertia-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Laravel tests and Inertia build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Laravel dependencies
+        run: composer install --working-dir=backend --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare SQLite test database
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+          sed -i 's#^DB_DATABASE=.*#DB_DATABASE=${{ github.workspace }}/backend/database/database.sqlite#' .env
+
+      - name: Run migrations and Laravel tests
+        working-directory: backend
+        run: |
+          php artisan migrate:fresh --force
+          php artisan test
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install and build Inertia React TypeScript
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload Laravel release artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: laravel-inertia-release
+          path: |
+            backend/app
+            backend/bootstrap
+            backend/config
+            backend/database
+            backend/public/build
+            backend/resources
+            backend/routes
+            backend/composer.json
+            backend/composer.lock
+            backend/package.json
+            backend/package-lock.json
+          if-no-files-found: error
+          retention-days: 7

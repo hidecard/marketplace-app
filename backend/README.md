@@ -115,3 +115,12 @@ php artisan db:seed
 ```
 
 `DefaultAccountsSeeder` is idempotent and creates an active Admin, Seller, and User. It also creates an approved demo shop and one active demo product for the Seller. Set `SEED_ADMIN_PASSWORD`, `SEED_SELLER_PASSWORD`, and `SEED_USER_PASSWORD` in the environment before seeding. Production seeding refuses to run when any password is missing; local development uses clearly temporary passwords only when `APP_ENV` is not `production`.
+
+
+## Inertia React TypeScript frontend
+
+The Laravel application now owns the primary Web frontend through Inertia React and TypeScript. The root Blade shell is `resources/views/app.blade.php`; the Vite entrypoint is `resources/js/app.tsx`; and the first server-driven pages are `Home`, `Auth/Login`, `Auth/Register`, `Dashboard`, and `Products/Index`. Authentication uses Laravel session cookies and the existing active-role middleware, not Firebase tokens.
+
+The supplied local deployment configuration is kept in the ignored `backend/.env` for `https://easyzaymm.com/` and the provided MySQL database. Never commit that file or its database password. The Flutter application under `flutter_app/` is intentionally preserved and is not part of this Web cutover.
+
+The old standalone `web/` and `admin/` Firebase SPAs remain temporarily as a migration source while feature parity is rebuilt in Inertia. Their Firebase packages and source will be removed only after the remaining marketplace, seller, Admin, chat, notification, POS, inventory, report, upload, and moderation screens have equivalent Laravel pages and tests.

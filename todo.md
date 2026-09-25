@@ -2,11 +2,20 @@
 
 > **Last updated:** 2026-09-25
 >
-> **Current priority:** Laravel + MySQL backend migration, followed by Web/Admin API cutover. Flutter/Android work remains deferred until the Web release is stable.
+> **Current priority:** Laravel + MySQL backend migration with Inertia React TypeScript as the only Web/Admin target. Flutter/Android work remains preserved and deferred until the Web release is stable.
 > **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
 
 ## 0. Laravel + MySQL Migration
 
+- [x] Pull the latest `main` branch before starting the Inertia migration.
+- [x] Install Laravel Inertia v2, React, TypeScript, Vite, and Tailwind build dependencies.
+- [x] Add the Inertia Blade root, shared auth/flash props, React TypeScript entrypoint, layout, home, login, register, dashboard, and product-list pages.
+- [x] Add Laravel session login/register/logout routes and server-owned role/status defaults for the Inertia frontend.
+- [x] Configure the supplied `easyzaymm.com` URL and MySQL environment locally in ignored `backend/.env`.
+- [x] Replace the Firebase/Cloudflare CI workflow with Laravel test/build artifact CI.
+- [ ] Finish migrating every existing Web/Admin screen and interaction from Firebase SPA code to Inertia pages/controllers.
+- [ ] Remove the legacy Web/Admin Firebase packages, services, env variables, and source after feature parity is verified.
+- [ ] Add production PHP hosting/deploy credentials for `https://easyzaymm.com/`; Cloudflare Worker deployment is no longer the target.
 - [x] Audit Firebase coupling across Web, Admin, and Functions before migration.
 - [x] Scaffold `backend/` as a Laravel 13 API with Sanctum token authentication.
 - [x] Add MySQL-compatible users, shops, products, orders, and order-items migrations.
