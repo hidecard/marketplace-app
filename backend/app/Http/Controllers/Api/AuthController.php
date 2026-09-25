@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PhoneOtpChallenge;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -74,11 +78,96 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:120'],
             'phone_number' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'region' => ['sometimes', 'nullable', 'string', 'max:120'],
         ]);
 
-        $request->user()->fill($data)->save();
+        $user = $request->user();
+        if (array_key_exists('phone_number', $data) && $data['phone_number'] !== $user->phone_number) {
+            $data['phone_verified'] = false;
+            $data['profile_completed_at'] = null;
+        }
+        $user->fill($data)->save();
 
-        return response()->json(['user' => $request->user()->fresh()]);
+        return response()->json(['user' => $user->fresh()]);
+    }
+
+    public function requestPhoneOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate(['phone_number' => ['required', 'string', 'max:30']]);
+        $phone = trim($data['phone_number']);
+        $user = $request->user();
+        $existingUser = $user ?: User::where('phone_number', $phone)->first();
+
+        $recent = PhoneOtpChallenge::where('phone_number', $phone)
+            ->where('created_at', '>=', now()->subSeconds(60))
+            ->exists();
+        if ($recent) {
+            return response()->json(['message' => 'Please wait before requesting another code.'], 429);
+        }
+
+        $code = (string) random_int(100000, 999999);
+        $challenge = PhoneOtpChallenge::create([
+            'user_id' => $existingUser?->id,
+            'phone_number' => $phone,
+            'code_hash' => Hash::make($code),
+            'expires_at' => now()->addMinutes(10),
+            'request_ip' => $request->ip(),
+        ]);
+
+        // SMS credentials are intentionally not hard-coded. In local mode this is
+        // available in the log for development; production must configure a provider.
+        if (app()->environment('local', 'testing')) {
+            Log::info('Phone OTP generated for local development', ['challenge_id' => $challenge->id, 'phone_number' => $phone, 'code' => $code]);
+        }
+
+        return response()->json([
+            'message' => 'If this phone number is eligible, a verification code has been sent.',
+            'challenge_id' => $challenge->id,
+            'expires_in' => 600,
+            'delivery' => app()->environment('local', 'testing') ? 'log' : 'provider_pending',
+        ], 202);
+    }
+
+    public function verifyPhoneOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'challenge_id' => ['required', 'integer', 'exists:phone_otp_challenges,id'],
+            'code' => ['required', 'digits:6'],
+        ]);
+
+        $result = DB::transaction(function () use ($request, $data): User {
+            $challenge = PhoneOtpChallenge::query()->lockForUpdate()->findOrFail($data['challenge_id']);
+            if ($request->user() && $challenge->user_id && $challenge->user_id !== $request->user()->id) {
+                abort(403, 'This OTP challenge belongs to another account.');
+            }
+            if (! $challenge->verifyCode($data['code'])) {
+                throw ValidationException::withMessages(['code' => ['The code is invalid, expired, or has reached its attempt limit.']]);
+            }
+
+            $user = $request->user() ?: User::where('phone_number', $challenge->phone_number)->first();
+            if (! $user) {
+                throw ValidationException::withMessages(['phone_number' => ['Complete registration before verifying this phone number.']]);
+            }
+            $user->update(['phone_number' => $challenge->phone_number, 'phone_verified' => true]);
+            return $user->fresh();
+        });
+
+        return response()->json(['user' => $result]);
+    }
+
+    public function completeProfile(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'phone_number' => ['required', 'string', 'max:30'],
+            'region' => ['required', 'string', 'max:120'],
+        ]);
+        $user = $request->user();
+        if (! $user->phone_verified || $user->phone_number !== $data['phone_number']) {
+            throw ValidationException::withMessages(['phone_number' => ['Verify this phone number before completing your profile.']]);
+        }
+        $user->update([...$data, 'profile_completed_at' => Carbon::now()]);
+        return response()->json(['user' => $user->fresh()]);
     }
 
     public function changePassword(Request $request): JsonResponse

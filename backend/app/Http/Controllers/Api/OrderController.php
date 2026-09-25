@@ -155,12 +155,13 @@ class OrderController extends Controller
             abort(403, 'Only the order seller or an admin can update status.');
         }
 
-        $data = $request->validate(['status' => ['required', 'in:confirmed,preparing,shipped,delivered,completed,cancelled']]);
+        $data = $request->validate(['status' => ['required', 'in:confirmed,preparing,shipped,out_for_delivery,delivered,completed,cancelled']]);
         $allowed = [
             'pending' => ['confirmed', 'cancelled'],
             'confirmed' => ['preparing', 'cancelled'],
             'preparing' => ['shipped', 'cancelled'],
-            'shipped' => ['delivered'],
+            'shipped' => ['out_for_delivery'],
+            'out_for_delivery' => ['delivered'],
             'delivered' => ['completed'],
             'completed' => [],
             'cancelled' => [],
@@ -169,7 +170,13 @@ class OrderController extends Controller
             throw ValidationException::withMessages(['status' => ["Cannot move order from {$order->status} to {$data['status']}."]]);
         }
 
-        $order->update(['status' => $data['status']]);
+        $timestamps = match ($data['status']) {
+            'delivered' => ['delivered_at' => now()],
+            'completed' => ['completed_at' => now()],
+            'cancelled' => ['cancelled_at' => now(), 'cancel_count' => DB::raw('cancel_count + 1')],
+            default => [],
+        };
+        $order->update(['status' => $data['status'], ...$timestamps]);
 
         return response()->json(['order' => $order->fresh()->load('items.product', 'shop')]);
     }

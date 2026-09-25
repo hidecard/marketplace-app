@@ -29,11 +29,14 @@ Route::prefix('auth')->group(function (): void {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,1');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:3,1');
+    Route::post('/phone/request', [AuthController::class, 'requestPhoneOtp'])->middleware('throttle:5,1');
     Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/logout-all', [AuthController::class, 'logoutAll']);
         Route::patch('/profile', [AuthController::class, 'updateProfile']);
+        Route::post('/phone/verify', [AuthController::class, 'verifyPhoneOtp'])->middleware('throttle:10,1');
+        Route::post('/profile/complete', [AuthController::class, 'completeProfile']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
     });
 });

@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\PhoneOtpChallenge;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -42,5 +45,53 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/');
+    }
+
+    public function showProfileCompletion(): \Inertia\Response
+    {
+        return \Inertia\Inertia::render('Auth/ProfileComplete', ['user' => Auth::user()]);
+    }
+
+    public function requestPhoneOtp(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['phone_number' => ['required', 'string', 'max:30']]);
+        $phone = trim($data['phone_number']);
+        if (PhoneOtpChallenge::where('phone_number', $phone)->where('created_at', '>=', now()->subSeconds(60))->exists()) {
+            return back()->withErrors(['phone_number' => 'Please wait before requesting another code.']);
+        }
+        $code = (string) random_int(100000, 999999);
+        $challenge = PhoneOtpChallenge::create([
+            'user_id' => $request->user()->id,
+            'phone_number' => $phone,
+            'code_hash' => Hash::make($code),
+            'expires_at' => now()->addMinutes(10),
+            'request_ip' => $request->ip(),
+        ]);
+        if (app()->environment('local', 'testing')) {
+            Log::info('Phone OTP generated for local development', ['challenge_id' => $challenge->id, 'phone_number' => $phone, 'code' => $code]);
+        }
+        return back()->with('success', 'Verification code sent. In local mode, check the application log.');
+    }
+
+    public function verifyPhoneOtp(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['challenge_id' => ['required', 'integer', 'exists:phone_otp_challenges,id'], 'code' => ['required', 'digits:6']]);
+        DB::transaction(function () use ($request, $data): void {
+            $challenge = PhoneOtpChallenge::query()->lockForUpdate()->findOrFail($data['challenge_id']);
+            abort_unless((int) $challenge->user_id === (int) $request->user()->id, 403);
+            if (! $challenge->verifyCode($data['code'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['code' => 'The code is invalid, expired, or has reached its attempt limit.']);
+            }
+            $request->user()->update(['phone_number' => $challenge->phone_number, 'phone_verified' => true]);
+        });
+        return back()->with('success', 'Phone number verified. You can now complete your profile.');
+    }
+
+    public function completeProfile(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:120'], 'region' => ['required', 'string', 'max:120']]);
+        abort_unless($request->user()->phone_verified, 422, 'Verify your phone number first.');
+        $request->user()->update([...$data, 'profile_completed_at' => now()]);
+        return redirect()->intended('/dashboard')->with('success', 'Profile completed successfully.');
     }
 }

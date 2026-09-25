@@ -1,24 +1,24 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
+import { ChevronRight, ShieldCheck, Store, Search, PlusCircle } from 'lucide-react';
 import AppLayout from '../Layouts/AppLayout';
 
+type Category = { name: string; slug: string; icon_url?: string | null };
+type Shop = { id: number; name: string; slug: string; logo_url?: string | null; address?: string | null };
+type Product = { id: number; title: string; price: string | number; stock: number; images?: string[]; condition?: string; shop?: { name: string; verified?: boolean } };
+type Props = { categories: Category[]; verifiedShops: Shop[]; featuredProducts: Product[]; recentProducts: Product[] };
+
+function ProductCard({ product }: { product: Product }) {
+    return <Link href={`/products/${product.id}`} className="min-w-[180px] overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex aspect-square items-center justify-center bg-gradient-to-br from-teal-50 to-cyan-100 text-4xl">{product.images?.[0] ? <img src={product.images[0]} alt="" className="h-full w-full object-cover" /> : '✦'}</div><div className="p-3"><p className="line-clamp-1 text-sm font-semibold text-gray-900">{product.title}</p><p className="mt-1 font-bold text-teal-700">{Number(product.price).toLocaleString()} Ks</p><p className="mt-1 text-xs capitalize text-gray-500">{product.condition || 'new'} · {product.stock} left</p></div></Link>;
+}
+
 export default function Home() {
-    return (
-        <AppLayout>
-            <section className="mx-auto grid max-w-7xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:px-8 lg:py-24">
-                <div className="flex flex-col justify-center">
-                    <p className="mb-4 text-sm font-bold uppercase tracking-[0.22em] text-teal-700">A better local marketplace</p>
-                    <h1 className="max-w-xl text-5xl font-black tracking-tight text-slate-950 sm:text-6xl">Buy, sell, and grow with confidence.</h1>
-                    <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">A secure marketplace for buyers and verified sellers, now powered by Laravel, MySQL, Inertia, React, and TypeScript.</p>
-                    <div className="mt-8 flex flex-wrap gap-3">
-                        <Link href="/products" className="rounded-full bg-teal-700 px-6 py-3 font-bold text-white shadow-lg shadow-teal-700/20 hover:bg-teal-800">Browse marketplace</Link>
-                        <Link href="/register" className="rounded-full border border-slate-300 bg-white px-6 py-3 font-bold text-slate-700 hover:border-teal-600 hover:text-teal-700">Start selling</Link>
-                    </div>
-                </div>
-                <div className="rounded-[2rem] bg-gradient-to-br from-teal-700 to-cyan-900 p-8 text-white shadow-2xl shadow-teal-900/20 sm:p-12">
-                    <div className="mb-12 flex items-center justify-between"><span className="rounded-full bg-white/15 px-3 py-1 text-sm">Laravel migration</span><span className="text-3xl">✦</span></div>
-                    <div className="grid gap-4 sm:grid-cols-2"><div className="rounded-2xl bg-white/10 p-5"><p className="text-3xl font-black">100%</p><p className="mt-1 text-sm text-teal-100">server-authoritative checkout</p></div><div className="rounded-2xl bg-white/10 p-5"><p className="text-3xl font-black">3 roles</p><p className="mt-1 text-sm text-teal-100">user, seller, admin</p></div></div>
-                </div>
-            </section>
-        </AppLayout>
-    );
+    const { categories, verifiedShops, featuredProducts, recentProducts } = usePage<Props>().props;
+    return <AppLayout><div className="mx-auto max-w-7xl px-4 py-4 sm:px-6">
+        <form action="/products" method="get" className="relative mb-5"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input name="q" placeholder="Search products, shops, brands..." className="w-full rounded-full border-0 bg-gray-100 py-3 pl-10 pr-4 text-sm shadow-inner focus:bg-white focus:ring-2 focus:ring-teal-500" /></form>
+        <section className="relative mb-6 overflow-hidden rounded-xl bg-gradient-to-r from-teal-600 to-cyan-500 px-5 py-10 text-white shadow-sm sm:px-10"><div className="max-w-xl"><p className="text-xs font-bold uppercase tracking-widest text-teal-100">Easy Zay Mm Marketplace</p><h1 className="mt-2 text-2xl font-bold sm:text-3xl">Buy and sell with trusted shops</h1><p className="mt-2 text-sm text-teal-50">အတည်ပြုထားသော ဆိုင်များနှင့် စိတ်ချစွာ အရောင်းအဝယ်ပြုလုပ်ပါ</p><div className="mt-5 flex flex-wrap gap-2"><Link href="/products" className="rounded-full bg-white px-4 py-2 text-sm font-bold text-teal-700">Browse products</Link><Link href="/seller/shop/create" className="flex items-center gap-1 rounded-full border border-white/60 px-4 py-2 text-sm font-bold"><PlusCircle size={16} /> Start selling</Link></div></div></section>
+        <section className="mb-7"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Categories</h2><Link href="/products" className="flex items-center gap-1 text-sm font-medium text-teal-600">See all <ChevronRight size={16} /></Link></div><div className="grid grid-cols-4 gap-3 sm:grid-cols-8">{categories.map((category) => <Link href={`/products?category=${category.slug}`} key={category.slug} className="flex flex-col items-center gap-2"><div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-teal-50 text-lg font-bold text-teal-600">{category.icon_url ? <img src={category.icon_url} alt={category.name} className="h-full w-full object-cover" /> : category.name.charAt(0)}</div><span className="line-clamp-1 text-center text-xs text-gray-700">{category.name}</span></Link>)}</div></section>
+        {verifiedShops.length > 0 && <section className="mb-7"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Verified Shops</h2><Link href="/products?verified=1" className="flex items-center gap-1 text-sm font-medium text-teal-600">See all <ChevronRight size={16} /></Link></div><div className="flex gap-3 overflow-x-auto pb-2">{verifiedShops.map((shop) => <Link href={`/products?shop=${encodeURIComponent(shop.name)}`} key={shop.id} className="min-w-[190px] rounded-xl bg-white p-4 shadow-sm ring-1 ring-gray-100"><div className="flex items-center gap-3"><div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-teal-50 text-lg font-bold text-teal-700">{shop.logo_url ? <img src={shop.logo_url} alt="" className="h-full w-full object-cover" /> : <Store size={22} />}</div><div className="min-w-0"><p className="truncate font-semibold">{shop.name}</p><p className="flex items-center gap-1 text-xs text-emerald-600"><ShieldCheck size={13} /> Verified</p></div></div><p className="mt-3 truncate text-xs text-gray-500">{shop.address || 'Marketplace shop'}</p></Link>)}</div></section>}
+        {featuredProducts.length > 0 && <section className="mb-7"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">Featured Products</h2><Link href="/products?sort=price_desc" className="flex items-center gap-1 text-sm font-medium text-teal-600">See all <ChevronRight size={16} /></Link></div><div className="flex gap-4 overflow-x-auto pb-2">{featuredProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div></section>}
+        <section className="mb-7"><div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-semibold">New Arrivals</h2><Link href="/products?sort=newest" className="flex items-center gap-1 text-sm font-medium text-teal-600">See all <ChevronRight size={16} /></Link></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">{recentProducts.map((product) => <ProductCard key={product.id} product={product} />)}</div>{recentProducts.length === 0 && <div className="rounded-xl bg-white p-8 text-center text-gray-500">No products found yet.</div>}</section>
+    </div></AppLayout>;
 }

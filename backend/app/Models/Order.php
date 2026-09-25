@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
 {
-    protected $fillable = ['order_number', 'buyer_id', 'seller_id', 'shop_id', 'subtotal', 'delivery_fee', 'discount', 'total', 'payment_method', 'status', 'delivery_address', 'idempotency_key', 'coupon_id'];
+    protected $fillable = ['order_number', 'buyer_id', 'seller_id', 'shop_id', 'subtotal', 'delivery_fee', 'discount', 'total', 'payment_method', 'status', 'delivery_address', 'idempotency_key', 'coupon_id', 'cod_rejection_count', 'cancel_count', 'cancelled_at', 'delivered_at', 'completed_at'];
 
     protected function casts(): array
     {
-        return ['subtotal' => 'decimal:2', 'delivery_fee' => 'decimal:2', 'discount' => 'decimal:2', 'total' => 'decimal:2', 'delivery_address' => 'array'];
+        return ['subtotal' => 'decimal:2', 'delivery_fee' => 'decimal:2', 'discount' => 'decimal:2', 'total' => 'decimal:2', 'delivery_address' => 'array', 'cancelled_at' => 'datetime', 'delivered_at' => 'datetime', 'completed_at' => 'datetime'];
     }
 
     public function buyer(): BelongsTo
