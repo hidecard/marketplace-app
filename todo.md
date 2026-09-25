@@ -39,6 +39,16 @@
 - [x] Create a Firebase-to-MySQL data migration and reconciliation script.
 - [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.
 
+### Current cutover checkpoint
+
+- [x] Laravel Inertia React TypeScript shell builds successfully with Vite.
+- [x] Inertia home, auth, dashboard, and product-list pages are backed by Laravel routes/controllers.
+- [x] Laravel session auth shares active user role/status through Inertia props.
+- [x] Legacy Firebase/Cloudflare workflow is disabled; Laravel artifact CI is now the repository workflow.
+- [x] Backend suite passes: 36 tests and 128 assertions; Inertia production build passes.
+- [ ] Port the remaining existing marketplace, seller, Admin, chat, notification, POS, inventory, report, upload, and moderation UI into Inertia pages.
+- [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
+
 ## 1. Completed in This Web-First Pass
 
 ### Web Build, Hosting, and CI
