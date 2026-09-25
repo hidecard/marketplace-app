@@ -52,6 +52,10 @@
 - [x] Add Inertia public product detail pages with Laravel product-field/search compatibility.
 - [x] Add session cart, quantity updates, remove actions, COD checkout, stock locking, and idempotent order creation.
 - [x] Add buyer order history and order detail pages with delivery and line-item summaries.
+- [x] Add verified-seller Inertia inventory page with server-side stock adjustments.
+- [x] Add verified-seller Inertia POS page using server-authoritative stock, payment, COGS, and gross-profit logic.
+- [x] Add verified-seller Inertia expense entry/list page with idempotent backend writes.
+- [x] Add verified-seller Inertia reports page backed by date-aware Laravel report aggregation.
 - [ ] Port the remaining existing marketplace, seller, Admin, chat, notification, POS, inventory, report, upload, and moderation UI into Inertia pages.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

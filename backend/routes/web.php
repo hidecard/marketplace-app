@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\MarketplaceController;
 use App\Http\Controllers\Web\RoleController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\CartController;
+use App\Http\Controllers\Web\BusinessController;
 
 Route::get('/', [MarketplaceController::class, 'home'])->name('home');
 Route::get('/products', [MarketplaceController::class, 'products'])->name('products.index');
@@ -42,6 +43,15 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('seller.products.edit');
         Route::put('/{product}', [ProductController::class, 'update'])->name('seller.products.update');
         Route::delete('/{product}', [ProductController::class, 'destroy'])->name('seller.products.destroy');
+    });
+    Route::middleware('verified.seller')->prefix('seller')->group(function (): void {
+        Route::get('/inventory', [BusinessController::class, 'inventory'])->name('seller.inventory');
+        Route::post('/inventory/{product}/adjust', [BusinessController::class, 'adjust'])->name('seller.inventory.adjust');
+        Route::get('/pos', [BusinessController::class, 'pos'])->name('seller.pos');
+        Route::post('/pos', [BusinessController::class, 'sale'])->name('seller.pos.sale');
+        Route::get('/expenses', [BusinessController::class, 'expenses'])->name('seller.expenses');
+        Route::post('/expenses', [BusinessController::class, 'expense'])->name('seller.expenses.store');
+        Route::get('/reports', [BusinessController::class, 'reports'])->name('seller.reports');
     });
     Route::middleware('admin')->prefix('admin')->group(function (): void {
         Route::get('/', [MarketplaceController::class, 'dashboard'])->name('admin.dashboard');
