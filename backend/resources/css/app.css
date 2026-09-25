@@ -2,12 +2,46 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
+@source '../js/**/*.{js,ts,jsx,tsx}';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
 }
 
-:root { color-scheme: light; }
-body { margin: 0; min-width: 320px; }
-button, a, input { transition: all 160ms ease; }
+:root {
+    color-scheme: light;
+    --firebase-primary: #2563eb;
+    --firebase-surface: #f9fafb;
+    --firebase-border: #e5e7eb;
+    --mobile-bottom-nav-height: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--firebase-surface);
+    color: #111827;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+button, a, input, select, textarea { transition: all 160ms ease; }
+
+.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pb-mobile-nav { padding-bottom: calc(var(--mobile-bottom-nav-height) + 0.5rem); }
+.bottom-nav-offset { bottom: var(--mobile-bottom-nav-height); }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+@media (min-width: 1024px) {
+    .bottom-nav-offset { bottom: 0; }
+}

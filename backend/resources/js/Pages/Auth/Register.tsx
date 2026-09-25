@@ -9,7 +9,7 @@ export default function Register() {
         <label className="block text-sm font-bold">Password<input type="password" value={form.data.password} onChange={(e) => form.setData('password', e.target.value)} className="mt-2 w-full rounded-xl border-slate-300" autoComplete="new-password" /></label>
         <label className="block text-sm font-bold">Confirm password<input type="password" value={form.data.password_confirmation} onChange={(e) => form.setData('password_confirmation', e.target.value)} className="mt-2 w-full rounded-xl border-slate-300" autoComplete="new-password" /></label>
         {Object.values(form.errors).map((error) => <p key={error} className="text-sm text-red-600">{error}</p>)}
-        <button disabled={form.processing} className="w-full rounded-xl bg-teal-700 px-4 py-3 font-bold text-white disabled:opacity-60">{form.processing ? 'Creating…' : 'Create account'}</button>
-        <p className="text-center text-sm text-slate-600">Already registered? <Link href="/login" className="font-bold text-teal-700">Sign in</Link></p>
+        <button disabled={form.processing} className="w-full rounded-xl bg-primary-700 px-4 py-3 font-bold text-white disabled:opacity-60">{form.processing ? 'Creating…' : 'Create account'}</button>
+        <p className="text-center text-sm text-slate-600">Already registered? <Link href="/login" className="font-bold text-primary-700">Sign in</Link></p>
     </form></div></AppLayout>;
 }

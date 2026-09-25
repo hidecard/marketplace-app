@@ -11,7 +11,7 @@ export default function ProfileComplete() {
     const otpVerify = useForm({ challenge_id: '', code: '' });
 
     return <AppLayout><main className="mx-auto max-w-xl px-4 py-12 sm:px-6">
-        <p className="text-sm font-bold uppercase tracking-widest text-teal-700">Finish onboarding</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-primary-700">Finish onboarding</p>
         <h1 className="mt-2 text-4xl font-black">Complete your profile</h1>
         <p className="mt-3 text-slate-600">Verify your phone number before ordering, chatting, reviewing, or listing products.</p>
         {flash?.success && <p className="mt-5 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{flash.success}</p>}
@@ -20,12 +20,12 @@ export default function ProfileComplete() {
             {!user.phone_verified && <>
                 <form onSubmit={(e) => { e.preventDefault(); otpRequest.post('/profile/phone/request'); }} className="mt-4 flex gap-2">
                     <input value={otpRequest.data.phone_number} onChange={(e) => otpRequest.setData('phone_number', e.target.value)} placeholder="09xxxxxxxxx" className="min-w-0 flex-1 rounded-xl border-slate-300" />
-                    <button disabled={otpRequest.processing} className="rounded-xl bg-teal-700 px-4 py-2 font-bold text-white">Send code</button>
+                    <button disabled={otpRequest.processing} className="rounded-xl bg-primary-700 px-4 py-2 font-bold text-white">Send code</button>
                 </form>
                 <form onSubmit={(e) => { e.preventDefault(); otpVerify.post('/profile/phone/verify'); }} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
                     <input value={otpVerify.data.challenge_id} onChange={(e) => otpVerify.setData('challenge_id', e.target.value)} placeholder="Challenge ID" className="rounded-xl border-slate-300" />
                     <input value={otpVerify.data.code} onChange={(e) => otpVerify.setData('code', e.target.value)} placeholder="6-digit code" className="rounded-xl border-slate-300" />
-                    <button disabled={otpVerify.processing} className="rounded-xl border border-teal-700 px-4 py-2 font-bold text-teal-700">Verify</button>
+                    <button disabled={otpVerify.processing} className="rounded-xl border border-primary-700 px-4 py-2 font-bold text-primary-700">Verify</button>
                 </form>
             </>}
             {user.phone_verified && <p className="mt-4 font-bold text-emerald-700">Phone verified</p>}
