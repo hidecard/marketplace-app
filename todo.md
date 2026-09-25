@@ -49,6 +49,9 @@
 - [x] Add Inertia seller shop creation and verification submission pages with role-protected Laravel routes.
 - [x] Add Inertia Admin verification moderation page with evidence links and approve/reject actions.
 - [x] Add verified-seller Inertia product list, create, edit, hide, pagination, and catalog image URL flows.
+- [x] Add Inertia public product detail pages with Laravel product-field/search compatibility.
+- [x] Add session cart, quantity updates, remove actions, COD checkout, stock locking, and idempotent order creation.
+- [x] Add buyer order history and order detail pages with delivery and line-item summaries.
 - [ ] Port the remaining existing marketplace, seller, Admin, chat, notification, POS, inventory, report, upload, and moderation UI into Inertia pages.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

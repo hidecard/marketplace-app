@@ -15,8 +15,14 @@ class MarketplaceController extends Controller
     public function products(Request $request): Response
     {
         $query = Product::query()->where('status', 'active')->with('shop:id,name,slug')->latest();
-        if ($request->filled('q')) $query->where(fn ($q) => $q->where('name', 'like', '%'.$request->string('q').'%')->orWhere('description', 'like', '%'.$request->string('q').'%'));
+        if ($request->filled('q')) $query->where(fn ($q) => $q->where('title', 'like', '%'.$request->string('q').'%')->orWhere('description', 'like', '%'.$request->string('q').'%'));
         return Inertia::render('Products/Index', ['products' => $query->paginate(24)->withQueryString(), 'filters' => ['q' => $request->string('q')->toString()]]);
+    }
+
+    public function product(Product $product): Response
+    {
+        abort_unless($product->status === 'active', 404);
+        return Inertia::render('Products/Show', ['product' => $product->load('shop:id,name,slug,verified', 'seller:id,name')]);
     }
 
     public function dashboard(Request $request): Response
