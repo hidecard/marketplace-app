@@ -29,7 +29,7 @@ class AdminBypassTest extends TestCase
         $product = Product::create([
             'seller_id' => $seller->id,
             'shop_id' => $shop->id,
-            'title' => 'Test Product',
+            'name' => 'Test Product',
             'slug' => 'test-product',
             'price' => 1000,
             'cost_price' => 600,
@@ -189,7 +189,7 @@ class AdminBypassTest extends TestCase
         $otherProduct = Product::create([
             'seller_id' => $otherSeller->id,
             'shop_id' => $otherShop->id,
-            'title' => 'Other Product',
+            'name' => 'Other Product',
             'slug' => 'other-product',
             'price' => 2000,
             'cost_price' => 1000,
@@ -235,7 +235,7 @@ class AdminBypassTest extends TestCase
         $otherProduct = Product::create([
             'seller_id' => $otherSeller->id,
             'shop_id' => $otherShop->id,
-            'title' => 'Other Product',
+            'name' => 'Other Product',
             'slug' => 'other-product',
             'price' => 2000,
             'cost_price' => 1000,
@@ -304,7 +304,7 @@ class AdminBypassTest extends TestCase
         $buyer2 = User::factory()->create(['role' => User::ROLE_USER]);
         $product = Product::create([
             'seller_id' => $seller->id,
-            'title' => 'Order Product',
+            'name' => 'Order Product',
             'slug' => 'order-product',
             'price' => 1000,
             'stock' => 10,

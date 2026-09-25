@@ -37,7 +37,13 @@ class ShopVerificationTest extends TestCase
         Shop::create(['owner_id' => $seller->id, 'name' => 'Seller Shop', 'slug' => 'seller-shop', 'phone' => '+9591', 'address' => 'Yangon']);
         Sanctum::actingAs($seller);
 
-        $payload = ['evidence' => ['https://example.com/license.jpg'], 'note' => 'Please review.'];
+        $payload = [
+            'business_license_url' => 'https://example.com/license.jpg',
+            'nrc_front_url' => 'https://example.com/nrc_front.jpg',
+            'nrc_back_url' => 'https://example.com/nrc_back.jpg',
+            'selfie_url' => 'https://example.com/selfie.jpg',
+            'note' => 'Please review.',
+        ];
         $this->postJson('/api/seller/verification', $payload)->assertCreated();
         $this->postJson('/api/seller/verification', $payload)->assertStatus(422);
 
@@ -55,7 +61,12 @@ class ShopVerificationTest extends TestCase
         $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
         $shop = Shop::create(['owner_id' => $seller->id, 'name' => 'Approval Shop', 'slug' => 'approval-shop', 'phone' => '+9592', 'address' => 'Yangon']);
         Sanctum::actingAs($seller);
-        $this->postJson('/api/seller/verification', ['evidence' => ['https://example.com/document.png']])->assertCreated();
+        $this->postJson('/api/seller/verification', [
+            'business_license_url' => 'https://example.com/document.png',
+            'nrc_front_url' => 'https://example.com/nrc_front.png',
+            'nrc_back_url' => 'https://example.com/nrc_back.png',
+            'selfie_url' => 'https://example.com/selfie.png',
+        ])->assertCreated();
         $verification = $shop->verificationRequests()->first();
 
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

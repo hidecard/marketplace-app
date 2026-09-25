@@ -24,8 +24,12 @@ class VerificationController extends Controller
     public function submit(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'evidence' => ['required', 'array', 'min:1', 'max:5'],
-            'evidence.*' => ['required', 'url', 'max:2048'],
+            'business_license_url' => ['required', 'url', 'max:2048'],
+            'nrc_front_url' => ['required', 'url', 'max:2048'],
+            'nrc_back_url' => ['required', 'url', 'max:2048'],
+            'selfie_url' => ['required', 'url', 'max:2048'],
+            'evidence' => ['sometimes', 'array', 'max:5'],
+            'evidence.*' => ['url', 'max:2048'],
             'note' => ['sometimes', 'nullable', 'string', 'max:5000'],
         ]);
 
@@ -42,13 +46,25 @@ class VerificationController extends Controller
                 throw ValidationException::withMessages(['verification' => ['A verification request is already pending.']]);
             }
 
-            $lockedShop->update(['verification_status' => 'pending', 'rejection_note' => null]);
+            $lockedShop->update([
+                'verification_status' => 'pending',
+                'rejection_note' => null,
+                'business_license_url' => $data['business_license_url'],
+                'nrc_front_url' => $data['nrc_front_url'],
+                'nrc_back_url' => $data['nrc_back_url'],
+                'selfie_url' => $data['selfie_url'],
+            ]);
 
             return VerificationRequest::create([
                 'shop_id' => $lockedShop->id,
                 'submitted_by' => $request->user()->id,
                 'status' => 'pending',
-                'evidence' => $data['evidence'],
+                'evidence' => $data['evidence'] ?? [
+                    'business_license' => $data['business_license_url'],
+                    'nrc_front' => $data['nrc_front_url'],
+                    'nrc_back' => $data['nrc_back_url'],
+                    'selfie' => $data['selfie_url'],
+                ],
                 'note' => $data['note'] ?? null,
             ]);
         });

@@ -1,16 +1,19 @@
 <?php
 
+use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\DeliveryFeeController;
+use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\ShopController;
+use App\Http\Controllers\Api\ShopFollowerController;
 use App\Http\Controllers\Api\VerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -29,12 +32,15 @@ Route::prefix('auth')->group(function (): void {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])->middleware('throttle:3,1');
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->middleware('throttle:3,1');
+    Route::post('/send-otp', [AuthController::class, 'sendOtp'])->middleware('throttle:5,1');
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:10,1');
     Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::post('/logout-all', [AuthController::class, 'logoutAll']);
         Route::patch('/profile', [AuthController::class, 'updateProfile']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
+        Route::post('/link-phone', [AuthController::class, 'linkPhone'])->middleware('throttle:5,1');
     });
 });
 
@@ -50,6 +56,26 @@ Route::middleware(['auth:sanctum', 'active.user'])->group(function (): void {
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     Route::post('/analytics/track', [AnalyticsController::class, 'track'])->middleware('throttle:100,1');
+
+    // Favorites
+    Route::get('/favorites', [FavoriteController::class, 'index']);
+    Route::post('/favorites', [FavoriteController::class, 'store'])->middleware('throttle:30,1');
+    Route::post('/favorites/check', [FavoriteController::class, 'check'])->middleware('throttle:60,1');
+    Route::delete('/favorites/{favorite}', [FavoriteController::class, 'destroy']);
+
+    // Shop Followers
+    Route::get('/shops/followed', [ShopFollowerController::class, 'index']);
+    Route::post('/shops/follow', [ShopFollowerController::class, 'store'])->middleware('throttle:30,1');
+    Route::post('/shops/follow/check', [ShopFollowerController::class, 'check'])->middleware('throttle:60,1');
+    Route::delete('/shops/follow/{follower}', [ShopFollowerController::class, 'destroy']);
+    Route::get('/shops/{shop}/followers', [ShopFollowerController::class, 'followers']);
+
+    // Addresses
+    Route::get('/addresses', [AddressController::class, 'index']);
+    Route::post('/addresses', [AddressController::class, 'store'])->middleware('throttle:20,1');
+    Route::put('/addresses/{address}', [AddressController::class, 'update']);
+    Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
+    Route::post('/addresses/{address}/default', [AddressController::class, 'setDefault']);
 });
 
 Route::middleware(['auth:sanctum', 'active.user'])->prefix('shop')->group(function (): void {

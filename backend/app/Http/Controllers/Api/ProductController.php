@@ -13,23 +13,43 @@ class ProductController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Product::query()
-            ->with(['shop:id,name,slug,verified'])
+            ->with(['shop:id,name,slug,verified,address,city,region'])
             ->where('status', 'active');
 
         if ($request->filled('search')) {
             $search = $request->string('search')->toString();
             $query->where(fn ($builder) => $builder
-                ->where('title', 'like', "%{$search}%")
-                ->orWhere('description', 'like', "%{$search}%"));
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('description', 'like', "%{$search}%")
+                ->orWhere('brand', 'like', "%{$search}%")
+                ->orWhereHas('shop', fn ($q) => $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('region', 'like', "%{$search}%")));
         }
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->string('category_id')->toString());
+        }
+        if ($request->filled('brand')) {
+            $query->where('brand', 'like', "%{$request->string('brand')->toString()}%");
+        }
+        if ($request->filled('condition')) {
+            $query->where('condition', $request->string('condition')->toString());
         }
         if ($request->boolean('verified_shop')) {
             $query->whereHas('shop', fn ($shop) => $shop->where('verified', true));
         }
 
-        return response()->json($query->latest()->paginate(min($request->integer('per_page', 20), 100)));
+        // Sorting
+        $sortBy = $request->string('sort_by')->toString();
+        $sortDir = $request->string('sort_dir')->toString();
+        if (in_array($sortBy, ['price', 'created_at'], true) && in_array($sortDir, ['asc', 'desc'], true)) {
+            $query->orderBy($sortBy, $sortDir);
+        } else {
+            $query->latest();
+        }
+
+        return response()->json($query->paginate(min($request->integer('per_page', 20), 100)));
     }
 
     public function show(Product $product): JsonResponse
@@ -38,14 +58,14 @@ class ProductController extends Controller
             abort(404);
         }
 
-        return response()->json(['product' => $product->load(['shop:id,name,slug,verified', 'seller:id,name'])]);
+        return response()->json(['product' => $product->load(['shop:id,name,slug,verified,address,city,region,phone,facebook_url,instagram_url,tiktok_url,website_url,opening_hours,logo_url,cover_url', 'seller:id,name'])]);
     }
 
     public function store(Request $request): JsonResponse
     {
         $data = $this->validatedProduct($request);
         $data['seller_id'] = $request->user()->id;
-        $data['slug'] = $this->uniqueSlug($data['title']);
+        $data['slug'] = $this->uniqueSlug($data['name']);
 
         if (! empty($data['shop_id'])) {
             $shop = $request->user()->shop;
@@ -63,8 +83,8 @@ class ProductController extends Controller
     {
         $this->authorizeProduct($request, $product);
         $data = $this->validatedProduct($request, true);
-        if (isset($data['title']) && $data['title'] !== $product->title) {
-            $data['slug'] = $this->uniqueSlug($data['title'], $product->id);
+        if (isset($data['name']) && $data['name'] !== $product->name) {
+            $data['slug'] = $this->uniqueSlug($data['name'], $product->id);
         }
         unset($data['seller_id'], $data['shop_id']);
         $product->update($data);
@@ -95,7 +115,8 @@ class ProductController extends Controller
         $required = $partial ? 'sometimes' : 'required';
 
         return $request->validate([
-            'title' => [$required, 'string', 'max:180'],
+            'name' => [$required, 'string', 'max:180'],
+            'brand' => ['sometimes', 'nullable', 'string', 'max:120'],
             'description' => ['sometimes', 'nullable', 'string', 'max:10000'],
             'price' => [$required, 'numeric', 'min:0'],
             'cost_price' => ['sometimes', 'numeric', 'min:0'],

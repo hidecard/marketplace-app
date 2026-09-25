@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
-    protected $fillable = ['seller_id', 'shop_id', 'title', 'slug', 'description', 'price', 'cost_price', 'stock', 'condition', 'status', 'images', 'category_id'];
+    protected $fillable = ['seller_id', 'shop_id', 'name', 'slug', 'description', 'price', 'cost_price', 'stock', 'condition', 'status', 'images', 'category_id', 'brand'];
 
     protected function casts(): array
     {
@@ -22,5 +23,10 @@ class Product extends Model
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);
+    }
+
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(Favorite::class);
     }
 }

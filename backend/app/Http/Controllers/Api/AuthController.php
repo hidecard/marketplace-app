@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PhoneOtp;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -99,19 +100,139 @@ class AuthController extends Controller
         return $this->tokenResponse($user->fresh(), 'web');
     }
 
-    private function tokenResponse(User $user, string $device, int $status = 200): JsonResponse
+    public function sendOtp(Request $request): JsonResponse
     {
-        $ability = match ($user->role) {
-            User::ROLE_ADMIN => 'admin',
-            User::ROLE_SELLER => 'seller',
-            default => 'user',
-        };
+        $data = $request->validate([
+            'phone_number' => ['required', 'string', 'max:30', 'regex:/^[\d\s\-\+\(\)]+$/'],
+            'purpose' => ['required', 'in:verification,login,password_reset'],
+        ]);
+
+        $phoneNumber = $this->normalizePhoneNumber($data['phone_number']);
+        $purpose = $data['purpose'];
+
+        if ($purpose === 'verification') {
+            $existingUser = User::where('phone_number', $phoneNumber)->first();
+            if ($existingUser && $existingUser->phone_verified) {
+                return response()->json(['message' => 'This phone number is already verified.'], 422);
+            }
+        }
+
+        if ($purpose === 'login') {
+            $user = User::where('phone_number', $phoneNumber)->first();
+            if (! $user) {
+                return response()->json(['message' => 'No account found with this phone number.'], 404);
+            }
+        }
+
+        if ($purpose === 'password_reset') {
+            $user = User::where('phone_number', $phoneNumber)->first();
+            if (! $user) {
+                return response()->json(['message' => 'No account found with this phone number.'], 404);
+            }
+        }
+
+        $otp = PhoneOtp::createOtp($phoneNumber, $purpose);
+
+        // TODO: Integrate with SMS provider (e.g., Twilio, Vonage, or local Myanmar SMS gateway)
+        // For now, return the code in development mode
+        $isDevelopment = config('app.env') === 'local' || config('app.debug');
 
         return response()->json([
-            'user' => $user,
-            'token' => $user->createToken($device, [$ability])->plainTextToken,
-            'ability' => $ability,
-        ], $status);
+            'message' => 'OTP sent successfully.',
+            'expires_in' => 600, // 10 minutes in seconds
+            'dev_code' => $isDevelopment ? $otp->code : null,
+        ]);
+    }
+
+    public function verifyOtp(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'phone_number' => ['required', 'string', 'max:30', 'regex:/^[\d\s\-\+\(\)]+$/'],
+            'code' => ['required', 'string', 'size:6'],
+            'purpose' => ['required', 'in:verification,login,password_reset'],
+        ]);
+
+        $phoneNumber = $this->normalizePhoneNumber($data['phone_number']);
+        $code = $data['code'];
+        $purpose = $data['purpose'];
+
+        $otp = PhoneOtp::where('phone_number', $phoneNumber)
+            ->where('purpose', $purpose)
+            ->where('verified_at', null)
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+
+        if (! $otp) {
+            return response()->json(['message' => 'Invalid or expired OTP.'], 422);
+        }
+
+        if (! $otp->verify($code)) {
+            return response()->json(['message' => 'Invalid or expired OTP.'], 422);
+        }
+
+        if ($purpose === 'verification') {
+            $user = User::where('phone_number', $phoneNumber)->first();
+            if ($user) {
+                $user->update(['phone_verified' => true, 'phone_number' => $phoneNumber]);
+            }
+        }
+
+        if ($purpose === 'login') {
+            $user = User::where('phone_number', $phoneNumber)->first();
+            if (! $user || $user->status !== 'active') {
+                return response()->json(['message' => 'Account not found or inactive.'], 404);
+            }
+
+            return $this->tokenResponse($user, 'mobile');
+        }
+
+        if ($purpose === 'password_reset') {
+            $user = User::where('phone_number', $phoneNumber)->first();
+            if (! $user) {
+                return response()->json(['message' => 'Account not found.'], 404);
+            }
+            // Generate a temporary reset token (valid for 15 minutes)
+            $resetToken = $user->createToken('password-reset', ['password_reset'], now()->addMinutes(15))->plainTextToken;
+
+            return response()->json([
+                'message' => 'OTP verified. Use the reset token to change password.',
+                'reset_token' => $resetToken,
+            ]);
+        }
+
+        return response()->json(['message' => 'OTP verified successfully.']);
+    }
+
+    public function linkPhone(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'phone_number' => ['required', 'string', 'max:30', 'regex:/^[\d\s\-\+\(\)]+$/'],
+            'code' => ['required', 'string', 'size:6'],
+        ]);
+
+        $phoneNumber = $this->normalizePhoneNumber($data['phone_number']);
+        $code = $data['code'];
+
+        $otp = PhoneOtp::where('phone_number', $phoneNumber)
+            ->where('purpose', 'verification')
+            ->where('verified_at', null)
+            ->where('expires_at', '>', now())
+            ->latest()
+            ->first();
+
+        if (! $otp || ! $otp->verify($code)) {
+            return response()->json(['message' => 'Invalid or expired OTP.'], 422);
+        }
+
+        $existingUser = User::where('phone_number', $phoneNumber)->first();
+        if ($existingUser && $existingUser->id !== $request->user()->id) {
+            return response()->json(['message' => 'This phone number is already linked to another account.'], 422);
+        }
+
+        $request->user()->update(['phone_number' => $phoneNumber, 'phone_verified' => true]);
+
+        return response()->json(['user' => $request->user()->fresh()]);
     }
 
     public function forgotPassword(Request $request): JsonResponse
@@ -144,5 +265,42 @@ class AuthController extends Controller
         return $status === Password::PASSWORD_RESET
             ? response()->json(['message' => __($status)])
             : response()->json(['message' => __($status)], 400);
+    }
+
+    private function tokenResponse(User $user, string $device, int $status = 200): JsonResponse
+    {
+        $ability = match ($user->role) {
+            User::ROLE_ADMIN => 'admin',
+            User::ROLE_SELLER => 'seller',
+            default => 'user',
+        };
+
+        return response()->json([
+            'user' => $user,
+            'token' => $user->createToken($device, [$ability])->plainTextToken,
+            'ability' => $ability,
+        ], $status);
+    }
+
+    private function normalizePhoneNumber(string $phoneNumber): string
+    {
+        // Remove all non-digit characters except +
+        $cleaned = preg_replace('/[^\d+]/', '', $phoneNumber);
+
+        // Handle Myanmar numbers: +959xxxxxxxxx or 09xxxxxxxxx
+        if (str_starts_with($cleaned, '+959')) {
+            return $cleaned;
+        }
+        if (str_starts_with($cleaned, '959')) {
+            return '+'.$cleaned;
+        }
+        if (str_starts_with($cleaned, '09')) {
+            return '+95'.substr($cleaned, 1);
+        }
+        if (str_starts_with($cleaned, '9') && strlen($cleaned) === 9) {
+            return '+959'.$cleaned;
+        }
+
+        return $cleaned;
     }
 }
