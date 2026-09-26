@@ -5,10 +5,12 @@ use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\BusinessController;
 use App\Http\Controllers\Web\CartController;
 use App\Http\Controllers\Web\ChatController;
+use App\Http\Controllers\Web\ContentController;
 use App\Http\Controllers\Web\MarketplaceController;
 use App\Http\Controllers\Web\OfferController;
 use App\Http\Controllers\Web\ParityController;
 use App\Http\Controllers\Web\ProductController;
+use App\Http\Controllers\Web\ReviewController;
 use App\Http\Controllers\Web\RoleController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -46,6 +48,8 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::post('/chats/{conversation}/messages', [ChatController::class, 'store'])->name('chats.messages.store')->middleware('throttle:30,1');
     Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');
     Route::post('/offers', [ParityController::class, 'storeOffer'])->name('offers.store');
+    Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
+    Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.index');
     Route::get('/addresses', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'addresses'))->name('addresses.index');
     Route::get('/help', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'help'))->name('help.index');
@@ -83,7 +87,8 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::post('/offers/{offer}/review', [OfferController::class, 'review'])->name('seller.offers.review');
         Route::get('/customers', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'customers'))->name('seller.customers');
         Route::get('/analytics', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'analytics'))->name('seller.analytics');
-        Route::get('/settings', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'settings'))->name('seller.settings');
+        Route::get('/settings', [ContentController::class, 'sellerSettings'])->name('seller.settings');
+        Route::put('/settings', [ContentController::class, 'updateSellerSettings'])->name('seller.settings.update');
         Route::get('/categories', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'categories'))->name('seller.categories');
     });
     Route::middleware('admin')->prefix('admin')->group(function (): void {
@@ -96,7 +101,10 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/orders', fn (ParityController $controller, Request $request) => $controller->screen($request, 'admin', 'orders'))->name('admin.orders');
         Route::get('/reports', fn (ParityController $controller, Request $request) => $controller->screen($request, 'admin', 'reports'))->name('admin.reports');
         Route::get('/categories', fn (ParityController $controller, Request $request) => $controller->screen($request, 'admin', 'categories'))->name('admin.categories');
-        Route::get('/banners', fn (ParityController $controller, Request $request) => $controller->screen($request, 'admin', 'banners'))->name('admin.banners');
-        Route::get('/settings', fn (ParityController $controller, Request $request) => $controller->screen($request, 'admin', 'settings'))->name('admin.settings');
+        Route::get('/banners', [ContentController::class, 'banners'])->name('admin.banners');
+        Route::post('/banners', [ContentController::class, 'storeBanner'])->name('admin.banners.store');
+        Route::post('/banners/{banner}/toggle', [ContentController::class, 'toggleBanner'])->name('admin.banners.toggle');
+        Route::get('/settings', [ContentController::class, 'settings'])->name('admin.settings');
+        Route::put('/settings/{setting}', [ContentController::class, 'updateSetting'])->name('admin.settings.update');
     });
 });

@@ -60,10 +60,14 @@
 - [x] Add a dedicated seller dashboard with Firebase-style metrics, quick actions, low-stock alert, and recent orders.
 - [x] Add a dedicated user profile page with account card, order/favorite stats, verification prompts, and menu actions.
 - [x] Add dedicated buyer/seller offers screens with seller accept, reject, and counter actions.
+- [x] Add a dedicated customer reviews page with completed-order eligibility and server-side review creation.
+- [x] Add dedicated Admin banner management and platform settings pages.
+- [x] Add dedicated Seller shop settings page with server-side shop profile updates.
+- [x] Complete the Reviews, Banners, and App Settings database columns with a forward-compatible migration and apply it to the configured database.
 - [x] Add Laravel multipart product image uploads with public storage URLs while preserving external image URLs.
 - [x] Add responsive Admin mobile navigation and keep verification moderation inside the Admin layout.
 - [x] Add participant-authorized Inertia chat detail and message-send flow from the conversation list.
-- [ ] Port remaining Firebase-specific chat creation, reviews, banners, and settings interactions into dedicated Laravel controllers/pages.
+- [ ] Port remaining Firebase-specific chat creation and remaining legacy settings interactions into dedicated Laravel controllers/pages.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
 ## 1. Completed in This Web-First Pass
