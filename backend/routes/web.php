@@ -44,6 +44,7 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::get('/favorites', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'favorites'))->name('favorites.index');
     Route::get('/notifications', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'notifications'))->name('notifications.index');
     Route::get('/chats', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'chats'))->name('chats.index');
+    Route::post('/chats/start', [ChatController::class, 'start'])->name('chats.start')->middleware('throttle:20,1');
     Route::get('/chats/{conversation}', [ChatController::class, 'show'])->name('chats.show');
     Route::post('/chats/{conversation}/messages', [ChatController::class, 'store'])->name('chats.messages.store')->middleware('throttle:30,1');
     Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');

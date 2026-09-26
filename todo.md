@@ -67,7 +67,8 @@
 - [x] Add Laravel multipart product image uploads with public storage URLs while preserving external image URLs.
 - [x] Add responsive Admin mobile navigation and keep verification moderation inside the Admin layout.
 - [x] Add participant-authorized Inertia chat detail and message-send flow from the conversation list.
-- [ ] Port remaining Firebase-specific chat creation and remaining legacy settings interactions into dedicated Laravel controllers/pages.
+- [x] Port Firebase-specific chat creation to a participant-authorized Laravel endpoint with product context and deterministic conversation reuse.
+- [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
 ## 1. Completed in This Web-First Pass
