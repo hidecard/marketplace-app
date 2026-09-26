@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\BusinessController;
 use App\Http\Controllers\Web\CartController;
 use App\Http\Controllers\Web\ChatController;
 use App\Http\Controllers\Web\MarketplaceController;
+use App\Http\Controllers\Web\OfferController;
 use App\Http\Controllers\Web\ParityController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\RoleController;
@@ -43,15 +44,15 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::get('/chats', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'chats'))->name('chats.index');
     Route::get('/chats/{conversation}', [ChatController::class, 'show'])->name('chats.show');
     Route::post('/chats/{conversation}/messages', [ChatController::class, 'store'])->name('chats.messages.store')->middleware('throttle:30,1');
-    Route::get('/offers', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'offers'))->name('offers.index');
-    Route::get('/profile', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'profile'))->name('profile.index');
+    Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');
+    Route::post('/offers', [ParityController::class, 'storeOffer'])->name('offers.store');
+    Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.index');
     Route::get('/addresses', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'addresses'))->name('addresses.index');
     Route::get('/help', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'help'))->name('help.index');
     Route::post('/favorites/{product}/toggle', [ParityController::class, 'toggleFavorite'])->name('favorites.toggle');
     Route::post('/addresses', [ParityController::class, 'storeAddress'])->name('addresses.store');
     Route::delete('/addresses/{address}', [ParityController::class, 'deleteAddress'])->name('addresses.destroy');
     Route::post('/notifications/read-all', [ParityController::class, 'markNotificationsRead'])->name('notifications.read-all');
-    Route::post('/offers', [ParityController::class, 'storeOffer'])->name('offers.store');
     Route::middleware('role:user,admin')->group(function (): void {
         Route::get('/seller/shop/create', [RoleController::class, 'createShop'])->name('seller.shop.create');
         Route::post('/seller/shop', [RoleController::class, 'storeShop'])->name('seller.shop.store');
@@ -78,6 +79,8 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::post('/expenses', [BusinessController::class, 'expense'])->name('seller.expenses.store');
         Route::get('/reports', [BusinessController::class, 'reports'])->name('seller.reports');
         Route::get('/orders', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'orders'))->name('seller.orders');
+        Route::get('/offers', [OfferController::class, 'index'])->name('seller.offers');
+        Route::post('/offers/{offer}/review', [OfferController::class, 'review'])->name('seller.offers.review');
         Route::get('/customers', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'customers'))->name('seller.customers');
         Route::get('/analytics', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'analytics'))->name('seller.analytics');
         Route::get('/settings', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'settings'))->name('seller.settings');

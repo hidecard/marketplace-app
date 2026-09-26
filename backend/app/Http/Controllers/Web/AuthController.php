@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\PhoneOtpChallenge;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -61,6 +63,26 @@ class AuthController extends Controller
     public function showProfileCompletion(): Response
     {
         return Inertia::render('Auth/ProfileComplete', ['user' => Auth::user()]);
+    }
+
+    public function showProfile(Request $request): Response
+    {
+        $user = $request->user();
+
+        return Inertia::render('Profile/Index', [
+            'profile' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'phone_verified' => (bool) $user->phone_verified,
+                'role' => $user->role,
+                'shop_verified' => (bool) ($user->shop?->verified ?? false),
+            ],
+            'stats' => [
+                'orders' => Order::where('buyer_id', $user->id)->count(),
+                'favorites' => Schema::hasTable('favorites') ? DB::table('favorites')->where('user_id', $user->id)->count() : 0,
+            ],
+        ]);
     }
 
     public function requestPhoneOtp(Request $request): RedirectResponse
