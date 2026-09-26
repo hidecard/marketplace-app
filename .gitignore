@@ -1,6 +1,18 @@
-node_modules
-dist
-.env
-.env.local
+node_modules/
+dist/
 *.log
-.firebase
+
+# Never commit runtime secrets or production environment files.
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Local Firebase/tooling files
+.firebase/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -9,11 +9,13 @@ In hPanel:
 1. Open **Websites → Manage → Advanced → Git**.
 2. Connect `hidecard/marketplace-app`.
 3. Select branch `main`.
-4. Set the Git deployment root to the project directory, for example:
+4. In the build configuration, set the repository/application root to:
 
 ```text
-/home/u106997189/domains/easyzaymm.com/public_html
+backend
 ```
+
+Use `backend` for the screenshot's **Root directory** field. Do not use `backend/public` there; `backend/public` is the web document root, not the Laravel build root.
 
 The repository should deploy with this structure:
 
@@ -87,9 +89,10 @@ Build frontend assets before deployment from the repository/CI environment:
 
 ```bash
 cd backend
-npm ci
-npm run build
+bash scripts/hostinger-build.sh
 ```
+
+The script installs dependencies, runs the Laravel/Vite build, and verifies that `public/index.php` and `public/.htaccess` remain in place. It never moves or copies `.env` or `public/index.php`.
 
 The generated `backend/public/build` directory is intentionally ignored locally, so the deployment must either build it on the server or upload the built assets through the deployment pipeline.
 
@@ -112,6 +115,6 @@ Then use Hostinger **Redeploy** or enable auto-deployment. Do **not** move:
 
 ## Why the manual move was happening
 
-The repository root is not the Laravel public directory. If the domain document root points to `public_html` instead of `public_html/backend/public`, Hostinger looks for `public_html/index.php` and returns 403/404. Moving `index.php` manually only masks the wrong document-root configuration and is overwritten by the next Git deployment.
+The repository root is not the Laravel public directory. If the Git/build root is set to `backend/public`, the deployment treats the public directory as the application root and encourages manual file moves. Keep the Git/build root at `backend`, and set the domain document root separately to `.../public_html/backend/public`. Moving `index.php` manually only masks the wrong configuration and is overwritten by the next Git deployment.
 
 Official Hostinger Git deployment reference: <https://www.hostinger.com/support/1583302-how-to-deploy-a-git-repository-on-hostinger/>
