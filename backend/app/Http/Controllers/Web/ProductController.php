@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -59,7 +60,13 @@ class ProductController extends Controller
     private function validated(Request $request, bool $partial = false): array
     {
         $required = $partial ? 'sometimes' : 'required';
-        return $request->validate(['title' => [$required, 'string', 'max:180'], 'description' => ['nullable', 'string', 'max:10000'], 'price' => [$required, 'numeric', 'min:0'], 'cost_price' => ['nullable', 'numeric', 'min:0'], 'stock' => [$required, 'integer', 'min:0', 'max:1000000'], 'condition' => [$required, 'in:new,used,refurbished'], 'status' => ['nullable', 'in:active,inactive,sold,hidden'], 'images' => ['nullable', 'array', 'max:10'], 'images.*' => ['url', 'max:2048'], 'category_id' => ['nullable', 'string', 'max:100']]);
+        $data = $request->validate(['title' => [$required, 'string', 'max:180'], 'description' => ['nullable', 'string', 'max:10000'], 'price' => [$required, 'numeric', 'min:0'], 'cost_price' => ['nullable', 'numeric', 'min:0'], 'stock' => [$required, 'integer', 'min:0', 'max:1000000'], 'condition' => [$required, 'in:new,used,refurbished'], 'status' => ['nullable', 'in:active,inactive,sold,hidden'], 'images' => ['nullable', 'array', 'max:10'], 'images.*' => ['file', 'image', 'max:5120'], 'image_urls' => ['nullable', 'string', 'max:20000'], 'category_id' => ['nullable', 'string', 'max:100']]);
+        $urls = collect(preg_split('/\s*,\s*|\r?\n/', (string) ($data['image_urls'] ?? '')))->filter()->filter(fn ($url) => filter_var($url, FILTER_VALIDATE_URL))->values()->all();
+        $uploaded = collect($request->file('images', []))->map(fn ($file) => Storage::disk('public')->url($file->store('products', 'public')))->all();
+        unset($data['image_urls']);
+        if ($urls || $uploaded || ! $partial) $data['images'] = array_values(array_slice(array_merge($urls, $uploaded), 0, 10));
+        else unset($data['images']);
+        return $data;
     }
 
     private function slug(string $title, ?int $ignore = null): string

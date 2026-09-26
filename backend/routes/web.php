@@ -69,7 +69,7 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::delete('/{product}', [ProductController::class, 'destroy'])->name('seller.products.destroy');
     });
     Route::middleware('verified.seller')->prefix('seller')->group(function (): void {
-        Route::get('/', fn (ParityController $controller, Request $request) => $controller->screen($request, 'seller', 'dashboard'))->name('seller.dashboard');
+        Route::get('/', [BusinessController::class, 'dashboard'])->name('seller.dashboard');
         Route::get('/inventory', [BusinessController::class, 'inventory'])->name('seller.inventory');
         Route::post('/inventory/{product}/adjust', [BusinessController::class, 'adjust'])->name('seller.inventory.adjust');
         Route::get('/pos', [BusinessController::class, 'pos'])->name('seller.pos');

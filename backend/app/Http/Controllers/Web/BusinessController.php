@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Api\BusinessController as ApiBusinessController;
 use App\Http\Controllers\Api\ReportController as ApiReportController;
+use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,6 +14,24 @@ use Inertia\Response;
 
 class BusinessController extends Controller
 {
+    public function dashboard(Request $request): Response
+    {
+        $shop = $request->user()->shop;
+        $orders = Order::where('seller_id', $request->user()->id);
+        $products = $shop->products();
+
+        return Inertia::render('Seller/Dashboard', [
+            'shop' => ['name' => $shop->name, 'verification_status' => $shop->verification_status],
+            'stats' => [
+                'products' => (clone $products)->count(),
+                'low_stock' => (clone $products)->where('stock', '<=', 5)->count(),
+                'orders' => (clone $orders)->count(),
+                'revenue' => (float) (clone $orders)->whereIn('status', ['confirmed', 'processing', 'shipped', 'delivered'])->sum('total'),
+            ],
+            'recentOrders' => (clone $orders)->with('buyer:id,name')->latest()->limit(6)->get(['id', 'order_number', 'buyer_id', 'total', 'status', 'created_at']),
+        ]);
+    }
+
     public function inventory(Request $request): Response { return Inertia::render('Seller/Inventory', ['products' => $request->user()->shop->products()->latest()->paginate(50)]); }
     public function pos(Request $request): Response { return Inertia::render('Seller/POS', ['products' => $request->user()->shop->products()->where('status', 'active')->where('stock', '>', 0)->orderBy('title')->get(['id', 'title', 'price', 'stock'])]); }
     public function sale(Request $request): RedirectResponse { $data = $request->validate(['product_id' => ['required', 'integer', 'exists:products,id'], 'quantity' => ['required', 'integer', 'min:1'], 'payment_method' => ['required', 'in:cash,kbzpay,wavepay,bank_transfer']]); $request->merge(['items' => [['product_id' => $data['product_id'], 'quantity' => $data['quantity']]], 'idempotency_key' => 'web-pos-'.now()->format('YmdHis').'-'.bin2hex(random_bytes(4))]); app(ApiBusinessController::class)->posSale($request); return back()->with('success', 'POS sale completed.'); }
