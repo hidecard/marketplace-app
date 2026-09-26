@@ -56,7 +56,10 @@
 - [x] Add verified-seller Inertia POS page using server-authoritative stock, payment, COGS, and gross-profit logic.
 - [x] Add verified-seller Inertia expense entry/list page with idempotent backend writes.
 - [x] Add verified-seller Inertia reports page backed by date-aware Laravel report aggregation.
-- [ ] Port the remaining existing marketplace, seller, Admin, chat, notification, POS, inventory, report, upload, and moderation UI into Inertia pages.
+- [x] Port the main User, Seller, and Admin navigation shells and parity screens into Firebase-blue Inertia layouts.
+- [x] Add responsive Admin mobile navigation and keep verification moderation inside the Admin layout.
+- [x] Add participant-authorized Inertia chat detail and message-send flow from the conversation list.
+- [ ] Port remaining Firebase-specific chat creation, image upload, offers, reviews, banners, and settings interactions into dedicated Laravel controllers/pages.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
 ## 1. Completed in This Web-First Pass

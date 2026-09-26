@@ -4,6 +4,7 @@ use App\Http\Controllers\Web\AdminController;
 use App\Http\Controllers\Web\AuthController;
 use App\Http\Controllers\Web\BusinessController;
 use App\Http\Controllers\Web\CartController;
+use App\Http\Controllers\Web\ChatController;
 use App\Http\Controllers\Web\MarketplaceController;
 use App\Http\Controllers\Web\ParityController;
 use App\Http\Controllers\Web\ProductController;
@@ -40,6 +41,8 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::get('/favorites', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'favorites'))->name('favorites.index');
     Route::get('/notifications', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'notifications'))->name('notifications.index');
     Route::get('/chats', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'chats'))->name('chats.index');
+    Route::get('/chats/{conversation}', [ChatController::class, 'show'])->name('chats.show');
+    Route::post('/chats/{conversation}/messages', [ChatController::class, 'store'])->name('chats.messages.store')->middleware('throttle:30,1');
     Route::get('/offers', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'offers'))->name('offers.index');
     Route::get('/profile', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'profile'))->name('profile.index');
     Route::get('/addresses', fn (ParityController $controller, Request $request) => $controller->screen($request, 'user', 'addresses'))->name('addresses.index');
