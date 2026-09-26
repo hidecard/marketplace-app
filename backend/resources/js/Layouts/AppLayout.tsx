@@ -1,38 +1,56 @@
 import { Link, usePage } from '@inertiajs/react';
-import type { PropsWithChildren } from 'react';
-import { Bell, Boxes, FileText, FolderTree, Heart, HelpCircle, Home, MessageCircle, Package, Receipt, Search, Settings, ShoppingBag, ShoppingCart, Store, Tag, User, Users, BarChart3, ShieldCheck, DollarSign, ArrowRightLeft } from 'lucide-react';
+import type { ComponentType, PropsWithChildren } from 'react';
+import { useState } from 'react';
+import { ArrowRightLeft, BarChart3, Bell, Boxes, FileText, FolderTree, HelpCircle, Home, Heart, Menu, MessageCircle, Package, Receipt, Search, Settings, ShieldCheck, ShoppingBag, ShoppingCart, Store, User, Users, X, DollarSign } from 'lucide-react';
 import type { SharedProps } from '../types';
 
 const marketplaceItems = [
-    ['/','Home',Home], ['/products','Search',Search], ['/categories','Categories',FolderTree], ['/shops','Explore Shops',Store], ['/cart','Cart',ShoppingCart], ['/orders','My Orders',ShoppingBag], ['/favorites','Favorites',Heart], ['/chats','Messages',MessageCircle], ['/help','Help & Support',HelpCircle], ['/profile','Profile',User],
+    ['/', 'Home', Home], ['/categories', 'Categories', FolderTree], ['/shops', 'Explore Shops', Store], ['/products', 'Search', Search], ['/seller/shop/create', 'Sell Item', Store], ['/offers', 'Special Offers', FileText], ['/favorites', 'Favorites', Heart], ['/orders', 'My Orders', ShoppingBag], ['/chats', 'Messages', MessageCircle], ['/help', 'Help & Support', HelpCircle], ['/profile', 'Profile', User],
 ] as const;
 const businessItems = [
-    ['/seller','Dashboard',Store], ['/seller/pos','POS Register',DollarSign], ['/seller/products','Products',Package], ['/seller/inventory','Inventory',Boxes], ['/seller/orders','Customer Orders',ShoppingBag], ['/seller/expenses','Expenses',Receipt], ['/seller/customers','Customers',Users], ['/seller/analytics','Analytics',BarChart3], ['/seller/reports','Reports & P&L',FileText], ['/seller/verification','Verification',ShieldCheck], ['/seller/settings','Settings',Settings],
+    ['/seller', 'Dashboard', Store], ['/seller/pos', 'POS Register', DollarSign], ['/seller/products', 'Products', Package], ['/seller/inventory', 'Inventory', Boxes], ['/seller/orders', 'Customer Orders', ShoppingBag], ['/seller/expenses', 'Expenses', Receipt], ['/seller/customers', 'Customers', Users], ['/seller/analytics', 'Analytics', BarChart3], ['/seller/reports', 'Reports & P&L', FileText], ['/seller/verification', 'Verification', ShieldCheck], ['/seller/settings', 'Settings', Settings],
 ] as const;
+
+type NavItem = readonly [string, string, ComponentType<{ size?: number }>];
 
 export default function AppLayout({ children }: PropsWithChildren) {
     const { auth } = usePage<SharedProps>().props;
     const user = auth.user;
+    const [sidebarOpen, setSidebarOpen] = useState(false);
     const path = typeof window === 'undefined' ? '/' : window.location.pathname;
     const isBusiness = path.startsWith('/seller');
-    const items = isBusiness ? businessItems : marketplaceItems;
+    const items = (isBusiness ? businessItems : marketplaceItems) as readonly NavItem[];
     const businessHref = user?.role === 'seller' ? '/seller' : '/seller/shop/create';
     const active = (href: string) => href === '/' ? path === '/' : path.startsWith(href);
+    const closeSidebar = () => setSidebarOpen(false);
 
     return <div className="min-h-screen bg-gray-50 text-gray-900">
-        <div className="flex">
-            <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 border-r border-gray-200 bg-white lg:flex lg:flex-col">
-                <div className="border-b border-gray-200 p-4">
-                    <Link href="/" className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600 text-white"><Store size={23} /></span><span><strong className="block text-lg leading-tight">{isBusiness ? 'Shop Hub' : 'Marketplace'}</strong><small className="text-xs text-gray-500">{isBusiness ? 'Business Mode' : 'Shopping Mode'}</small></span></Link>
-                    {user && <Link href={isBusiness ? '/' : businessHref} className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700"><ArrowRightLeft size={15} />{isBusiness ? 'Switch to Marketplace' : 'Open Shop / Seller Mode'}</Link>}
+        {sidebarOpen && <button aria-label="Close navigation" onClick={closeSidebar} className="fixed inset-0 z-40 bg-gray-900/40 lg:hidden" />}
+        <aside className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+            <div className="border-b border-gray-200 p-4">
+                <div className="flex items-start justify-between gap-3">
+                    <Link href={isBusiness ? '/seller' : '/'} onClick={closeSidebar} className="flex items-center gap-2">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600 text-white"><Store size={24} /></span>
+                        <span><strong className="block text-lg leading-tight text-gray-900">{isBusiness ? 'Shop Hub' : 'Marketplace'}</strong><small className="font-medium text-gray-500">{isBusiness ? 'Business Mode' : 'Shopping Mode'}</small></span>
+                    </Link>
+                    <button onClick={closeSidebar} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 lg:hidden" aria-label="Close navigation"><X size={20} /></button>
                 </div>
-                <nav className="flex-1 space-y-1 overflow-y-auto p-4"><p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">{isBusiness ? 'Seller Tools & Management' : 'Marketplace'}</p>{items.map(([href, label, Icon]) => <Link key={href} href={href} className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${active(href) ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}><Icon size={20} /><span className="font-medium">{label}</span></Link>)}</nav>
-            </aside>
-            <div className="min-h-screen w-full lg:ml-72">
-                <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur"><div className="flex h-14 items-center justify-between px-4 sm:px-6"><div className="flex items-center gap-3"><Link href={isBusiness ? '/seller' : '/'} className="text-lg font-semibold lg:hidden">{isBusiness ? 'Shop Hub' : 'Marketplace'}</Link><h1 className="hidden text-lg font-semibold lg:block">{isBusiness ? 'Business Mode' : 'Marketplace'}</h1></div><div className="flex items-center gap-2"><Link href="/products" className="rounded-lg p-2 hover:bg-gray-100" aria-label="Search"><Search size={21} /></Link><Link href="/notifications" className="relative rounded-lg p-2 hover:bg-gray-100" aria-label="Notifications"><Bell size={21} /><span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" /></Link><Link href="/cart" className="relative rounded-lg p-2 hover:bg-gray-100" aria-label="Cart"><ShoppingCart size={21} /></Link>{user ? <Link href="/dashboard" className="hidden rounded-full bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white sm:block">{user.name}</Link> : <Link href="/login" className="rounded-full bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white">Sign in</Link>}</div></div></header>
-                <main className="pb-20 lg:pb-8">{children}</main>
+                {user && <Link href={isBusiness ? '/' : businessHref} onClick={closeSidebar} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-2 text-xs font-semibold text-primary-700 transition-colors hover:bg-primary-100"><ArrowRightLeft size={15} />{isBusiness ? 'Switch to Marketplace' : 'Open Shop / Seller Mode'}</Link>}
             </div>
+            <nav className="flex-1 space-y-1 overflow-y-auto p-4">
+                <p className="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500">{isBusiness ? 'Seller Tools & Management' : 'Marketplace'}</p>
+                {items.map(([href, label, Icon]) => <Link key={href} href={href} onClick={closeSidebar} className={`flex items-center gap-3 rounded-lg px-4 py-3 transition-colors ${active(href) ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-100'}`}><Icon size={20} /><span className="font-medium">{label}</span></Link>)}
+            </nav>
+        </aside>
+        <div className="flex min-h-screen flex-col lg:ml-72">
+            <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/95 backdrop-blur">
+                <div className="flex h-14 items-center justify-between px-4 sm:px-6">
+                    <div className="flex items-center gap-3"><button onClick={() => setSidebarOpen(true)} className="-ml-2 rounded-lg p-2 hover:bg-gray-100 lg:hidden" aria-label="Open navigation"><Menu size={22} /></button><h1 className="text-lg font-semibold text-gray-900">{isBusiness ? 'Business Mode' : path === '/' ? 'Marketplace' : 'Marketplace'}</h1></div>
+                    <div className="flex items-center gap-1 sm:gap-2"><Link href="/products" className="rounded-lg p-2 hover:bg-gray-100" aria-label="Search"><Search size={22} /></Link><Link href="/notifications" className="relative rounded-lg p-2 hover:bg-gray-100" aria-label="Notifications"><Bell size={22} /><span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" /></Link><Link href="/cart" className="relative rounded-lg p-2 hover:bg-gray-100" aria-label="Cart"><ShoppingCart size={22} /><span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-primary-500" /></Link>{user ? <Link href="/dashboard" className="hidden rounded-full bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-700 sm:block">{user.name}</Link> : <Link href="/login" className="rounded-full bg-primary-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-primary-700">Sign in</Link>}</div>
+                </div>
+            </header>
+            <main className="flex-1 pb-20 lg:pb-6">{children}</main>
         </div>
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white lg:hidden"><div className="mx-auto flex h-16 max-w-lg items-center justify-around">{[['/', 'Home', Home], ['/products', 'Search', Search], ['/cart', 'Cart', ShoppingBag], ['/orders', 'Orders', ShoppingBag], ['/dashboard', 'Profile', User]].map(([href, label, Icon]) => <Link key={href as string} href={href as string} className={`flex h-full w-full flex-col items-center justify-center ${active(href as string) ? 'text-primary-600' : 'text-gray-400'}`}><Icon size={21} /><span className="mt-1 text-[11px]">{label as string}</span></Link>)}</div></nav>
+        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white lg:hidden"><div className="mx-auto flex h-16 max-w-lg items-center justify-around"><Link href="/" className={`flex h-full w-full flex-col items-center justify-center ${active('/') ? 'text-primary-600' : 'text-gray-400'}`}><Home size={21} /><span className="mt-1 text-[11px]">Home</span></Link><Link href="/products" className={`flex h-full w-full flex-col items-center justify-center ${active('/products') ? 'text-primary-600' : 'text-gray-400'}`}><Search size={21} /><span className="mt-1 text-[11px]">Search</span></Link><Link href="/cart" className={`flex h-full w-full flex-col items-center justify-center ${active('/cart') ? 'text-primary-600' : 'text-gray-400'}`}><ShoppingBag size={21} /><span className="mt-1 text-[11px]">Cart</span></Link><Link href="/orders" className={`flex h-full w-full flex-col items-center justify-center ${active('/orders') ? 'text-primary-600' : 'text-gray-400'}`}><ShoppingBag size={21} /><span className="mt-1 text-[11px]">Orders</span></Link><Link href="/profile" className={`flex h-full w-full flex-col items-center justify-center ${active('/profile') ? 'text-primary-600' : 'text-gray-400'}`}><User size={21} /><span className="mt-1 text-[11px]">Profile</span></Link></div></nav>
     </div>;
 }
