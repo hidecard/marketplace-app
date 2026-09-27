@@ -69,6 +69,8 @@
 - [x] Add participant-authorized Inertia chat detail and message-send flow from the conversation list.
 - [x] Port Firebase-specific chat creation to a participant-authorized Laravel endpoint with product context and deterministic conversation reuse.
 - [x] Fix the production blank page: restore zero-byte Home/Admin pages, pin React to 19.2.3, version Vite assets, and correct Hostinger JavaScript MIME handling.
+- [x] Replace generic parity GET screens with dedicated server-backed User, Seller, and Admin operations pages.
+- [x] Add Admin user search data and protected active/suspend/ban status actions through Laravel routes.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
