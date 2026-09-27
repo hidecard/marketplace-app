@@ -1,0 +1,89 @@
+name: Hostinger deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hostinger-production
+  cancel-in-progress: false
+
+jobs:
+  release-check:
+    name: Verify production release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, pdo_sqlite, sqlite3
+          coverage: none
+          tools: composer:v2
+
+      - name: Install Laravel dependencies
+        run: composer install --working-dir=backend --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Prepare SQLite test database
+        working-directory: backend
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=sqlite/' .env
+          sed -i 's#^DB_DATABASE=.*#DB_DATABASE=${{ github.workspace }}/backend/database/database.sqlite#' .env
+
+      - name: Run Laravel tests
+        working-directory: backend
+        run: |
+          php artisan migrate:fresh --force
+          php artisan test
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Build Laravel frontend assets
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Verify Laravel public entrypoint
+        run: |
+          test -f backend/public/index.php
+          test -f backend/public/.htaccess
+          test ! -e backend/public/.env
+
+  trigger-hostinger-webhook:
+    name: Trigger Hostinger deployment
+    needs: release-check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger legacy Hostinger webhook when configured
+        env:
+          HOSTINGER_DEPLOY_WEBHOOK: ${{ secrets.HOSTINGER_DEPLOY_WEBHOOK }}
+        run: |
+          if [ -z "$HOSTINGER_DEPLOY_WEBHOOK" ]; then
+            echo "HOSTINGER_DEPLOY_WEBHOOK is not configured. Hostinger GitHub auto-deployment should deploy this push automatically."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --retry 3 \
+            --request POST \
+            --header 'Content-Type: application/json' \
+            --data '{"ref":"main","sha":"'"$GITHUB_SHA"'"}' \
+            "$HOSTINGER_DEPLOY_WEBHOOK"
+          echo "Hostinger deployment webhook accepted commit $GITHUB_SHA"

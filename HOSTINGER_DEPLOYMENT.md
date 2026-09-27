@@ -113,8 +113,30 @@ Then use Hostinger **Redeploy** or enable auto-deployment. Do **not** move:
 - `backend/public/.htaccess`
 - files from `backend/public` into `backend/`
 
+## 6. Automatic GitHub Actions verification and deployment trigger
+
+The repository now includes:
+
+```text
+.github/workflows/hostinger.yml
+```
+
+Every push to `main` runs PHP 8.4 tests, the frontend build, and checks that `backend/public/index.php` and `.htaccess` remain in the correct location. The workflow then calls an optional `HOSTINGER_DEPLOY_WEBHOOK` secret if one is configured.
+
+For the current Hostinger **GitHub auto-deployment** connection, no secret is required: Hostinger receives the GitHub push webhook automatically and deploys the selected branch. Keep Hostinger's selected branch as `main` and enable the Auto-deployment status.
+
+Only for an older Hostinger **SSH-based Git deployment** setup:
+
+1. In Hostinger → Advanced → Git → repository actions, open **Auto Deployment** and copy its webhook URL.
+2. In GitHub → Settings → Secrets and variables → Actions, add a repository secret named `HOSTINGER_DEPLOY_WEBHOOK`.
+3. Paste the Hostinger webhook URL as the secret value.
+4. Push to `main`; the workflow will call the webhook only after tests and build succeed.
+
+Do not use the `hostinger/deploy-action` VPS action for this shared-hosting Laravel site. Hostinger documents that action for VPS/Docker deployments, not the shared-hosting Git integration.
+
 ## Why the manual move was happening
 
 The repository root is not the Laravel public directory. If the Git/build root is set to `backend/public`, the deployment treats the public directory as the application root and encourages manual file moves. Keep the Git/build root at `backend`, and set the domain document root separately to `.../public_html/backend/public`. Moving `index.php` manually only masks the wrong configuration and is overwritten by the next Git deployment.
 
-Official Hostinger Git deployment reference: <https://www.hostinger.com/support/1583302-how-to-deploy-a-git-repository-on-hostinger/>
+Official Hostinger Git deployment reference: <https://docs.hostinger.com/websites/git>
+Hostinger VPS GitHub Actions reference: <https://www.hostinger.com/support/deploy-to-hostinger-vps-using-github-actions/>
