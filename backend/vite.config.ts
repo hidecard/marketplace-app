@@ -10,5 +10,14 @@ export default defineConfig({
         tailwindcss(),
     ],
     esbuild: { jsx: 'automatic' },
+    build: {
+        rollupOptions: {
+            output: {
+                entryFileNames: 'assets/[name]-[hash]-v3.js',
+                chunkFileNames: 'assets/[name]-[hash]-v3.js',
+                assetFileNames: 'assets/[name]-[hash]-v3[extname]',
+            },
+        },
+    },
     server: { host: '0.0.0.0', watch: { ignored: ['**/storage/framework/views/**'] } },
 });
