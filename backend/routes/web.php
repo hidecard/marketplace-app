@@ -111,6 +111,8 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::post('/orders/{order}/status/{status}', [OperationsController::class, 'updateOrderStatus'])->name('admin.orders.status');
         Route::get('/reports', [OperationsController::class, 'admin'])->defaults('screen', 'reports')->name('admin.reports');
         Route::get('/categories', [OperationsController::class, 'admin'])->defaults('screen', 'categories')->name('admin.categories');
+        Route::post('/categories', [OperationsController::class, 'storeCategory'])->name('admin.categories.store');
+        Route::post('/categories/{category}/toggle', [OperationsController::class, 'toggleCategory'])->name('admin.categories.toggle');
         Route::get('/banners', [ContentController::class, 'banners'])->name('admin.banners');
         Route::post('/banners', [ContentController::class, 'storeBanner'])->name('admin.banners.store');
         Route::post('/banners/{banner}/toggle', [ContentController::class, 'toggleBanner'])->name('admin.banners.toggle');

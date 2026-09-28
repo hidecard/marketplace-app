@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\Shop;
 use Illuminate\Http\RedirectResponse;
@@ -69,11 +70,11 @@ class MarketplaceController extends Controller
         ]);
     }
 
-    public function product(Product $product): Response
+    public function product(Request $request, Product $product): Response
     {
         abort_unless($product->status === 'active', 404);
 
-        return Inertia::render('Products/Show', ['product' => $product->load('shop:id,name,slug,verified', 'seller:id,name')]);
+        return Inertia::render('Products/Show', ['product' => $product->load('shop:id,name,slug,verified', 'seller:id,name'), 'isFavorite' => $request->user() ? Favorite::query()->where('user_id', $request->user()->id)->where('product_id', $product->id)->exists() : false]);
     }
 
     public function dashboard(Request $request): Response|RedirectResponse

@@ -92,7 +92,7 @@ class OperationsController extends Controller
         } elseif ($screen === 'reports') {
             $props['cards'] = [['label' => 'Orders', 'value' => Order::count()], ['label' => 'GMV', 'value' => number_format((float) Order::whereNotIn('status', ['cancelled'])->sum('total')).' MMK'], ['label' => 'Active users', 'value' => User::where('status', 'active')->count()], ['label' => 'Verified shops', 'value' => Shop::where('verified', true)->count()]];
         } elseif ($screen === 'categories') {
-            $props['rows'] = Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'slug', 'is_active'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => $item->is_active ? 'Active' : 'Hidden', 'href' => '/admin/categories'])->all();
+            $props['rows'] = Category::query()->orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'slug', 'is_active'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => $item->slug.' · '.($item->is_active ? 'Active' : 'Hidden'), 'href' => '/admin/categories', 'actions' => [['label' => $item->is_active ? 'Hide' : 'Activate', 'href' => '/admin/categories/'.$item->id.'/toggle']]])->all();
         }
 
         return Inertia::render('Operations/Index', $props);
@@ -134,6 +134,20 @@ class OperationsController extends Controller
     {
         MarketplaceNotification::query()->where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
         return back();
+    }
+
+    public function storeCategory(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:120'], 'slug' => ['nullable', 'string', 'max:140', 'alpha_dash'], 'sort_order' => ['nullable', 'integer', 'min:0']]);
+        $data['slug'] = $data['slug'] ?: str($data['name'])->slug()->toString();
+        Category::create(['name' => $data['name'], 'slug' => $data['slug'], 'sort_order' => $data['sort_order'] ?? 0, 'is_active' => true]);
+        return back()->with('success', 'Category created.');
+    }
+
+    public function toggleCategory(Category $category): RedirectResponse
+    {
+        $category->update(['is_active' => ! $category->is_active]);
+        return back()->with('success', 'Category visibility updated.');
     }
 
     public function updateProductStatus(Request $request, Product $product, string $status): RedirectResponse

@@ -77,6 +77,8 @@
 - [x] Remove remaining web Favorites, Addresses, Notifications, and Offer-create mutations from the legacy parity controller.
 - [x] Add buyer offer creation with product status, seller ownership, and amount validation.
 - [x] Allow unverified sellers to reach the seller dashboard and verification screen while restricting business operations to verified shops.
+- [x] Make the product-detail favorite heart functional with server-backed state and guest login fallback.
+- [x] Add Admin category creation, slug/order fields, and active/hidden visibility actions.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
