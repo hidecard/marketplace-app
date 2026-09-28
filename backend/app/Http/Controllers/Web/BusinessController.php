@@ -14,9 +14,10 @@ use Inertia\Response;
 
 class BusinessController extends Controller
 {
-    public function dashboard(Request $request): Response
+    public function dashboard(Request $request): Response|RedirectResponse
     {
         $shop = $request->user()->shop;
+        if (! $shop) return redirect('/seller/shop/create');
         $orders = Order::where('seller_id', $request->user()->id);
         $products = $shop->products();
 

@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Address;
 use App\Models\Conversation;
 use App\Models\MarketplaceNotification;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Favorite;
 use App\Models\Shop;
 use App\Models\User;
 use App\Models\VerificationRequest;
@@ -102,6 +104,36 @@ class OperationsController extends Controller
         abort_if($user->is($request->user()), 422, 'You cannot change your own account status.');
         $user->update(['status' => $status]);
         return back()->with('success', "User status changed to {$status}.");
+    }
+
+    public function toggleFavorite(Request $request, Product $product): RedirectResponse
+    {
+        $favorite = Favorite::query()->where('user_id', $request->user()->id)->where('product_id', $product->id)->first();
+        $favorite ? $favorite->delete() : Favorite::create(['user_id' => $request->user()->id, 'product_id' => $product->id]);
+        return back();
+    }
+
+    public function storeAddress(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['label' => ['required', 'string', 'max:80'], 'recipient_name' => ['required', 'string', 'max:120'], 'phone' => ['required', 'string', 'max:30'], 'address' => ['required', 'string', 'max:1000'], 'city' => ['nullable', 'string', 'max:120'], 'region' => ['nullable', 'string', 'max:120']]);
+        DB::transaction(function () use ($request, $data): void {
+            if ($request->user()->addresses()->count() === 0) $data['is_default'] = true;
+            Address::create([...$data, 'user_id' => $request->user()->id]);
+        });
+        return back()->with('success', 'Address saved.');
+    }
+
+    public function deleteAddress(Request $request, Address $address): RedirectResponse
+    {
+        abort_unless((int) $address->user_id === (int) $request->user()->id, 403);
+        $address->delete();
+        return back()->with('success', 'Address removed.');
+    }
+
+    public function markNotificationsRead(Request $request): RedirectResponse
+    {
+        MarketplaceNotification::query()->where('user_id', $request->user()->id)->whereNull('read_at')->update(['read_at' => now()]);
+        return back();
     }
 
     public function updateProductStatus(Request $request, Product $product, string $status): RedirectResponse

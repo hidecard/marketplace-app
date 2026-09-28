@@ -9,7 +9,6 @@ use App\Http\Controllers\Web\ContentController;
 use App\Http\Controllers\Web\MarketplaceController;
 use App\Http\Controllers\Web\OfferController;
 use App\Http\Controllers\Web\OperationsController;
-use App\Http\Controllers\Web\ParityController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ReviewController;
 use App\Http\Controllers\Web\RoleController;
@@ -50,16 +49,16 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::get('/chats/{conversation}', [ChatController::class, 'show'])->name('chats.show');
     Route::post('/chats/{conversation}/messages', [ChatController::class, 'store'])->name('chats.messages.store')->middleware('throttle:30,1');
     Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');
-    Route::post('/offers', [ParityController::class, 'storeOffer'])->name('offers.store');
+    Route::post('/offers', [OfferController::class, 'store'])->name('offers.store');
     Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
     Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.index');
     Route::get('/addresses', [OperationsController::class, 'user'])->defaults('screen', 'addresses')->name('addresses.index');
     Route::get('/help', [OperationsController::class, 'user'])->defaults('screen', 'help')->name('help.index');
-    Route::post('/favorites/{product}/toggle', [ParityController::class, 'toggleFavorite'])->name('favorites.toggle');
-    Route::post('/addresses', [ParityController::class, 'storeAddress'])->name('addresses.store');
-    Route::delete('/addresses/{address}', [ParityController::class, 'deleteAddress'])->name('addresses.destroy');
-    Route::post('/notifications/read-all', [ParityController::class, 'markNotificationsRead'])->name('notifications.read-all');
+    Route::post('/favorites/{product}/toggle', [OperationsController::class, 'toggleFavorite'])->name('favorites.toggle');
+    Route::post('/addresses', [OperationsController::class, 'storeAddress'])->name('addresses.store');
+    Route::delete('/addresses/{address}', [OperationsController::class, 'deleteAddress'])->name('addresses.destroy');
+    Route::post('/notifications/read-all', [OperationsController::class, 'markNotificationsRead'])->name('notifications.read-all');
     Route::middleware('role:user,admin')->group(function (): void {
         Route::get('/seller/shop/create', [RoleController::class, 'createShop'])->name('seller.shop.create');
         Route::post('/seller/shop', [RoleController::class, 'storeShop'])->name('seller.shop.store');
@@ -77,7 +76,6 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::delete('/{product}', [ProductController::class, 'destroy'])->name('seller.products.destroy');
     });
     Route::middleware('verified.seller')->prefix('seller')->group(function (): void {
-        Route::get('/', [BusinessController::class, 'dashboard'])->name('seller.dashboard');
         Route::get('/inventory', [BusinessController::class, 'inventory'])->name('seller.inventory');
         Route::post('/inventory/{product}/adjust', [BusinessController::class, 'adjust'])->name('seller.inventory.adjust');
         Route::get('/pos', [BusinessController::class, 'pos'])->name('seller.pos');
@@ -94,6 +92,9 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/settings', [ContentController::class, 'sellerSettings'])->name('seller.settings');
         Route::put('/settings', [ContentController::class, 'updateSellerSettings'])->name('seller.settings.update');
         Route::get('/categories', [OperationsController::class, 'seller'])->defaults('screen', 'categories')->name('seller.categories');
+    });
+    Route::middleware('seller')->prefix('seller')->group(function (): void {
+        Route::get('/', [BusinessController::class, 'dashboard'])->name('seller.dashboard');
     });
     Route::middleware('admin')->prefix('admin')->group(function (): void {
         Route::get('/', [AdminController::class, 'dashboard'])->name('admin.dashboard');

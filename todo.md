@@ -74,6 +74,9 @@
 - [x] Align Login/Register with the Firebase auth card: email/phone tabs, buyer/seller selector, icon fields, forgot-password flow, phone/shop registration data, and responsive mobile spacing.
 - [x] Add server-authoritative Admin shop approval/rejection, product hide/show/delete, and order status actions.
 - [x] Add server-authoritative Seller order fulfillment status actions with seller ownership checks.
+- [x] Remove remaining web Favorites, Addresses, Notifications, and Offer-create mutations from the legacy parity controller.
+- [x] Add buyer offer creation with product status, seller ownership, and amount validation.
+- [x] Allow unverified sellers to reach the seller dashboard and verification screen while restricting business operations to verified shops.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

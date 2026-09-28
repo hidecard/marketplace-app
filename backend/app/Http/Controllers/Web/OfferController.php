@@ -30,4 +30,13 @@ class OfferController extends Controller
 
         return back()->with('success', 'Offer updated.');
     }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['product_id' => ['required', 'integer', 'exists:products,id'], 'amount' => ['required', 'integer', 'min:1'], 'note' => ['nullable', 'string', 'max:1000']]);
+        $product = Product::query()->whereKey($data['product_id'])->where('status', 'active')->firstOrFail();
+        abort_if((int) $product->seller_id === (int) $request->user()->id, 422, 'You cannot make an offer on your own product.');
+        DB::table('offers')->insert(['product_id' => $product->id, 'buyer_id' => $request->user()->id, 'seller_id' => $product->seller_id, 'amount' => $data['amount'], 'status' => 'pending', 'note' => $data['note'] ?? null, 'created_at' => now(), 'updated_at' => now()]);
+        return back()->with('success', 'Offer submitted.');
+    }
 }
