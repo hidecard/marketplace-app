@@ -94,6 +94,14 @@ cd backend
 bash scripts/hostinger-build.sh
 ```
 
+For the current setup where the contents of `backend/` are deployed directly into `public_html`, set Hostinger's one-time **Build command** to:
+
+```bash
+bash scripts/hostinger-build.sh
+```
+
+This rebuilds ignored `vendor/` after every Git sync using `composer install --no-scripts`, runs the Vite build, and does not touch the parent-directory `.env` or the tracked root entrypoint.
+
 The script installs dependencies, runs the Laravel/Vite build, and verifies that `public/index.php` and `public/.htaccess` remain in place. It never moves or copies `.env` or `public/index.php`.
 
 The generated `backend/public/build` directory is intentionally ignored locally, so the deployment must either build it on the server or upload the built assets through the deployment pipeline.
