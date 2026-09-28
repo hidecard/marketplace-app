@@ -79,6 +79,8 @@
 - [x] Allow unverified sellers to reach the seller dashboard and verification screen while restricting business operations to verified shops.
 - [x] Make the product-detail favorite heart functional with server-backed state and guest login fallback.
 - [x] Add Admin category creation, slug/order fields, and active/hidden visibility actions.
+- [x] Replace the non-functional shop listing links with a dedicated shop detail page matching the legacy Firebase layout.
+- [x] Add server-authoritative shop follow/unfollow, follower count, seller message start, shop contact details, and active product browsing.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

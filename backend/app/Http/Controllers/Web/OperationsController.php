@@ -30,7 +30,7 @@ class OperationsController extends Controller
         if ($screen === 'categories') {
             $props['rows'] = Category::query()->where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(['id', 'name', 'slug'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => 'Browse products', 'href' => '/products?category='.$item->slug])->all();
         } elseif ($screen === 'shops') {
-            $props['rows'] = Shop::query()->where('verified', true)->latest()->get(['id', 'name', 'address', 'slug'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => 'Verified shop · '.($item->address ?: 'Marketplace'), 'href' => '/products?shop='.urlencode($item->name)])->all();
+            $props['rows'] = Shop::query()->where('verified', true)->latest()->get(['id', 'name', 'address', 'slug'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => 'Verified shop · '.($item->address ?: 'Marketplace'), 'href' => '/shops/'.$item->id])->all();
         } elseif ($screen === 'favorites' && Schema::hasTable('favorites')) {
             $props['rows'] = DB::table('favorites')->join('products', 'products.id', '=', 'favorites.product_id')->where('favorites.user_id', $user->id)->latest('favorites.created_at')->get(['products.id', 'products.title', 'products.price', 'products.stock'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->title, 'meta' => number_format((float) $item->price).' MMK · '.$item->stock.' in stock', 'href' => '/products/'.$item->id, 'remove' => '/favorites/'.$item->id.'/toggle'])->all();
         } elseif ($screen === 'notifications') {

@@ -1,0 +1,29 @@
+import { Link, useForm, usePage } from '@inertiajs/react';
+import { ArrowLeft, Heart, MapPin, MessageCircle, Package, Phone, ShieldCheck, Star } from 'lucide-react';
+import AppLayout from '../../Layouts/AppLayout';
+
+type Product = { id: number; title: string; price: string | number; stock: number; condition?: string; images?: string[] };
+type Shop = { id: number; name: string; description?: string; logo_url?: string; cover_url?: string; phone?: string; email?: string; address?: string; verified: boolean; products_count: number; followers_count: number; products: Product[] };
+type Props = { shop: Shop; isFollowing: boolean; authUser?: { id: number } | null; flash?: { success?: string } };
+
+export default function Show() {
+    const { shop, isFollowing, authUser, flash } = usePage<Props>().props;
+    const follow = useForm({});
+    const chat = useForm({});
+    return <AppLayout>
+        <section className="min-h-screen bg-gray-50 pb-28">
+            <div className="relative h-40 bg-gradient-to-r from-primary-700 to-primary-400 sm:h-56">{shop.cover_url && <img src={shop.cover_url} alt={shop.name} className="h-full w-full object-cover" />}<Link href="/shops" className="absolute left-4 top-4 rounded-full bg-white/90 p-2 text-gray-700 shadow"><ArrowLeft size={20} /></Link></div>
+            <div className="mx-auto -mt-12 max-w-5xl px-4 relative sm:px-6">
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-gray-100 sm:p-7">
+                    <div className="flex flex-wrap items-start gap-4"><div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-primary-100 shadow-lg">{shop.logo_url ? <img src={shop.logo_url} alt={shop.name} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-2xl font-black text-primary-700">{shop.name.charAt(0)}</div>}</div><div className="min-w-0 flex-1"><div className="flex items-center gap-2"><h1 className="truncate text-2xl font-black text-gray-900">{shop.name}</h1>{shop.verified && <ShieldCheck className="shrink-0 text-primary-600" size={21} />}</div><p className="mt-1 flex items-center gap-1 text-sm text-gray-500"><Star size={14} className="fill-yellow-400 text-yellow-400" /> Trusted local shop</p>{shop.address && <p className="mt-1 flex items-center gap-1 text-xs text-gray-500"><MapPin size={13} />{shop.address}</p>}</div></div>
+                    <div className="mt-6 grid grid-cols-3 divide-x rounded-xl bg-gray-50 py-3 text-center"><div><p className="font-black text-gray-900">{shop.products_count}</p><p className="text-xs text-gray-500">Products</p></div><div><p className="font-black text-gray-900">{shop.followers_count}</p><p className="text-xs text-gray-500">Followers</p></div><div><p className="font-black text-gray-900">4.8</p><p className="text-xs text-gray-500">Rating</p></div></div>
+                    {flash?.success && <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{flash.success}</p>}
+                    <div className="mt-5 flex gap-3">{authUser ? <><button disabled={follow.processing} onClick={() => follow.post(`/shops/${shop.id}/follow`, { preserveScroll: true })} className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold ${isFollowing ? 'bg-gray-100 text-gray-700' : 'bg-primary-600 text-white'}`}><Heart size={18} fill={isFollowing ? 'currentColor' : 'none'} className={isFollowing ? 'text-rose-500' : ''} />{isFollowing ? 'Following' : 'Follow'}</button><button disabled={chat.processing} onClick={() => chat.post(`/shops/${shop.id}/chat`)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border-2 border-primary-600 px-4 py-3 text-sm font-bold text-primary-700"><MessageCircle size={18} />Message</button></> : <Link href="/login" className="flex w-full items-center justify-center rounded-xl bg-primary-600 px-4 py-3 text-sm font-bold text-white">Sign in to Follow or Message</Link>}</div>
+                    {shop.description && <div className="mt-6 border-t border-gray-100 pt-5"><h2 className="font-bold text-gray-900">About this shop</h2><p className="mt-2 whitespace-pre-line text-sm leading-6 text-gray-600">{shop.description}</p></div>}
+                    {(shop.phone || shop.email) && <div className="mt-5 flex flex-wrap gap-3 text-sm text-gray-600">{shop.phone && <span className="flex items-center gap-1"><Phone size={14} />{shop.phone}</span>}{shop.email && <span>{shop.email}</span>}</div>}
+                </div>
+            </div>
+            <div className="mx-auto mt-5 max-w-5xl px-4 sm:px-6"><div className="flex items-center justify-between"><div><h2 className="text-xl font-black text-gray-900">Shop products</h2><p className="text-sm text-gray-500">{shop.products.length} active products</p></div><Package className="text-primary-600" /></div>{shop.products.length === 0 ? <div className="mt-4 rounded-2xl bg-white p-10 text-center text-gray-500">No products yet.</div> : <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{shop.products.map((product) => <Link key={product.id} href={`/products/${product.id}`} className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100"><div className="aspect-square bg-gray-100">{product.images?.[0] ? <img src={product.images[0]} alt={product.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-3xl text-primary-200">✦</div>}</div><div className="p-3"><p className="line-clamp-2 text-sm font-semibold text-gray-900">{product.title}</p><p className="mt-2 font-black text-primary-700">{Number(product.price).toLocaleString()} MMK</p><p className="mt-1 text-xs text-gray-500">{product.stock} in stock</p></div></Link>)}</div>}</div>
+        </section>
+    </AppLayout>;
+}

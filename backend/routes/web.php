@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\OperationsController;
 use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ReviewController;
 use App\Http\Controllers\Web\RoleController;
+use App\Http\Controllers\Web\ShopController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +21,7 @@ Route::get('/products', [MarketplaceController::class, 'products'])->name('produ
 Route::get('/products/{product}', [MarketplaceController::class, 'product'])->name('products.show');
 Route::get('/categories', [OperationsController::class, 'user'])->defaults('screen', 'categories')->name('categories.index');
 Route::get('/shops', [OperationsController::class, 'user'])->defaults('screen', 'shops')->name('shops.index');
+Route::get('/shops/{shop}', [ShopController::class, 'show'])->name('shops.show');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/{product}', [CartController::class, 'add'])->name('cart.add');
 Route::put('/cart', [CartController::class, 'update'])->name('cart.update');
@@ -59,6 +61,8 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::post('/addresses', [OperationsController::class, 'storeAddress'])->name('addresses.store');
     Route::delete('/addresses/{address}', [OperationsController::class, 'deleteAddress'])->name('addresses.destroy');
     Route::post('/notifications/read-all', [OperationsController::class, 'markNotificationsRead'])->name('notifications.read-all');
+    Route::post('/shops/{shop}/follow', [ShopController::class, 'toggleFollow'])->name('shops.follow');
+    Route::post('/shops/{shop}/chat', [ShopController::class, 'startChat'])->name('shops.chat');
     Route::middleware('role:user,admin')->group(function (): void {
         Route::get('/seller/shop/create', [RoleController::class, 'createShop'])->name('seller.shop.create');
         Route::post('/seller/shop', [RoleController::class, 'storeShop'])->name('seller.shop.store');
