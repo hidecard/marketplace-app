@@ -1,6 +1,6 @@
 # Hostinger Git deployment for Easy Zay Mm
 
-The Laravel application lives in `backend/`. **Do not move `.env`, `public/index.php`, or files from `backend/public` after each Git update.** Configure Hostinger once as follows.
+The Laravel application lives in `backend/`. **Do not move `.env`, `public/index.php`, or files from `backend/public` after each Git update.** The repository also includes a tracked root bridge (`backend/index.php` and `backend/.htaccess`) for the current Hostinger setup, so Git updates do not require manually restoring root files.
 
 ## 1. Hostinger Git deployment
 
@@ -35,7 +35,7 @@ public_html/
 └── admin/
 ```
 
-## 2. Set the domain document root once
+## 2. Set the domain document root once (preferred)
 
 In **Domains → easyzaymm.com → Document root**, set:
 
@@ -53,15 +53,17 @@ The same document root should be used for `www.easyzaymm.com` if it is configure
 
 This makes Apache serve `backend/public/index.php` directly. The existing Laravel `backend/public/.htaccess` handles all Laravel routes and asset requests.
 
+If the domain currently serves `.../public_html` rather than `.../public_html/backend/public`, it can remain temporarily: Hostinger's Git integration may copy the contents of `backend/` directly into `public_html`. The tracked root bridge routes requests to `public/` and protects application source files. The preferred long-term configuration remains `.../public_html/backend/public`.
+
 ## 3. Keep `.env` server-only
 
-Create or keep the production environment file here:
+Create or keep the production environment file here, outside the Git deployment directory:
 
 ```text
-/home/u106997189/domains/easyzaymm.com/public_html/backend/.env
+/home/u106997189/domains/easyzaymm.com/.env
 ```
 
-It is ignored by Git. Do not put it inside `backend/public` and do not commit it.
+It is ignored by Git and remains outside the directory Hostinger replaces on each deployment. Do not put it inside `backend/public` and do not commit it.
 
 Recommended production values:
 

@@ -13,7 +13,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -37,3 +37,12 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+
+// Hostinger Git deployments replace the application directory. Keep the
+// production .env one level above that directory so updates cannot delete it.
+$externalEnvironmentPath = dirname(__DIR__, 2);
+if (is_file($externalEnvironmentPath.'/.env')) {
+    $app->useEnvironmentPath($externalEnvironmentPath);
+}
+
+return $app;

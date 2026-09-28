@@ -1,0 +1,18 @@
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Never expose Laravel source, dependencies, credentials, or test files.
+    RewriteRule ^(?:app|bootstrap|config|database|resources|routes|storage|tests|vendor)(?:/|$) - [F,L,NC]
+    RewriteRule ^(?:\.env|composer\.(?:json|lock)|package(?:\.json|-lock\.json)|phpunit\.xml)(?:/|$) - [F,L,NC]
+
+    # Serve public assets from the real Laravel public directory.
+    RewriteCond %{REQUEST_URI} !^/public(?:/|$)
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -f
+    RewriteRule ^(.+)$ public/$1 [END]
+
+    # Send application routes through Laravel's public front controller.
+    RewriteCond %{REQUEST_URI} !^/public(?:/|$)
+    RewriteRule ^ public/index.php [END]
+</IfModule>
