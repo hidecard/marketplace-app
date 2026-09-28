@@ -37,6 +37,9 @@ body {
 
 button, a, input, select, textarea { transition: all 160ms ease; }
 
+.auth-input { width: 100%; border: 1px solid #d1d5db; border-radius: 0.5rem; padding: 0.75rem 1rem 0.75rem 2.5rem; outline: none; background: #fff; }
+.auth-input:focus { border-color: var(--firebase-primary); box-shadow: 0 0 0 3px rgb(37 99 235 / 0.14); }
+
 .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 .pb-mobile-nav { padding-bottom: calc(var(--mobile-bottom-nav-height) + 0.5rem); }
 .bottom-nav-offset { bottom: var(--mobile-bottom-nav-height); }

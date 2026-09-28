@@ -71,6 +71,9 @@
 - [x] Fix the production blank page: restore zero-byte Home/Admin pages, pin React to 19.2.3, version Vite assets, and correct Hostinger JavaScript MIME handling.
 - [x] Replace generic parity GET screens with dedicated server-backed User, Seller, and Admin operations pages.
 - [x] Add Admin user search data and protected active/suspend/ban status actions through Laravel routes.
+- [x] Align Login/Register with the Firebase auth card: email/phone tabs, buyer/seller selector, icon fields, forgot-password flow, phone/shop registration data, and responsive mobile spacing.
+- [x] Add server-authoritative Admin shop approval/rejection, product hide/show/delete, and order status actions.
+- [x] Add server-authoritative Seller order fulfillment status actions with seller ownership checks.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

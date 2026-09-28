@@ -28,6 +28,7 @@ Route::delete('/cart/{product}', [CartController::class, 'remove'])->name('cart.
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+    Route::post('/forgot-password', [AuthController::class, 'sendPasswordReset'])->middleware('throttle:5,1')->name('password.email');
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register']);
 });
@@ -85,6 +86,7 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::post('/expenses', [BusinessController::class, 'expense'])->name('seller.expenses.store');
         Route::get('/reports', [BusinessController::class, 'reports'])->name('seller.reports');
         Route::get('/orders', [OperationsController::class, 'seller'])->defaults('screen', 'orders')->name('seller.orders');
+        Route::post('/orders/{order}/status/{status}', [OperationsController::class, 'updateOrderStatus'])->name('seller.orders.status');
         Route::get('/offers', [OfferController::class, 'index'])->name('seller.offers');
         Route::post('/offers/{offer}/review', [OfferController::class, 'review'])->name('seller.offers.review');
         Route::get('/customers', [OperationsController::class, 'seller'])->defaults('screen', 'customers')->name('seller.customers');
@@ -100,8 +102,12 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/users', [OperationsController::class, 'admin'])->defaults('screen', 'users')->name('admin.users');
         Route::post('/users/{user}/status/{status}', [OperationsController::class, 'updateUserStatus'])->name('admin.users.status');
         Route::get('/shops', [OperationsController::class, 'admin'])->defaults('screen', 'shops')->name('admin.shops');
+        Route::post('/shops/{shop}/status/{status}', [OperationsController::class, 'updateShopStatus'])->name('admin.shops.status');
         Route::get('/products', [OperationsController::class, 'admin'])->defaults('screen', 'products')->name('admin.products');
+        Route::post('/products/{product}/status/{status}', [OperationsController::class, 'updateProductStatus'])->name('admin.products.status');
+        Route::post('/products/{product}/delete', [OperationsController::class, 'deleteProduct'])->name('admin.products.delete');
         Route::get('/orders', [OperationsController::class, 'admin'])->defaults('screen', 'orders')->name('admin.orders');
+        Route::post('/orders/{order}/status/{status}', [OperationsController::class, 'updateOrderStatus'])->name('admin.orders.status');
         Route::get('/reports', [OperationsController::class, 'admin'])->defaults('screen', 'reports')->name('admin.reports');
         Route::get('/categories', [OperationsController::class, 'admin'])->defaults('screen', 'categories')->name('admin.categories');
         Route::get('/banners', [ContentController::class, 'banners'])->name('admin.banners');

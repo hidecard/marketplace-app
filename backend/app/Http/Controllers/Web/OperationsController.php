@@ -58,7 +58,7 @@ class OperationsController extends Controller
         $shop = Shop::query()->where('owner_id', $sellerId)->first();
 
         if ($screen === 'orders') {
-            $props['rows'] = Order::query()->where('seller_id', $sellerId)->latest()->limit(100)->get(['id', 'order_number', 'buyer_id', 'total', 'status', 'created_at'])->map(fn ($item) => ['id' => $item->id, 'title' => '#'.$item->order_number, 'meta' => ucfirst($item->status).' · '.number_format((float) $item->total).' MMK', 'href' => '/orders/'.$item->id])->all();
+            $props['rows'] = Order::query()->where('seller_id', $sellerId)->latest()->limit(100)->get(['id', 'order_number', 'buyer_id', 'total', 'status', 'created_at'])->map(fn ($item) => ['id' => $item->id, 'title' => '#'.$item->order_number, 'meta' => ucfirst($item->status).' · '.number_format((float) $item->total).' MMK', 'href' => '/orders/'.$item->id, 'actions' => $this->orderActions($item->status, false, $item->id)])->all();
         } elseif ($screen === 'customers') {
             $customerIds = Order::query()->where('seller_id', $sellerId)->pluck('buyer_id')->filter()->unique();
             $props['rows'] = User::query()->whereIn('id', $customerIds)->withCount(['orders as order_count' => fn ($query) => $query->where('seller_id', $sellerId)])->get(['id', 'name', 'email', 'phone_number'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => $item->email.' · '.$item->order_count.' orders', 'href' => '/seller/customers'])->all();
@@ -82,11 +82,11 @@ class OperationsController extends Controller
         if ($screen === 'users') {
             $props['rows'] = User::query()->latest()->limit(100)->get(['id', 'name', 'email', 'phone_number', 'role', 'status', 'created_at'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => $item->email.' · '.$item->role.' · '.$item->status, 'href' => '/admin/users', 'status' => $item->status, 'actions' => [['label' => 'Activate', 'href' => '/admin/users/'.$item->id.'/status/active'], ['label' => 'Suspend', 'href' => '/admin/users/'.$item->id.'/status/suspended'], ['label' => 'Ban', 'href' => '/admin/users/'.$item->id.'/status/banned']]])->all();
         } elseif ($screen === 'shops') {
-            $props['rows'] = Shop::query()->with('owner:id,name')->latest()->limit(100)->get(['id', 'name', 'owner_id', 'verification_status', 'verified'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => ($item->owner?->name ?: 'Owner').' · '.($item->verified ? 'Verified' : ucfirst($item->verification_status)), 'href' => '/admin/verifications'])->all();
+            $props['rows'] = Shop::query()->with('owner:id,name')->latest()->limit(100)->get(['id', 'name', 'owner_id', 'verification_status', 'verified'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->name, 'meta' => ($item->owner?->name ?: 'Owner').' · '.($item->verified ? 'Verified' : ucfirst($item->verification_status)), 'href' => '/admin/verifications', 'actions' => $item->verification_status === 'pending' ? [['label' => 'Approve', 'href' => '/admin/shops/'.$item->id.'/status/approved'], ['label' => 'Reject', 'href' => '/admin/shops/'.$item->id.'/status/rejected']] : []])->all();
         } elseif ($screen === 'products') {
-            $props['rows'] = Product::query()->with('seller:id,name')->latest()->limit(100)->get(['id', 'title', 'seller_id', 'price', 'stock', 'status'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->title, 'meta' => ($item->seller?->name ?: 'Seller').' · '.number_format((float) $item->price).' MMK · '.$item->stock.' stock', 'href' => '/products/'.$item->id])->all();
+            $props['rows'] = Product::query()->with('seller:id,name')->latest()->limit(100)->get(['id', 'title', 'seller_id', 'price', 'stock', 'status'])->map(fn ($item) => ['id' => $item->id, 'title' => $item->title, 'meta' => ($item->seller?->name ?: 'Seller').' · '.number_format((float) $item->price).' MMK · '.$item->stock.' stock · '.ucfirst($item->status), 'href' => '/products/'.$item->id, 'actions' => [['label' => $item->status === 'hidden' ? 'Show' : 'Hide', 'href' => '/admin/products/'.$item->id.'/status/'.($item->status === 'hidden' ? 'active' : 'hidden')], ['label' => 'Delete', 'href' => '/admin/products/'.$item->id.'/delete']]])->all();
         } elseif ($screen === 'orders') {
-            $props['rows'] = Order::query()->with(['buyer:id,name', 'seller:id,name'])->latest()->limit(100)->get(['id', 'order_number', 'buyer_id', 'seller_id', 'total', 'status'])->map(fn ($item) => ['id' => $item->id, 'title' => '#'.$item->order_number, 'meta' => ($item->buyer?->name ?: 'Buyer').' → '.($item->seller?->name ?: 'Seller').' · '.ucfirst($item->status).' · '.number_format((float) $item->total).' MMK', 'href' => '/orders/'.$item->id])->all();
+            $props['rows'] = Order::query()->with(['buyer:id,name', 'seller:id,name'])->latest()->limit(100)->get(['id', 'order_number', 'buyer_id', 'seller_id', 'total', 'status'])->map(fn ($item) => ['id' => $item->id, 'title' => '#'.$item->order_number, 'meta' => ($item->buyer?->name ?: 'Buyer').' → '.($item->seller?->name ?: 'Seller').' · '.ucfirst($item->status).' · '.number_format((float) $item->total).' MMK', 'href' => '/orders/'.$item->id, 'actions' => $this->orderActions($item->status, true, $item->id)])->all();
         } elseif ($screen === 'reports') {
             $props['cards'] = [['label' => 'Orders', 'value' => Order::count()], ['label' => 'GMV', 'value' => number_format((float) Order::whereNotIn('status', ['cancelled'])->sum('total')).' MMK'], ['label' => 'Active users', 'value' => User::where('status', 'active')->count()], ['label' => 'Verified shops', 'value' => Shop::where('verified', true)->count()]];
         } elseif ($screen === 'categories') {
@@ -104,6 +104,39 @@ class OperationsController extends Controller
         return back()->with('success', "User status changed to {$status}.");
     }
 
+    public function updateProductStatus(Request $request, Product $product, string $status): RedirectResponse
+    {
+        abort_unless(in_array($status, ['active', 'hidden'], true), 422);
+        $product->update(['status' => $status]);
+        return back()->with('success', "Product {$status}.");
+    }
+
+    public function deleteProduct(Request $request, Product $product): RedirectResponse
+    {
+        $product->delete();
+        return back()->with('success', 'Product deleted.');
+    }
+
+    public function updateShopStatus(Request $request, Shop $shop, string $status): RedirectResponse
+    {
+        abort_unless(in_array($status, ['approved', 'rejected'], true), 422);
+        $shop->update(['verification_status' => $status, 'verified' => $status === 'approved']);
+        return back()->with('success', "Shop {$status}.");
+    }
+
+    public function updateOrderStatus(Request $request, Order $order, string $status): RedirectResponse
+    {
+        abort_unless(in_array($status, ['confirmed', 'preparing', 'shipped', 'delivered', 'completed', 'cancelled'], true), 422);
+        abort_unless($request->user()->isAdmin() || (int) $order->seller_id === (int) $request->user()->id, 403);
+        abort_if($order->status === 'cancelled' && $status !== 'cancelled', 422, 'Cancelled orders cannot be reopened.');
+        $updates = ['status' => $status];
+        if ($status === 'delivered') $updates['delivered_at'] = now();
+        if ($status === 'completed') $updates['completed_at'] = now();
+        if ($status === 'cancelled') $updates['cancelled_at'] = now();
+        $order->update($updates);
+        return back()->with('success', "Order status changed to {$status}.");
+    }
+
     private function title(string $screen): string
     {
         return match ($screen) {
@@ -116,5 +149,13 @@ class OperationsController extends Controller
         return match ($screen) {
             'favorites' => 'Products you saved for later', 'notifications' => 'Order, offer, and marketplace updates', 'chats' => 'Chat with buyers and sellers', 'addresses' => 'Manage delivery addresses', 'help' => 'Frequently asked questions and support', 'orders' => 'Manage customer orders and fulfillment', 'customers' => 'Customers who purchased from your shop', 'analytics' => 'Sales and performance overview', 'users' => 'Search and manage marketplace accounts', 'reports' => 'Platform performance and moderation reports', default => 'Manage your Easy Zay Mm marketplace experience',
         };
+    }
+
+    private function orderActions(string $status, bool $admin, int $id): array
+    {
+        $next = match ($status) {
+            'pending' => ['confirmed', 'cancelled'], 'confirmed' => ['preparing', 'cancelled'], 'preparing' => ['shipped', 'cancelled'], 'shipped' => ['delivered'], 'delivered' => ['completed'], default => [],
+        };
+        return array_map(fn ($value) => ['label' => ucfirst($value), 'href' => ($admin ? '/admin/orders/' : '/seller/orders/').$id.'/status/'.$value], $next);
     }
 }

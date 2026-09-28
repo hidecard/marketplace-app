@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\PhoneOtpChallenge;
+use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,9 +13,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -43,12 +46,33 @@ class AuthController extends Controller
 
     public function register(Request $request): RedirectResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:120'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'], 'password' => ['required', 'confirmed', Password::defaults()]]);
-        $user = User::create(['name' => $data['name'], 'email' => $data['email'], 'password' => Hash::make($data['password']), 'role' => User::ROLE_USER, 'status' => User::STATUS_ACTIVE, 'phone_verified' => false]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'], 'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'confirmed', Password::defaults()], 'phone_number' => ['required', 'string', 'max:30'],
+            'account_type' => ['required', 'in:buyer,seller'], 'shop_name' => ['nullable', 'required_if:account_type,seller', 'string', 'max:180'],
+        ]);
+        $user = DB::transaction(function () use ($data): User {
+            $role = $data['account_type'] === 'seller' ? User::ROLE_SELLER : User::ROLE_USER;
+            $user = User::create(['name' => $data['name'], 'email' => $data['email'], 'password' => Hash::make($data['password']), 'phone_number' => $data['phone_number'], 'role' => $role, 'status' => User::STATUS_ACTIVE, 'phone_verified' => false]);
+            if ($role === User::ROLE_SELLER) {
+                $base = Str::slug($data['shop_name']) ?: 'shop'; $slug = $base; $suffix = 2;
+                while (Shop::where('slug', $slug)->exists()) $slug = $base.'-'.($suffix++);
+                Shop::create(['owner_id' => $user->id, 'name' => $data['shop_name'], 'slug' => $slug, 'phone' => $data['phone_number'], 'verification_status' => 'pending', 'verified' => false]);
+            }
+            return $user;
+        });
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect('/dashboard');
+        return redirect($user->isSeller() ? '/seller/verification' : '/dashboard');
+    }
+
+    public function sendPasswordReset(Request $request): RedirectResponse
+    {
+        $data = $request->validate(['email' => ['required', 'email']]);
+        $status = PasswordBroker::sendResetLink(['email' => $data['email']]);
+        if ($status !== PasswordBroker::RESET_LINK_SENT) return back()->withErrors(['email' => __($status)]);
+        return back()->with('success', 'Password reset link sent. Check your email.');
     }
 
     public function logout(Request $request): RedirectResponse
