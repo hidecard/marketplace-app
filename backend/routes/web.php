@@ -13,13 +13,14 @@ use App\Http\Controllers\Web\ProductController;
 use App\Http\Controllers\Web\ReviewController;
 use App\Http\Controllers\Web\RoleController;
 use App\Http\Controllers\Web\ShopController;
+use App\Http\Controllers\Web\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MarketplaceController::class, 'home'])->name('home');
 Route::get('/products', [MarketplaceController::class, 'products'])->name('products.index');
 Route::get('/products/{product}', [MarketplaceController::class, 'product'])->name('products.show');
-Route::get('/categories', [OperationsController::class, 'user'])->defaults('screen', 'categories')->name('categories.index');
+Route::get('/categories/{category?}', [UserController::class, 'categories'])->name('categories.index');
 Route::get('/shops', [OperationsController::class, 'user'])->defaults('screen', 'shops')->name('shops.index');
 Route::get('/shops/{shop}', [ShopController::class, 'show'])->name('shops.show');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
@@ -44,8 +45,8 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::post('/checkout', [CartController::class, 'placeOrder'])->name('checkout.place')->middleware('throttle:10,1');
     Route::get('/orders', [CartController::class, 'orders'])->name('orders.index');
     Route::get('/orders/{order}', [CartController::class, 'order'])->name('orders.show');
-    Route::get('/favorites', [OperationsController::class, 'user'])->defaults('screen', 'favorites')->name('favorites.index');
-    Route::get('/notifications', [OperationsController::class, 'user'])->defaults('screen', 'notifications')->name('notifications.index');
+    Route::get('/favorites', [UserController::class, 'favorites'])->name('favorites.index');
+    Route::get('/notifications', [UserController::class, 'notifications'])->name('notifications.index');
     Route::get('/chats', [OperationsController::class, 'user'])->defaults('screen', 'chats')->name('chats.index');
     Route::post('/chats/start', [ChatController::class, 'start'])->name('chats.start')->middleware('throttle:20,1');
     Route::get('/chats/{conversation}', [ChatController::class, 'show'])->name('chats.show');
@@ -55,12 +56,15 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
     Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.index');
-    Route::get('/addresses', [OperationsController::class, 'user'])->defaults('screen', 'addresses')->name('addresses.index');
+    Route::get('/addresses', [UserController::class, 'addresses'])->name('addresses.index');
     Route::get('/help', [OperationsController::class, 'user'])->defaults('screen', 'help')->name('help.index');
     Route::post('/favorites/{product}/toggle', [OperationsController::class, 'toggleFavorite'])->name('favorites.toggle');
     Route::post('/addresses', [OperationsController::class, 'storeAddress'])->name('addresses.store');
+    Route::put('/addresses/{address}', [UserController::class, 'updateAddress'])->name('addresses.update');
     Route::delete('/addresses/{address}', [OperationsController::class, 'deleteAddress'])->name('addresses.destroy');
+    Route::post('/addresses/{address}/default', [UserController::class, 'setDefaultAddress'])->name('addresses.default');
     Route::post('/notifications/read-all', [OperationsController::class, 'markNotificationsRead'])->name('notifications.read-all');
+    Route::post('/notifications/{notification}/read', [UserController::class, 'markNotificationRead'])->name('notifications.read');
     Route::post('/shops/{shop}/follow', [ShopController::class, 'toggleFollow'])->name('shops.follow');
     Route::post('/shops/{shop}/chat', [ShopController::class, 'startChat'])->name('shops.chat');
     Route::middleware('role:user,admin')->group(function (): void {

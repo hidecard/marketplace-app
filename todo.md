@@ -86,6 +86,8 @@
 - [x] Add the missing User buyer-order relationship used by Seller customer counts.
 - [ ] Replace remaining shared Operations screens with role-specific visual pages where legacy Firebase layouts materially differ.
 - [ ] Add automated feature coverage for Seller/Admin order-detail authorization and all role status-action boundaries.
+- [x] Replace User Categories, Favorites, Notifications, and Addresses screens with dedicated Inertia pages matching the legacy mobile layout.
+- [x] Add server-side address edit/default actions and single-notification read ownership checks.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
