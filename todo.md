@@ -81,6 +81,11 @@
 - [x] Add Admin category creation, slug/order fields, and active/hidden visibility actions.
 - [x] Replace the non-functional shop listing links with a dedicated shop detail page matching the legacy Firebase layout.
 - [x] Add server-authoritative shop follow/unfollow, follower count, seller message start, shop contact details, and active product browsing.
+- [x] Fix Admin Dashboard Lucide icon typing, Seller verification form submission, and Inertia bootstrap TypeScript errors.
+- [x] Allow Seller/Admin role order links to open scoped order details with the correct layout and buyer/seller context.
+- [x] Add the missing User buyer-order relationship used by Seller customer counts.
+- [ ] Replace remaining shared Operations screens with role-specific visual pages where legacy Firebase layouts materially differ.
+- [ ] Add automated feature coverage for Seller/Admin order-detail authorization and all role status-action boundaries.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
