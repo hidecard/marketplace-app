@@ -91,6 +91,8 @@
 - [x] Add server-side address edit/default actions and single-notification read ownership checks.
 - [x] Add dedicated User Messages list and Help & Support pages with Firebase-style empty states, FAQ cards, and navigation.
 - [x] Fix product image delivery by normalizing legacy storage URLs, adding a Laravel media stream route, and updating all User/Shop/Product responses.
+- [x] Improve Seller product create/edit UI with existing-image thumbnails and instant previews for newly selected files.
+- [x] Normalize Seller catalog image URLs and protect inventory adjustments with seller ownership authorization.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Support\ProductImages;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,6 +21,7 @@ class ProductController extends Controller
     public function index(Request $request): Response
     {
         $products = Product::where('seller_id', $request->user()->id)->latest()->paginate(20)->withQueryString();
+        $products->getCollection()->each(fn (Product $product) => $product->setAttribute('images', ProductImages::normalize($product->images)));
 
         return Inertia::render('Seller/Products/Index', ['products' => $products, 'shop' => $request->user()->shop, 'categories' => Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])]);
     }
