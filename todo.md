@@ -93,6 +93,8 @@
 - [x] Fix product image delivery by normalizing legacy storage URLs, adding a Laravel media stream route, and updating all User/Shop/Product responses.
 - [x] Improve Seller product create/edit UI with existing-image thumbnails and instant previews for newly selected files.
 - [x] Normalize Seller catalog image URLs and protect inventory adjustments with seller ownership authorization.
+- [x] Add a reusable image fallback so deleted legacy assets show a neutral placeholder instead of a broken-image icon across Marketplace, Shop, Product Detail, and Seller catalog pages.
+- [ ] Preserve `storage/app/public` outside source deployments and restore any legacy product files deleted by Hostinger cleanup; new Laravel uploads use `/media/...` and are server-streamed.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

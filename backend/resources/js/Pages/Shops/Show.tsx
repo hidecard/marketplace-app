@@ -2,6 +2,7 @@ import { Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, Grid2X2, Heart, List, MapPin, MessageCircle, Package, Phone, QrCode, Share2, ShieldCheck, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
+import ProductImage from '../../Components/ProductImage';
 
 type Product = { id: number; title: string; price: string | number; stock: number; condition?: string; images?: string[]; created_at?: string | null };
 type Shop = { id: number; name: string; slug: string; description?: string; logo_url?: string; cover_url?: string; phone?: string; email?: string; address?: string; verified: boolean; products_count: number; followers_count: number; products: Product[]; facebook_url?: string | null; instagram_url?: string | null; tiktok_url?: string | null; website_url?: string | null };
@@ -64,5 +65,5 @@ export default function Show() {
 }
 
 function ProductCard({ product, list }: { product: Product; list: boolean }) {
-    return <Link href={`/products/${product.id}`} className={`group overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md ${list ? 'flex' : ''}`}><div className={`${list ? 'h-28 w-28 shrink-0 sm:h-32 sm:w-32' : 'aspect-square w-full'} flex items-center justify-center overflow-hidden bg-gray-100 text-4xl text-primary-200`}>{product.images?.[0] ? <img src={product.images[0]} alt={product.title} className="h-full w-full object-cover transition group-hover:scale-105" /> : <span>✦</span>}</div><div className="min-w-0 p-3 sm:p-4"><p className="line-clamp-2 text-sm font-semibold text-gray-900">{product.title}</p><p className="mt-2 font-black text-primary-700">{money(product.price)}</p><p className="mt-1 text-xs capitalize text-gray-500">{product.condition || 'new'} · {product.stock} in stock</p></div></Link>;
+    return <Link href={`/products/${product.id}`} className={`group overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md ${list ? 'flex' : ''}`}><div className={`${list ? 'h-28 w-28 shrink-0 sm:h-32 sm:w-32' : 'aspect-square w-full'} flex items-center justify-center overflow-hidden bg-gray-100 text-4xl text-primary-200`}>{product.images?.[0] ? <ProductImage src={product.images[0]} alt={product.title} className="transition group-hover:scale-105" /> : <span>✦</span>}</div><div className="min-w-0 p-3 sm:p-4"><p className="line-clamp-2 text-sm font-semibold text-gray-900">{product.title}</p><p className="mt-2 font-black text-primary-700">{money(product.price)}</p><p className="mt-1 text-xs capitalize text-gray-500">{product.condition || 'new'} · {product.stock} in stock</p></div></Link>;
 }
