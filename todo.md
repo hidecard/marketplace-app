@@ -94,6 +94,7 @@
 - [x] Improve Seller product create/edit UI with existing-image thumbnails and instant previews for newly selected files.
 - [x] Normalize Seller catalog image URLs and protect inventory adjustments with seller ownership authorization.
 - [x] Add a reusable image fallback so deleted legacy assets show a neutral placeholder instead of a broken-image icon across Marketplace, Shop, Product Detail, and Seller catalog pages.
+- [x] Match the legacy User Home carousel with rotating banners, manual dots, legacy Burmese messaging, and the same fallback treatment in Cart product cards.
 - [ ] Preserve `storage/app/public` outside source deployments and restore any legacy product files deleted by Hostinger cleanup; new Laravel uploads use `/media/...` and are server-streamed.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
