@@ -14,7 +14,6 @@ use App\Http\Controllers\Web\ReviewController;
 use App\Http\Controllers\Web\RoleController;
 use App\Http\Controllers\Web\ShopController;
 use App\Http\Controllers\Web\UserController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MarketplaceController::class, 'home'])->name('home');
@@ -100,6 +99,10 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/settings', [ContentController::class, 'sellerSettings'])->name('seller.settings');
         Route::put('/settings', [ContentController::class, 'updateSellerSettings'])->name('seller.settings.update');
         Route::get('/categories', [OperationsController::class, 'seller'])->defaults('screen', 'categories')->name('seller.categories');
+        Route::post('/categories', [OperationsController::class, 'storeCategory'])->name('seller.categories.store');
+        Route::get('/categories/{category}/edit', [OperationsController::class, 'editCategory'])->name('seller.categories.edit');
+        Route::put('/categories/{category}', [OperationsController::class, 'updateCategory'])->name('seller.categories.update');
+        Route::delete('/categories/{category}', [OperationsController::class, 'deleteCategory'])->name('seller.categories.destroy');
     });
     Route::middleware('seller')->prefix('seller')->group(function (): void {
         Route::get('/', [BusinessController::class, 'dashboard'])->name('seller.dashboard');
@@ -113,6 +116,11 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/shops', [OperationsController::class, 'admin'])->defaults('screen', 'shops')->name('admin.shops');
         Route::post('/shops/{shop}/status/{status}', [OperationsController::class, 'updateShopStatus'])->name('admin.shops.status');
         Route::get('/products', [OperationsController::class, 'admin'])->defaults('screen', 'products')->name('admin.products');
+        Route::get('/products/create', [ProductController::class, 'adminCreate'])->name('admin.products.create');
+        Route::post('/products', [ProductController::class, 'adminStore'])->name('admin.products.store');
+        Route::get('/products/{product}/edit', [ProductController::class, 'adminEdit'])->name('admin.products.edit');
+        Route::put('/products/{product}', [ProductController::class, 'adminUpdate'])->name('admin.products.update');
+        Route::delete('/products/{product}', [ProductController::class, 'adminDestroy'])->name('admin.products.destroy');
         Route::post('/products/{product}/status/{status}', [OperationsController::class, 'updateProductStatus'])->name('admin.products.status');
         Route::post('/products/{product}/delete', [OperationsController::class, 'deleteProduct'])->name('admin.products.delete');
         Route::get('/orders', [OperationsController::class, 'admin'])->defaults('screen', 'orders')->name('admin.orders');
@@ -120,6 +128,9 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/reports', [OperationsController::class, 'admin'])->defaults('screen', 'reports')->name('admin.reports');
         Route::get('/categories', [OperationsController::class, 'admin'])->defaults('screen', 'categories')->name('admin.categories');
         Route::post('/categories', [OperationsController::class, 'storeCategory'])->name('admin.categories.store');
+        Route::get('/categories/{category}/edit', [OperationsController::class, 'editCategory'])->name('admin.categories.edit');
+        Route::put('/categories/{category}', [OperationsController::class, 'updateCategory'])->name('admin.categories.update');
+        Route::delete('/categories/{category}', [OperationsController::class, 'deleteCategory'])->name('admin.categories.destroy');
         Route::post('/categories/{category}/toggle', [OperationsController::class, 'toggleCategory'])->name('admin.categories.toggle');
         Route::get('/banners', [ContentController::class, 'banners'])->name('admin.banners');
         Route::post('/banners', [ContentController::class, 'storeBanner'])->name('admin.banners.store');

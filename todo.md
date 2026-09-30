@@ -84,8 +84,9 @@
 - [x] Fix Admin Dashboard Lucide icon typing, Seller verification form submission, and Inertia bootstrap TypeScript errors.
 - [x] Allow Seller/Admin role order links to open scoped order details with the correct layout and buyer/seller context.
 - [x] Add the missing User buyer-order relationship used by Seller customer counts.
-- [ ] Replace remaining shared Operations screens with role-specific visual pages where legacy Firebase layouts materially differ.
-- [ ] Add automated feature coverage for Seller/Admin order-detail authorization and all role status-action boundaries.
+- [x] Replace remaining shared Operations screens with role-specific visual pages where legacy Firebase layouts materially differ.
+- [x] Complete Seller and Admin Category CRUD plus Seller/Admin Product CRUD with server-authoritative Laravel forms and routes.
+- [x] Add automated feature coverage for Seller/Admin order-detail authorization and all role status-action boundaries.
 - [x] Replace User Categories, Favorites, Notifications, and Addresses screens with dedicated Inertia pages matching the legacy mobile layout.
 - [x] Add server-side address edit/default actions and single-notification read ownership checks.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
