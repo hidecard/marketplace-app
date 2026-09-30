@@ -96,6 +96,7 @@
 - [x] Add a reusable image fallback so deleted legacy assets show a neutral placeholder instead of a broken-image icon across Marketplace, Shop, Product Detail, and Seller catalog pages.
 - [x] Match the legacy User Home carousel with rotating banners, manual dots, legacy Burmese messaging, and the same fallback treatment in Cart product cards.
 - [ ] Preserve `storage/app/public` outside source deployments and restore any legacy product files deleted by Hostinger cleanup; new Laravel uploads use `/media/...` and are server-streamed.
+- [x] Restore normalized public shop logo/cover URLs, add Seller logo and cover uploads with previews, and deploy the repaired shop profile message flow.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
