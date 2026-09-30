@@ -18,7 +18,7 @@ const marketplaceItems: readonly NavItem[] = [
 ];
 
 const businessItems: readonly NavItem[] = [
-    ['/seller', 'Dashboard', Store], ['/seller/pos', 'POS Register', DollarSign], ['/seller/products', 'Products', Package],
+    ['/seller', 'Dashboard', Store], ['/seller/pos', 'POS Register', DollarSign], ['/seller/products', 'Products', Package], ['/seller/categories', 'Categories', FolderTree],
     ['/seller/inventory', 'Inventory', Boxes], ['/seller/orders', 'Customer Orders', ShoppingBag], ['/seller/expenses', 'Expenses', Receipt],
     ['/seller/customers', 'Customers', Users], ['/seller/analytics', 'Analytics', BarChart3], ['/seller/reports', 'Reports & P&L', FileText],
     ['/seller/verification', 'Verification', ShieldCheck], ['/seller/settings', 'Settings', Settings],

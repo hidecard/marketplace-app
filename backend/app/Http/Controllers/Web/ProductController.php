@@ -117,6 +117,9 @@ class ProductController extends Controller
         if (array_key_exists('category_id', $data)) {
             $data['category_ref_id'] = $data['category_id'];
         }
+        if (array_key_exists('title', $data)) {
+            $data['name'] = $data['title'];
+        }
 
         return $data;
     }

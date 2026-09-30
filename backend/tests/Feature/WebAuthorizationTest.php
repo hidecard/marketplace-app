@@ -75,6 +75,19 @@ class WebAuthorizationTest extends TestCase
         $this->actingAs($user)->get('/admin/users')->assertForbidden();
     }
 
+    public function test_seller_product_creation_keeps_legacy_name_column_in_sync_with_title(): void
+    {
+        $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
+        Shop::create(['owner_id' => $seller->id, 'name' => 'Catalog Shop', 'slug' => 'catalog-shop', 'verification_status' => 'approved', 'verified' => true]);
+
+        $this->actingAs($seller)->post('/seller/products', [
+            'title' => 'Apple', 'description' => 'Fresh apple', 'price' => 6000, 'cost_price' => 4000,
+            'stock' => 10, 'condition' => 'new', 'status' => 'active', 'category_id' => '', 'image_urls' => '',
+        ])->assertRedirect('/seller/products');
+
+        $this->assertDatabaseHas('products', ['title' => 'Apple', 'name' => 'Apple', 'seller_id' => $seller->id]);
+    }
+
     private function makeOrder(User $buyer, User $seller, ?string $number = null): Order
     {
         $shop = $seller->shop()->first() ?: Shop::create(['owner_id' => $seller->id, 'name' => 'Shop '.$seller->id, 'slug' => 'shop-'.$seller->id, 'verification_status' => 'approved', 'verified' => true]);
