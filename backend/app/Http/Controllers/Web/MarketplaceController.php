@@ -28,7 +28,10 @@ class MarketplaceController extends Controller
             'categories' => Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->limit(8)->get(['name', 'slug', 'icon_url']),
             'featuredProducts' => $this->withImageUrls(Product::where('status', 'active')->where('is_featured', true)->with('shop:id,name,slug,verified')->latest()->limit(10)->get()),
             'recentProducts' => $this->withImageUrls(Product::where('status', 'active')->with('shop:id,name,slug,verified')->latest()->limit(12)->get()),
-            'verifiedShops' => Shop::where('verified', true)->latest()->limit(10)->get(['id', 'name', 'slug', 'logo_url', 'address']),
+            'verifiedShops' => Shop::where('verified', true)->latest()->limit(10)->get(['id', 'name', 'slug', 'logo_url', 'address'])->map(function (Shop $shop) {
+                $shop->logo_url = ProductImages::normalize($shop->logo_url)[0] ?? null;
+                return $shop;
+            }),
         ]);
     }
 
