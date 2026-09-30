@@ -7,9 +7,12 @@ use App\Models\Category;
 use App\Models\Favorite;
 use App\Models\Product;
 use App\Models\Shop;
+use App\Support\ProductImages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,8 +26,8 @@ class MarketplaceController extends Controller
 
         return Inertia::render('Home', [
             'categories' => Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->limit(8)->get(['name', 'slug', 'icon_url']),
-            'featuredProducts' => Product::where('status', 'active')->where('is_featured', true)->with('shop:id,name,slug,verified')->latest()->limit(10)->get(),
-            'recentProducts' => Product::where('status', 'active')->with('shop:id,name,slug,verified')->latest()->limit(12)->get(),
+            'featuredProducts' => $this->withImageUrls(Product::where('status', 'active')->where('is_featured', true)->with('shop:id,name,slug,verified')->latest()->limit(10)->get()),
+            'recentProducts' => $this->withImageUrls(Product::where('status', 'active')->with('shop:id,name,slug,verified')->latest()->limit(12)->get()),
             'verifiedShops' => Shop::where('verified', true)->latest()->limit(10)->get(['id', 'name', 'slug', 'logo_url', 'address']),
         ]);
     }
@@ -63,8 +66,10 @@ class MarketplaceController extends Controller
             default => null,
         };
 
+        $products = $query->paginate(24)->withQueryString();
+        $products->getCollection()->each(fn (Product $product) => $this->normalizeProductImages($product));
         return Inertia::render('Products/Index', [
-            'products' => $query->paginate(24)->withQueryString(),
+            'products' => $products,
             'categories' => Category::where('is_active', true)->orderBy('sort_order')->orderBy('name')->get(['name', 'slug']),
             'filters' => $request->only(['q', 'brand', 'category', 'shop', 'verified', 'condition', 'min_price', 'max_price', 'sort']),
         ]);
@@ -74,7 +79,26 @@ class MarketplaceController extends Controller
     {
         abort_unless($product->status === 'active', 404);
 
-        return Inertia::render('Products/Show', ['product' => $product->load('shop:id,name,slug,verified', 'seller:id,name'), 'isFavorite' => $request->user() ? Favorite::query()->where('user_id', $request->user()->id)->where('product_id', $product->id)->exists() : false]);
+        $product->load('shop:id,name,slug,verified', 'seller:id,name');
+        $this->normalizeProductImages($product);
+        return Inertia::render('Products/Show', ['product' => $product, 'isFavorite' => $request->user() ? Favorite::query()->where('user_id', $request->user()->id)->where('product_id', $product->id)->exists() : false]);
+    }
+
+    public function media(string $path): BinaryFileResponse
+    {
+        abort_unless(Storage::disk('public')->exists($path), 404);
+        return response()->file(Storage::disk('public')->path($path), ['Cache-Control' => 'public, max-age=31536000, immutable']);
+    }
+
+    private function normalizeProductImages(Product $product): Product
+    {
+        $product->setAttribute('images', ProductImages::normalize($product->images));
+        return $product;
+    }
+
+    private function withImageUrls($products)
+    {
+        return $products->each(fn (Product $product) => $this->normalizeProductImages($product));
     }
 
     public function dashboard(Request $request): Response|RedirectResponse

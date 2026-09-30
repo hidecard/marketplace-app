@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Shop;
 use App\Models\ShopFollower;
+use App\Support\ProductImages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -43,7 +44,7 @@ class ShopController extends Controller
                     'price' => $product->price,
                     'stock' => $product->stock,
                     'condition' => $product->condition,
-                    'images' => $product->images ?: [],
+                    'images' => ProductImages::normalize($product->images),
                     'created_at' => $product->created_at?->toISOString(),
                 ])->values()->all(),
             ],

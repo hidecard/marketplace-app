@@ -107,7 +107,7 @@ class ProductController extends Controller
         $required = $partial ? 'sometimes' : 'required';
         $data = $request->validate(['title' => [$required, 'string', 'max:180'], 'description' => ['nullable', 'string', 'max:10000'], 'price' => [$required, 'numeric', 'min:0'], 'cost_price' => ['nullable', 'numeric', 'min:0'], 'stock' => [$required, 'integer', 'min:0', 'max:1000000'], 'condition' => [$required, 'in:new,used,refurbished'], 'status' => ['nullable', 'in:active,inactive,sold,hidden'], 'images' => ['nullable', 'array', 'max:10'], 'images.*' => ['file', 'image', 'max:5120'], 'image_urls' => ['nullable', 'string', 'max:20000'], 'category_id' => ['nullable', 'integer', 'exists:categories,id']]);
         $urls = collect(preg_split('/\s*,\s*|\r?\n/', (string) ($data['image_urls'] ?? '')))->filter()->filter(fn ($url) => filter_var($url, FILTER_VALIDATE_URL))->values()->all();
-        $uploaded = collect($request->file('images', []))->map(fn ($file) => Storage::disk('public')->url($file->store('products', 'public')))->all();
+        $uploaded = collect($request->file('images', []))->map(fn ($file) => '/media/'.ltrim($file->store('products', 'public'), '/'))->all();
         unset($data['image_urls']);
         if ($urls || $uploaded || ! $partial) {
             $data['images'] = array_values(array_slice(array_merge($urls, $uploaded), 0, 10));

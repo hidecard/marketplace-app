@@ -89,6 +89,8 @@
 - [x] Add automated feature coverage for Seller/Admin order-detail authorization and all role status-action boundaries.
 - [x] Replace User Categories, Favorites, Notifications, and Addresses screens with dedicated Inertia pages matching the legacy mobile layout.
 - [x] Add server-side address edit/default actions and single-notification read ownership checks.
+- [x] Add dedicated User Messages list and Help & Support pages with Firebase-style empty states, FAQ cards, and navigation.
+- [x] Fix product image delivery by normalizing legacy storage URLs, adding a Laravel media stream route, and updating all User/Shop/Product responses.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 

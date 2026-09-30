@@ -51,6 +51,8 @@ class OperationsController extends Controller
             ];
         }
 
+        if ($screen === 'chats') return Inertia::render('Chats/Index', ['rows' => $props['rows']]);
+        if ($screen === 'help') return Inertia::render('Help/Index');
         return Inertia::render('Operations/Index', $props);
     }
 

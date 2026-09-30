@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Favorite;
 use App\Models\MarketplaceNotification;
 use App\Models\Product;
+use App\Support\ProductImages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,12 +24,14 @@ class UserController extends Controller
         $query = Product::query()->where('status', 'active')->with('shop:id,name,slug,verified');
         if ($selected) $query->where('category_id', $selected->id);
         if ($request->filled('q')) $query->where('title', 'like', '%'.$request->string('q').'%');
-        return Inertia::render('User/Categories', ['categories' => $categories, 'selected' => $selected, 'products' => $query->latest()->limit(60)->get(['id', 'title', 'price', 'stock', 'images', 'condition', 'shop_id']), 'query' => $request->string('q')->toString()]);
+        $products = $query->latest()->limit(60)->get(['id', 'title', 'price', 'stock', 'images', 'condition', 'shop_id']);
+        $products->each(fn (Product $product) => $product->setAttribute('images', ProductImages::normalize($product->images)));
+        return Inertia::render('User/Categories', ['categories' => $categories, 'selected' => $selected, 'products' => $products, 'query' => $request->string('q')->toString()]);
     }
 
     public function favorites(Request $request): Response
     {
-        $favorites = Favorite::query()->where('user_id', $request->user()->id)->latest()->with('product.shop:id,name,slug,verified')->limit(100)->get(['id', 'product_id'])->map(fn (Favorite $favorite) => ['favorite_id' => $favorite->id, 'product' => $favorite->product])->filter(fn ($item) => $item['product'])->values();
+        $favorites = Favorite::query()->where('user_id', $request->user()->id)->latest()->with('product.shop:id,name,slug,verified')->limit(100)->get(['id', 'product_id'])->map(function (Favorite $favorite) { if ($favorite->product) $favorite->product->setAttribute('images', ProductImages::normalize($favorite->product->images)); return ['favorite_id' => $favorite->id, 'product' => $favorite->product]; })->filter(fn ($item) => $item['product'])->values();
         return Inertia::render('User/Favorites', ['favorites' => $favorites]);
     }
 

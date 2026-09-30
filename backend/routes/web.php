@@ -17,6 +17,7 @@ use App\Http\Controllers\Web\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MarketplaceController::class, 'home'])->name('home');
+Route::get('/media/{path}', [MarketplaceController::class, 'media'])->where('path', '.*')->name('media.product');
 Route::get('/products', [MarketplaceController::class, 'products'])->name('products.index');
 Route::get('/products/{product}', [MarketplaceController::class, 'product'])->name('products.show');
 Route::get('/categories/{category?}', [UserController::class, 'categories'])->name('categories.index');
