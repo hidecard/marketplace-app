@@ -1,152 +1,73 @@
-# Hostinger Git deployment for Easy Zay Mm
+# Hostinger deployment for Easy Zay Mm
 
-The Laravel application lives in `backend/`. **Do not move `.env`, `public/index.php`, or files from `backend/public` after each Git update.** The repository also includes a tracked root bridge (`backend/index.php` and `backend/.htaccess`) for the current Hostinger setup, so Git updates do not require manually restoring root files.
+This repository contains a Laravel application in `backend/`. The deployment workflow builds the release on GitHub Actions and uploads the ready-to-run release to Hostinger. **Composer is not installed or run on Hostinger during normal deployments.**
 
-## 1. Hostinger Git deployment
+## One-time Hostinger setup
 
-In hPanel:
+1. Create the production `.env` one level above the deployed Laravel directory. Do not commit it:
+   ```text
+   /home/<account>/domains/easyzaymm.com/public_html/.env
+   ```
+2. Set the domain document root to:
+   ```text
+   .../public_html/backend/public
+   ```
+3. Create the Laravel storage symlink once from the `backend` directory:
+   ```bash
+   php artisan storage:link
+   php artisan migrate --force
+   php artisan optimize
+   ```
+4. Create an FTP account in hPanel with access to the deployment directory.
+5. In GitHub → Settings → Secrets and variables → Actions, add:
+   - `HOSTINGER_FTP_SERVER` — Hostinger FTP hostname
+   - `HOSTINGER_FTP_USERNAME` — FTP username
+   - `HOSTINGER_FTP_PASSWORD` — FTP password
+   - `HOSTINGER_FTP_SERVER_DIR` — absolute remote directory, usually ending in `/public_html/backend/`
 
-1. Open **Websites → Manage → Advanced → Git**.
-2. Connect `hidecard/marketplace-app`.
-3. Select branch `main`.
-4. In the build configuration, set the repository/application root to:
+The workflow will pass tests, install production Composer dependencies, build Vite assets, and then upload `backend/` including `vendor/` and `public/build/`.
 
-```text
-backend
-```
-
-Use `backend` for the screenshot's **Root directory** field. Do not use `backend/public` there; `backend/public` is the web document root, not the Laravel build root.
-
-The repository should deploy with this structure:
-
-```text
-public_html/
-├── backend/
-│   ├── app/
-│   ├── bootstrap/
-│   ├── public/
-│   │   ├── index.php
-│   │   ├── .htaccess
-│   │   └── build/
-│   ├── storage/
-│   ├── vendor/
-│   └── .env                 # server-only; never commit
-├── web/
-└── admin/
-```
-
-## 2. Set the domain document root once (preferred)
-
-In **Domains → easyzaymm.com → Document root**, set:
-
-```text
-/home/u106997189/domains/easyzaymm.com/public_html/backend/public
-```
-
-If Hostinger displays a different account path, keep the same final part:
-
-```text
-.../public_html/backend/public
-```
-
-The same document root should be used for `www.easyzaymm.com` if it is configured as a separate domain.
-
-This makes Apache serve `backend/public/index.php` directly. The existing Laravel `backend/public/.htaccess` handles all Laravel routes and asset requests.
-
-If the domain currently serves `.../public_html` rather than `.../public_html/backend/public`, it can remain temporarily: Hostinger's Git integration may copy the contents of `backend/` directly into `public_html`. The tracked root bridge routes requests to `public/` and protects application source files. The preferred long-term configuration remains `.../public_html/backend/public`.
-
-## 3. Keep `.env` server-only
-
-Create or keep the production environment file here, outside the Git deployment directory:
-
-```text
-/home/u106997189/domains/easyzaymm.com/.env
-```
-
-It is ignored by Git and remains outside the directory Hostinger replaces on each deployment. Do not put it inside `backend/public` and do not commit it.
-
-Recommended production values:
-
-```env
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://easyzaymm.com
-```
-
-Keep the database credentials in this server-only file.
-
-## 4. One-time server commands after the first deployment
-
-Run from the deployed Laravel root:
-
-```bash
-cd /home/u106997189/domains/easyzaymm.com/public_html/backend
-composer install --no-dev --optimize-autoloader
-php artisan storage:link
-php artisan migrate --force
-php artisan optimize
-```
-
-Build frontend assets before deployment from the repository/CI environment:
-
-```bash
-cd backend
-bash scripts/hostinger-build.sh
-```
-
-For the current setup where the contents of `backend/` are deployed directly into `public_html`, set Hostinger's one-time **Build command** to:
-
-```bash
-bash scripts/hostinger-build.sh
-```
-
-This rebuilds ignored `vendor/` after every Git sync using `composer install --no-scripts`, runs the Vite build, and does not touch the parent-directory `.env` or the tracked root entrypoint.
-
-The script installs dependencies, runs the Laravel/Vite build, and verifies that `public/index.php` and `public/.htaccess` remain in place. It never moves or copies `.env` or `public/index.php`.
-
-The generated `backend/public/build` directory is intentionally ignored locally, so the deployment must either build it on the server or upload the built assets through the deployment pipeline.
-
-## 5. Every future update
-
-Only push code normally:
+## Every future deployment
 
 ```bash
 git add .
-git commit -m "your change"
+git commit -m "describe the change"
 git push origin main
 ```
 
-Then use Hostinger **Redeploy** or enable auto-deployment. Do **not** move:
+The `Hostinger deployment` GitHub Actions workflow then does the following:
 
-- `.env`
-- `backend/public/index.php`
-- `backend/public/.htaccess`
-- files from `backend/public` into `backend/`
+1. Runs Laravel tests with SQLite.
+2. Runs `composer install --no-dev` on GitHub Actions.
+3. Runs the frontend build on GitHub Actions.
+4. Uploads the ready release to Hostinger over FTP.
+5. Does **not** run Composer on the Hostinger server.
 
-## 6. Automatic GitHub Actions verification and deployment trigger
+If the four FTP secrets are not configured, CI still runs its release checks and skips deployment with a clear message.
 
-The repository now includes:
+## Protecting uploaded product/media files
+
+`backend/storage/app/public` is runtime data, not source code. Product images, shop logos/covers, and any `vector` directory placed there are excluded from FTP cleanup:
 
 ```text
-.github/workflows/hostinger.yml
+backend/storage/**
+backend/public/storage/**
 ```
 
-Every push to `main` runs PHP 8.4 tests, the frontend build, and checks that `backend/public/index.php` and `.htaccess` remain in the correct location. The workflow then calls an optional `HOSTINGER_DEPLOY_WEBHOOK` secret if one is configured.
+Therefore a code deployment cannot delete existing uploaded media. Do not put uploaded files in `backend/public/build`; that directory is generated and may be replaced on each release.
 
-For the current Hostinger **GitHub auto-deployment** connection, no secret is required: Hostinger receives the GitHub push webhook automatically and deploys the selected branch. Keep Hostinger's selected branch as `main` and enable the Auto-deployment status.
+The repository currently has no tracked `vector` directory and cannot restore files that were already deleted from the server. This workflow prevents future deletion. If the old files still exist in a Hostinger backup, restore them to:
 
-Only for an older Hostinger **SSH-based Git deployment** setup:
+```text
+backend/storage/app/public/vector/
+```
 
-1. In Hostinger → Advanced → Git → repository actions, open **Auto Deployment** and copy its webhook URL.
-2. In GitHub → Settings → Secrets and variables → Actions, add a repository secret named `HOSTINGER_DEPLOY_WEBHOOK`.
-3. Paste the Hostinger webhook URL as the secret value.
-4. Push to `main`; the workflow will call the webhook only after tests and build succeed.
+Then confirm the `backend/public/storage` symlink points to `../storage/app/public`.
 
-Do not use the `hostinger/deploy-action` VPS action for this shared-hosting Laravel site. Hostinger documents that action for VPS/Docker deployments, not the shared-hosting Git integration.
+## Important rules
 
-## Why the manual move was happening
-
-The repository root is not the Laravel public directory. If the Git/build root is set to `backend/public`, the deployment treats the public directory as the application root and encourages manual file moves. Keep the Git/build root at `backend`, and set the domain document root separately to `.../public_html/backend/public`. Moving `index.php` manually only masks the wrong configuration and is overwritten by the next Git deployment.
-
-Official Hostinger Git deployment reference: <https://docs.hostinger.com/websites/git>
-Hostinger VPS GitHub Actions reference: <https://www.hostinger.com/support/deploy-to-hostinger-vps-using-github-actions/>
+- Keep `.env` on the server; never commit it.
+- Do not use Hostinger Git auto-deployment together with this FTP workflow, otherwise two deployments can race.
+- Disable the old Hostinger Git auto-deployment/webhook after adding the FTP secrets.
+- Do not manually move `index.php`, `.htaccess`, `vendor`, or media files after each release.
+- Do not use `composer update` in production; dependency versions come from the committed `backend/composer.lock`.
