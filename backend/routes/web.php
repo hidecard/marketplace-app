@@ -98,7 +98,9 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
         Route::get('/customers', [OperationsController::class, 'seller'])->defaults('screen', 'customers')->name('seller.customers');
         Route::get('/analytics', [OperationsController::class, 'seller'])->defaults('screen', 'analytics')->name('seller.analytics');
         Route::get('/settings', [ContentController::class, 'sellerSettings'])->name('seller.settings');
-        Route::put('/settings', [ContentController::class, 'updateSellerSettings'])->name('seller.settings.update');
+        // Multipart forms (especially logo/cover uploads) arrive as POST on PHP.
+        // Keep PUT compatibility while accepting the browser's actual request.
+        Route::match(['post', 'put'], '/settings', [ContentController::class, 'updateSellerSettings'])->name('seller.settings.update');
         Route::get('/categories', [OperationsController::class, 'seller'])->defaults('screen', 'categories')->name('seller.categories');
         Route::post('/categories', [OperationsController::class, 'storeCategory'])->name('seller.categories.store');
         Route::get('/categories/{category}/edit', [OperationsController::class, 'editCategory'])->name('seller.categories.edit');
