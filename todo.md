@@ -267,10 +267,10 @@
 - [ ] Add duplicate order submission integration test.
 - [ ] Add concurrent last-stock order test.
 - [ ] Add duplicate POS submission integration test.
-- [ ] Add buyer cancellation permission test.
-- [ ] Add completed-order-only review test.
-- [ ] Add one-review-per-order test.
-- [ ] Add own-product offer restriction test.
+- [x] Add buyer cancellation permission test.
+- [x] Add completed-order-only review test.
+- [x] Add one-review-per-product test.
+- [x] Add own-product offer restriction test.
 - [ ] Add one-shop-per-user concurrency test.
 - [ ] Add unique-shop-slug concurrency test.
 - [ ] Add one-pending-verification-per-shop concurrency test.

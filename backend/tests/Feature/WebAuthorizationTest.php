@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Review;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -86,6 +87,56 @@ class WebAuthorizationTest extends TestCase
         ])->assertRedirect('/seller/products');
 
         $this->assertDatabaseHas('products', ['title' => 'Apple', 'name' => 'Apple', 'seller_id' => $seller->id]);
+    }
+
+    public function test_buyer_can_cancel_only_its_pending_order_and_stock_is_restored(): void
+    {
+        $buyer = User::factory()->create();
+        $otherBuyer = User::factory()->create();
+        $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
+        $order = $this->makeOrder($buyer, $seller);
+        $product = $order->items()->first()->product;
+        $product->update(['stock' => 4]);
+
+        $this->actingAs($otherBuyer)->post('/orders/'.$order->id.'/cancel')->assertForbidden();
+        $this->actingAs($buyer)->post('/orders/'.$order->id.'/cancel')->assertRedirect();
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'cancelled', 'cancel_count' => 1]);
+        $this->assertSame(5, $product->fresh()->stock);
+        $this->actingAs($buyer)->post('/orders/'.$order->id.'/cancel')->assertUnprocessable();
+    }
+
+    public function test_buyer_can_review_only_a_delivered_product_and_only_once(): void
+    {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
+        $order = $this->makeOrder($buyer, $seller);
+        $product = $order->items()->first()->product;
+
+        $this->actingAs($buyer)->post('/products/'.$product->id.'/reviews', ['rating' => 5, 'body' => 'Not yet'])->assertForbidden();
+        $order->update(['status' => 'delivered']);
+        $this->actingAs($buyer)->post('/products/'.$product->id.'/reviews', ['rating' => 5, 'body' => 'Great product'])->assertRedirect();
+        $this->assertDatabaseHas('reviews', ['user_id' => $buyer->id, 'product_id' => $product->id, 'rating' => 5]);
+        $this->actingAs($buyer)->post('/products/'.$product->id.'/reviews', ['rating' => 4])->assertUnprocessable();
+        $this->assertSame(1, Review::where('user_id', $buyer->id)->where('product_id', $product->id)->count());
+    }
+
+    public function test_buyer_cannot_offer_on_own_product_and_seller_can_review_only_its_offer(): void
+    {
+        $buyer = User::factory()->create();
+        $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
+        $otherSeller = User::factory()->create(['role' => User::ROLE_SELLER]);
+        $ownOrder = $this->makeOrder($buyer, $seller);
+        $ownProduct = $ownOrder->items()->first()->product;
+
+        $this->actingAs($seller)->post('/offers', ['product_id' => $ownProduct->id, 'amount' => 80])->assertUnprocessable();
+        $otherOrder = $this->makeOrder($buyer, $otherSeller, 'ORD-OFFER-OTHER');
+        $otherProduct = $otherOrder->items()->first()->product;
+        $this->actingAs($buyer)->post('/offers', ['product_id' => $otherProduct->id, 'amount' => 80])->assertRedirect();
+        $this->assertDatabaseHas('offers', ['product_id' => $otherProduct->id, 'buyer_id' => $buyer->id, 'seller_id' => $otherSeller->id, 'status' => 'pending']);
+        $offerId = (int) $this->app['db']->table('offers')->where('product_id', $otherProduct->id)->value('id');
+        $this->actingAs($seller)->post('/seller/offers/'.$offerId.'/review', ['status' => 'accepted'])->assertNotFound();
+        $this->actingAs($otherSeller)->post('/seller/offers/'.$offerId.'/review', ['status' => 'accepted'])->assertRedirect();
+        $this->assertDatabaseHas('offers', ['id' => $offerId, 'status' => 'accepted']);
     }
 
     private function makeOrder(User $buyer, User $seller, ?string $number = null): Order
