@@ -45,6 +45,7 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::post('/checkout', [CartController::class, 'placeOrder'])->name('checkout.place')->middleware('throttle:10,1');
     Route::get('/orders', [CartController::class, 'orders'])->name('orders.index');
     Route::get('/orders/{order}', [CartController::class, 'order'])->name('orders.show');
+    Route::post('/orders/{order}/cancel', [CartController::class, 'cancelOrder'])->name('orders.cancel');
     Route::get('/favorites', [UserController::class, 'favorites'])->name('favorites.index');
     Route::get('/notifications', [UserController::class, 'notifications'])->name('notifications.index');
     Route::get('/chats', [OperationsController::class, 'user'])->defaults('screen', 'chats')->name('chats.index');
