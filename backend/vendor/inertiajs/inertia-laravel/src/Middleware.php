@@ -1,0 +1,329 @@
+<?php
+
+namespace Inertia;
+
+use Closure;
+use Illuminate\Contracts\Session\Session as SessionContract;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
+use Illuminate\Session\Store;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\MessageBag;
+use Inertia\DevTools\DevTools;
+use Inertia\Ssr\ExcludesSsrPaths;
+use Inertia\Ssr\Gateway;
+use Inertia\Support\Header;
+use Inertia\Support\SessionKey;
+use Symfony\Component\HttpFoundation\Response;
+
+class Middleware
+{
+    /**
+     * The root template that's loaded on the first page visit.
+     *
+     * @see https://inertiajs.com/server-side-setup#root-template
+     *
+     * @var string
+     */
+    protected $rootView = 'app';
+
+    /**
+     * Determines if validation errors should be mapped to a single error message per field.
+     *
+     * @var bool
+     */
+    protected $withAllErrors = false;
+
+    /**
+     * The paths that should be excluded from server-side rendering.
+     *
+     * @var array<int, string>
+     */
+    protected $withoutSsr = [];
+
+    /**
+     * Determine the current asset version.
+     *
+     * @return string|null
+     */
+    public function version(Request $request)
+    {
+        if (config('app.asset_url')) {
+            return hash('xxh128', config('app.asset_url'));
+        }
+
+        if (file_exists($manifest = public_path('build/manifest.json'))) {
+            return hash_file('xxh128', $manifest);
+        }
+
+        if (file_exists($manifest = public_path('mix-manifest.json'))) {
+            return hash_file('xxh128', $manifest);
+        }
+
+        return null;
+    }
+
+    /**
+     * Define the props that are shared by default.
+     *
+     * @return array<string, mixed>
+     */
+    public function share(Request $request)
+    {
+        return [
+            'errors' => Inertia::always($this->resolveValidationErrors($request)),
+        ];
+    }
+
+    /**
+     * Define the props that are shared once and remembered across navigations.
+     *
+     * @return array<string, callable|OnceProp>
+     */
+    public function shareOnce(Request $request): array
+    {
+        return [];
+    }
+
+    /**
+     * Set the root template that is loaded on the first page visit.
+     *
+     * @return string
+     */
+    public function rootView(Request $request)
+    {
+        return $this->rootView;
+    }
+
+    /**
+     * Define a callback that returns the relative URL.
+     *
+     * @return Closure|null
+     */
+    public function urlResolver()
+    {
+        return null;
+    }
+
+    /**
+     * Handle the incoming request.
+     *
+     * @return Response
+     */
+    public function handle(Request $request, Closure $next)
+    {
+        $recorder = DevTools::recorder($request);
+
+        $recorder?->requestStarted($request);
+
+        Inertia::version(function () use ($request) {
+            return $this->version($request);
+        });
+
+        $shared = $this->share($request);
+
+        Inertia::share($shared);
+
+        $recorder?->sharedPropsResolved($this, $shared);
+
+        foreach ($this->shareOnce($request) as $key => $value) {
+            if ($value instanceof OnceProp) {
+                Inertia::share($key, $value);
+            } else {
+                Inertia::shareOnce($key, $value);
+            }
+        }
+
+        Inertia::setRootView($this->rootView($request));
+
+        if ($urlResolver = $this->urlResolver()) {
+            Inertia::resolveUrlUsing($urlResolver);
+        }
+
+        $ssrGateway = app(Gateway::class);
+
+        if (! empty($this->withoutSsr) && $ssrGateway instanceof ExcludesSsrPaths) {
+            $ssrGateway->except($this->withoutSsr);
+        }
+
+        $response = $next($request);
+        $response->headers->set('Vary', Header::INERTIA);
+
+        if ($isRedirect = $response->isRedirect()) {
+            $this->reflash($request);
+        }
+
+        if (! $request->header(Header::INERTIA)) {
+            $recorder?->respondedWith($request, $response);
+
+            return $response;
+        }
+
+        $this->storeCurrentUrl($request, $response);
+
+        if ($request->method() === 'GET' && $request->header(Header::VERSION, '') !== Inertia::getVersion()) {
+            $response = $this->onVersionChange($request, $response);
+        }
+
+        if ($response->isOk() && empty($response->getContent())) {
+            $response = $this->onEmptyResponse($request, $response);
+        }
+
+        if ($response->getStatusCode() === 302 && in_array($request->method(), ['PUT', 'PATCH', 'DELETE'])) {
+            $response->setStatusCode(303);
+        }
+
+        if ($isRedirect && $this->redirectHasFragment($response) && ! $request->prefetch()) {
+            $response = $this->onRedirectWithFragment($request, $response);
+        }
+
+        $recorder?->respondedWith($request, $response);
+
+        return $response;
+    }
+
+    /**
+     * Store the current URL and route as the previous location, which Laravel's
+     * session middleware skips for Inertia visits.
+     */
+    protected function storeCurrentUrl(Request $request, Response $response): void
+    {
+        if (! $this->shouldStoreCurrentUrl($request, $response)) {
+            return;
+        }
+
+        /** @var Store $session */
+        $session = $request->session();
+        $session->setPreviousUrl($request->fullUrl());
+
+        $this->storeCurrentRoute($session, $request->route()?->getName());
+    }
+
+    /**
+     * Store the current route when supported by the Laravel version.
+     */
+    protected function storeCurrentRoute(SessionContract $session, ?string $route): void
+    {
+        if (method_exists($session, 'setPreviousRoute')) {
+            $session->setPreviousRoute($route);
+        }
+    }
+
+    /**
+     * Determine if the visit should be stored as the previous location. Partial
+     * reloads are excluded, since deferred props, polling, and infinite scroll
+     * requests aren't navigations the user came from.
+     */
+    public function shouldStoreCurrentUrl(Request $request, Response $response): bool
+    {
+        if (! config('inertia.store_previous_url', false) ||
+            ! $request->hasSession() ||
+            ! $request->isMethod('GET') ||
+            ! $request->route() instanceof Route ||
+            ! $request->ajax() ||
+            $request->prefetch() ||
+            $request->isPrecognitive()) {
+            return false;
+        }
+
+        return ! $this->isPartialReload($request, $response);
+    }
+
+    /**
+     * Determine if the request is a partial reload of the component that was rendered.
+     */
+    protected function isPartialReload(Request $request, Response $response): bool
+    {
+        if (! $component = $request->header(Header::PARTIAL_COMPONENT)) {
+            return false;
+        }
+
+        return $response instanceof JsonResponse
+            && $component === data_get($response->getOriginalContent(), 'component');
+    }
+
+    /**
+     * Determine if the redirect response contains a URL fragment.
+     */
+    protected function redirectHasFragment(Response $response): bool
+    {
+        return str_contains($response->headers->get('Location', ''), '#');
+    }
+
+    /**
+     * Reflash the session data for the next request.
+     */
+    protected function reflash(Request $request): void
+    {
+        if ($flashed = Inertia::getFlashed($request)) {
+            $request->session()->flash(SessionKey::FLASH_DATA, $flashed);
+        }
+    }
+
+    /**
+     * Handle empty responses.
+     */
+    public function onEmptyResponse(Request $request, Response $response): Response
+    {
+        return Redirect::back();
+    }
+
+    /**
+     * Handle redirects with URL fragments.
+     */
+    public function onRedirectWithFragment(Request $request, Response $response): Response
+    {
+        return response('', 409, [
+            Header::REDIRECT => $response->headers->get('Location'),
+        ]);
+    }
+
+    /**
+     * Handle version changes.
+     */
+    public function onVersionChange(Request $request, Response $response): Response
+    {
+        if ($request->hasSession()) {
+            /** @var Store $session */
+            $session = $request->session();
+            $session->reflash();
+        }
+
+        $response = Inertia::location($request->fullUrl());
+        $response->headers->set(Header::VERSION, Inertia::getVersion());
+
+        return $response;
+    }
+
+    /**
+     * Resolve validation errors for client-side use.
+     *
+     * @return object
+     */
+    public function resolveValidationErrors(Request $request)
+    {
+        if (! $request->hasSession() || ! $request->session()->has('errors')) {
+            return (object) [];
+        }
+
+        /** @var array<string, MessageBag> $bags */
+        $bags = $request->session()->get('errors')->getBags();
+
+        return (object) collect($bags)->map(function ($bag) {
+            return (object) collect($bag->messages())->map(function ($errors) {
+                return $this->withAllErrors ? $errors : $errors[0];
+            })->toArray();
+        })->pipe(function ($bags) use ($request) {
+            if ($bags->has('default') && $request->header(Header::ERROR_BAG)) {
+                return [$request->header(Header::ERROR_BAG) => $bags->get('default')];
+            }
+
+            if ($bags->has('default')) {
+                return $bags->get('default');
+            }
+
+            return $bags->toArray();
+        });
+    }
+}

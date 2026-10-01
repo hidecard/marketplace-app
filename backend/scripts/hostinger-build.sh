@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Hostinger Git replaces the contents of public_html on every deployment.
-# Keep vendor one level above public_html so it survives the replacement.
+# The production release tracks vendor/ and public/build/, so Hostinger Git
+# can deploy without running Composer or Node on the server.
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PARENT_DIR="$(cd "$ROOT_DIR/.." && pwd)"
 PERSISTENT_VENDOR_DIR="$PARENT_DIR/.easyzaymm-vendor"
@@ -18,7 +18,9 @@ CURRENT_LOCK_HASH="$(sha256sum composer.lock | awk '{print $1}')"
 CACHED_LOCK_HASH=""
 [[ -f "$LOCK_HASH_FILE" ]] && CACHED_LOCK_HASH="$(cat "$LOCK_HASH_FILE")"
 
-if [[ ! -f "$PERSISTENT_VENDOR_DIR/autoload.php" || "$CURRENT_LOCK_HASH" != "$CACHED_LOCK_HASH" ]]; then
+if [[ -f "$ROOT_DIR/vendor/autoload.php" ]]; then
+  echo "Using tracked production vendor; Composer is not needed on Hostinger."
+elif [[ ! -f "$PERSISTENT_VENDOR_DIR/autoload.php" || "$CURRENT_LOCK_HASH" != "$CACHED_LOCK_HASH" ]]; then
   echo "Installing Composer dependencies into persistent cache: $PERSISTENT_VENDOR_DIR"
   rm -rf "$PERSISTENT_VENDOR_DIR"
   mkdir -p "$PERSISTENT_VENDOR_DIR"
@@ -29,11 +31,11 @@ else
   echo "Composer dependencies unchanged; reusing persistent vendor cache."
 fi
 
-# Recreate the application vendor link after every Git deployment.
-if [[ -e "$ROOT_DIR/vendor" && ! -L "$ROOT_DIR/vendor" ]]; then
-  rm -rf "$ROOT_DIR/vendor"
+# Use a persistent cache only for an older deployment that has no tracked
+# vendor directory. Never replace the tracked vendor directory with a link.
+if [[ ! -f "$ROOT_DIR/vendor/autoload.php" ]]; then
+  ln -sfn "$PERSISTENT_VENDOR_DIR" "$ROOT_DIR/vendor"
 fi
-ln -sfn "$PERSISTENT_VENDOR_DIR" "$ROOT_DIR/vendor"
 
 # Composer scripts are disabled during the cache install because the app link
 # does not exist yet. Discover Laravel packages after the link is restored.

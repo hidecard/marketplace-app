@@ -1,31 +1,18 @@
 # Hostinger deployment for Easy Zay Mm
 
-The current Hostinger setup deploys the contents of `backend/` directly into `public_html`. Hostinger replaces that directory during Git sync, which is why `vendor/` disappeared after every GitHub push.
+The Hostinger deployment uses the repository's `backend/` directory as the application root. The production release now includes the tested Composer `vendor/` directory and Vite `public/build/` output, so Hostinger does not need to run Composer, npm, or a custom Build command.
 
-The fix is a one-time Hostinger **Build command**. It stores Composer dependencies one level above `public_html`, reuses them when `composer.lock` has not changed, and recreates the `vendor` symlink after each deployment. You will not need to SSH in and run Composer manually again.
-
-## One-time Hostinger configuration
+## Current Hostinger settings
 
 In hPanel → **Websites → Manage → Advanced → Git**:
 
 - Repository: `hidecard/marketplace-app`
 - Branch: `main`
-- Deployment/build root: the deployed Laravel root (`public_html`, which contains `artisan` and `composer.json`)
-- Build command:
-  ```bash
-  bash scripts/hostinger-build.sh
-  ```
-- Enable Auto-deployment.
+- Root directory: `backend`
+- Build command: leave blank or use `bash scripts/hostinger-build.sh` as an optional verification command
+- Auto-deployment: enabled
 
-The screenshot layout confirms that `public_html` is already the Laravel root because it contains `artisan`, `composer.json`, `app/`, `routes/`, and `public/`.
-
-Create the production environment file once at:
-
-```text
-/home/<account>/domains/easyzaymm.com/.env
-```
-
-The Laravel bootstrap is configured to load this file from outside the directory Hostinger replaces. Do not commit it and do not place it inside `public/`.
+The screenshot confirms that Hostinger deploys `backend/` directly into `public_html` because `public_html` contains `bootstrap/`, `config/`, `database/`, `public/`, `routes/`, and `scripts/`.
 
 Set the domain document root to:
 
@@ -33,7 +20,15 @@ Set the domain document root to:
 .../public_html/public
 ```
 
-Run these commands only once after the first deployment, if the storage link has not been created:
+Keep the production environment file outside the Git deployment directory:
+
+```text
+/home/<account>/domains/easyzaymm.com/.env
+```
+
+The Laravel bootstrap is configured to load this external `.env`. Never commit it or put it inside `public/`.
+
+Create the storage link once, if it does not already exist:
 
 ```bash
 cd .../public_html
@@ -42,37 +37,33 @@ php artisan migrate --force
 php artisan optimize
 ```
 
-## What happens after every Git push
+## Why Composer is no longer needed after each push
 
-1. Hostinger syncs the `main` branch into `public_html`.
-2. `scripts/hostinger-build.sh` checks `composer.lock`.
-3. If dependencies are unchanged, the persistent vendor cache is reused; Composer does not run.
-4. If `composer.lock` changed, Composer runs automatically once and refreshes the cache.
-5. The script recreates `public_html/vendor` as a symlink to the persistent cache.
-6. Laravel package discovery and the Vite frontend build run automatically.
-
-The persistent cache is stored at:
+`backend/vendor/` is now tracked in Git and was copied from a successful GitHub Actions production build. `backend/public/build/` is also tracked. Therefore every Hostinger Git sync receives:
 
 ```text
-/home/<account>/domains/easyzaymm.com/.easyzaymm-vendor/
+public_html/vendor/
+public_html/public/build/
 ```
 
-It is outside `public_html`, so Git deployment does not delete it.
+A normal code push does not need a server-side Composer install. Composer is only needed when `backend/composer.lock` changes; in that case regenerate the tracked vendor directory in CI and commit the updated release.
 
-## Uploaded files and the vector folder
+The optional `scripts/hostinger-build.sh` first checks for the tracked `vendor/autoload.php`. If it exists, it does not run Composer. It only has a fallback persistent cache for older deployments where vendor was already missing.
 
-Do not store uploads in the Git-managed source tree. Product images, shop logos/covers, and any vector files belong in:
+## Uploaded files and vector folder
+
+Runtime uploads must stay outside the tracked release:
 
 ```text
 public_html/storage/app/public/
 ```
 
-The existing `public/storage` link should point to `../storage/app/public`. The build script never deletes `storage/` or uploaded media.
+The `public/storage` symlink should point to `../storage/app/public`. The Git release does not contain or delete uploaded media. Restore previously deleted vector files from a Hostinger backup into:
 
-The repository does not contain the old deleted vector files, so files already removed from Hostinger must be restored from a Hostinger backup. The new workflow prevents future deployments from removing them.
+```text
+public_html/storage/app/public/vector/
+```
 
 ## GitHub Actions
 
-`.github/workflows/hostinger.yml` validates the release on every push. It runs Composer with dev dependencies in CI for tests, builds the frontend, and verifies the Laravel layout. Hostinger performs the actual deployment through its Git integration and the one-time build command above.
-
-No Hostinger FTP secrets are required for this direct Git deployment.
+`.github/workflows/hostinger.yml` validates the release on every push with Laravel tests and the frontend build. The tested production artifact generated by CI is committed to the repository so Hostinger's Git integration can deploy it without a server build step.
