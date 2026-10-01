@@ -21,8 +21,6 @@ jobs:
     name: Build and verify release
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    outputs:
-      deploy_enabled: ${{ steps.deploy-switch.outputs.enabled }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -68,20 +66,6 @@ jobs:
           test -f vendor/autoload.php
           test -d public/build
           test ! -e public/.env
-      - name: Enable deployment only when FTP secrets are configured
-        id: deploy-switch
-        env:
-          FTP_SERVER: ${{ secrets.HOSTINGER_FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.HOSTINGER_FTP_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          FTP_DIR: ${{ secrets.HOSTINGER_FTP_SERVER_DIR }}
-        run: |
-          if [[ -n "$FTP_SERVER" && -n "$FTP_USERNAME" && -n "$FTP_PASSWORD" && -n "$FTP_DIR" ]]; then
-            echo 'enabled=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'enabled=false' >> "$GITHUB_OUTPUT"
-            echo 'Hostinger FTP secrets are not configured; verification passed but deployment is skipped.'
-          fi
       - name: Upload release artifact for inspection
         uses: actions/upload-artifact@v4
         with:
@@ -90,59 +74,3 @@ jobs:
           retention-days: 7
           include-hidden-files: true
           if-no-files-found: error
-
-  deploy:
-    name: Deploy release to Hostinger
-    needs: release-check
-    if: needs.release-check.outputs.deploy_enabled == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-      - name: Set up PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: ${{ env.PHP_VERSION }}
-          extensions: mbstring, pdo_sqlite, sqlite3
-          coverage: none
-          tools: composer:v2
-      - name: Build deployable backend in CI
-        working-directory: backend
-        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: backend/package-lock.json
-      - name: Build frontend assets
-        working-directory: backend
-        run: |
-          npm ci --no-audit --no-fund
-          npm run build
-      - name: Deploy backend release without deleting media
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.HOSTINGER_FTP_SERVER }}
-          username: ${{ secrets.HOSTINGER_FTP_USERNAME }}
-          password: ${{ secrets.HOSTINGER_FTP_PASSWORD }}
-          protocol: ftp
-          port: 21
-          local-dir: ./backend/
-          server-dir: ${{ secrets.HOSTINGER_FTP_SERVER_DIR }}
-          state-name: .ftp-deploy-sync-state.json
-          dangerous-clean-slate: false
-          exclude: |
-            **/.env
-            **/.env.*
-            **/storage/**
-            **/public/storage/**
-            **/.git/**
-            **/node_modules/**
-            **/*.log
-      - name: Deployment summary
-        run: |
-          echo 'Hostinger deployment completed.'
-          echo 'Composer was installed in GitHub Actions; no Composer install is required on the server.'
-          echo 'backend/storage and backend/public/storage were excluded so uploaded media/vector files remain intact.'

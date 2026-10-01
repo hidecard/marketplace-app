@@ -1,73 +1,78 @@
 # Hostinger deployment for Easy Zay Mm
 
-This repository contains a Laravel application in `backend/`. The deployment workflow builds the release on GitHub Actions and uploads the ready-to-run release to Hostinger. **Composer is not installed or run on Hostinger during normal deployments.**
+The current Hostinger setup deploys the contents of `backend/` directly into `public_html`. Hostinger replaces that directory during Git sync, which is why `vendor/` disappeared after every GitHub push.
 
-## One-time Hostinger setup
+The fix is a one-time Hostinger **Build command**. It stores Composer dependencies one level above `public_html`, reuses them when `composer.lock` has not changed, and recreates the `vendor` symlink after each deployment. You will not need to SSH in and run Composer manually again.
 
-1. Create the production `.env` one level above the deployed Laravel directory. Do not commit it:
-   ```text
-   /home/<account>/domains/easyzaymm.com/public_html/.env
-   ```
-2. Set the domain document root to:
-   ```text
-   .../public_html/backend/public
-   ```
-3. Create the Laravel storage symlink once from the `backend` directory:
-   ```bash
-   php artisan storage:link
-   php artisan migrate --force
-   php artisan optimize
-   ```
-4. Create an FTP account in hPanel with access to the deployment directory.
-5. In GitHub → Settings → Secrets and variables → Actions, add:
-   - `HOSTINGER_FTP_SERVER` — Hostinger FTP hostname
-   - `HOSTINGER_FTP_USERNAME` — FTP username
-   - `HOSTINGER_FTP_PASSWORD` — FTP password
-   - `HOSTINGER_FTP_SERVER_DIR` — absolute remote directory, usually ending in `/public_html/backend/`
+## One-time Hostinger configuration
 
-The workflow will pass tests, install production Composer dependencies, build Vite assets, and then upload `backend/` including `vendor/` and `public/build/`.
+In hPanel → **Websites → Manage → Advanced → Git**:
 
-## Every future deployment
+- Repository: `hidecard/marketplace-app`
+- Branch: `main`
+- Deployment/build root: the deployed Laravel root (`public_html`, which contains `artisan` and `composer.json`)
+- Build command:
+  ```bash
+  bash scripts/hostinger-build.sh
+  ```
+- Enable Auto-deployment.
+
+The screenshot layout confirms that `public_html` is already the Laravel root because it contains `artisan`, `composer.json`, `app/`, `routes/`, and `public/`.
+
+Create the production environment file once at:
+
+```text
+/home/<account>/domains/easyzaymm.com/.env
+```
+
+The Laravel bootstrap is configured to load this file from outside the directory Hostinger replaces. Do not commit it and do not place it inside `public/`.
+
+Set the domain document root to:
+
+```text
+.../public_html/public
+```
+
+Run these commands only once after the first deployment, if the storage link has not been created:
 
 ```bash
-git add .
-git commit -m "describe the change"
-git push origin main
+cd .../public_html
+php artisan storage:link
+php artisan migrate --force
+php artisan optimize
 ```
 
-The `Hostinger deployment` GitHub Actions workflow then does the following:
+## What happens after every Git push
 
-1. Runs Laravel tests with SQLite.
-2. Runs `composer install --no-dev` on GitHub Actions.
-3. Runs the frontend build on GitHub Actions.
-4. Uploads the ready release to Hostinger over FTP.
-5. Does **not** run Composer on the Hostinger server.
+1. Hostinger syncs the `main` branch into `public_html`.
+2. `scripts/hostinger-build.sh` checks `composer.lock`.
+3. If dependencies are unchanged, the persistent vendor cache is reused; Composer does not run.
+4. If `composer.lock` changed, Composer runs automatically once and refreshes the cache.
+5. The script recreates `public_html/vendor` as a symlink to the persistent cache.
+6. Laravel package discovery and the Vite frontend build run automatically.
 
-If the four FTP secrets are not configured, CI still runs its release checks and skips deployment with a clear message.
-
-## Protecting uploaded product/media files
-
-`backend/storage/app/public` is runtime data, not source code. Product images, shop logos/covers, and any `vector` directory placed there are excluded from FTP cleanup:
+The persistent cache is stored at:
 
 ```text
-backend/storage/**
-backend/public/storage/**
+/home/<account>/domains/easyzaymm.com/.easyzaymm-vendor/
 ```
 
-Therefore a code deployment cannot delete existing uploaded media. Do not put uploaded files in `backend/public/build`; that directory is generated and may be replaced on each release.
+It is outside `public_html`, so Git deployment does not delete it.
 
-The repository currently has no tracked `vector` directory and cannot restore files that were already deleted from the server. This workflow prevents future deletion. If the old files still exist in a Hostinger backup, restore them to:
+## Uploaded files and the vector folder
+
+Do not store uploads in the Git-managed source tree. Product images, shop logos/covers, and any vector files belong in:
 
 ```text
-backend/storage/app/public/vector/
+public_html/storage/app/public/
 ```
 
-Then confirm the `backend/public/storage` symlink points to `../storage/app/public`.
+The existing `public/storage` link should point to `../storage/app/public`. The build script never deletes `storage/` or uploaded media.
 
-## Important rules
+The repository does not contain the old deleted vector files, so files already removed from Hostinger must be restored from a Hostinger backup. The new workflow prevents future deployments from removing them.
 
-- Keep `.env` on the server; never commit it.
-- Do not use Hostinger Git auto-deployment together with this FTP workflow, otherwise two deployments can race.
-- Disable the old Hostinger Git auto-deployment/webhook after adding the FTP secrets.
-- Do not manually move `index.php`, `.htaccess`, `vendor`, or media files after each release.
-- Do not use `composer update` in production; dependency versions come from the committed `backend/composer.lock`.
+## GitHub Actions
+
+`.github/workflows/hostinger.yml` validates the release on every push. It runs Composer with dev dependencies in CI for tests, builds the frontend, and verifies the Laravel layout. Hostinger performs the actual deployment through its Git integration and the one-time build command above.
+
+No Hostinger FTP secrets are required for this direct Git deployment.
