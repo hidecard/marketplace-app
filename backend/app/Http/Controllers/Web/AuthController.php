@@ -128,7 +128,7 @@ class AuthController extends Controller
             Log::info('Phone OTP generated for local development', ['challenge_id' => $challenge->id, 'phone_number' => $phone, 'code' => $code]);
         }
 
-        return back()->with('success', 'Verification code sent. In local mode, check the application log.');
+        return back()->with('success', 'Verification code sent. Enter the code from your SMS or verification provider.')->with('otp_challenge_id', $challenge->id);
     }
 
     public function verifyPhoneOtp(Request $request): RedirectResponse
