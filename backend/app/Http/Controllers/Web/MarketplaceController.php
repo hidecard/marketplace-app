@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Favorite;
 use App\Models\Product;
+use App\Models\Review;
 use App\Models\Shop;
 use App\Support\ProductImages;
 use Illuminate\Http\RedirectResponse;
@@ -84,7 +85,21 @@ class MarketplaceController extends Controller
 
         $product->load('shop:id,name,slug,verified', 'seller:id,name');
         $this->normalizeProductImages($product);
-        return Inertia::render('Products/Show', ['product' => $product, 'isFavorite' => $request->user() ? Favorite::query()->where('user_id', $request->user()->id)->where('product_id', $product->id)->exists() : false]);
+        $reviewQuery = Review::query()->where('product_id', $product->id)->where('is_visible', true);
+        $reviewSummary = ['count' => (clone $reviewQuery)->count(), 'average' => round((float) (clone $reviewQuery)->avg('rating'), 1)];
+        $reviews = $reviewQuery->with('user:id,name')->latest()->limit(12)->get()->map(fn (Review $review) => [
+            'id' => $review->id,
+            'rating' => $review->rating,
+            'body' => $review->body,
+            'user_name' => $review->user?->name ?: 'Customer',
+            'created_at' => $review->created_at?->toDateString(),
+        ]);
+        return Inertia::render('Products/Show', [
+            'product' => $product,
+            'reviews' => $reviews,
+            'reviewSummary' => $reviewSummary,
+            'isFavorite' => $request->user() ? Favorite::query()->where('user_id', $request->user()->id)->where('product_id', $product->id)->exists() : false,
+        ]);
     }
 
     public function media(string $path): BinaryFileResponse

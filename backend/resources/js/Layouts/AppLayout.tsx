@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import {
     ArrowRightLeft, BarChart3, Bell, Boxes, FileText, FolderTree, Globe, HelpCircle, Home, Heart,
     Menu, MessageCircle, Package, Receipt, Search, Settings, ShieldCheck, ShoppingBag, ShoppingCart,
-    Store, User, Users, X, DollarSign,
+    Store, Star, User, Users, X, DollarSign,
 } from 'lucide-react';
 import type { SharedProps } from '../types';
 
@@ -13,7 +13,7 @@ type NavItem = readonly [string, string, ComponentType<{ size?: number }>];
 const marketplaceItems: readonly NavItem[] = [
     ['/', 'Home', Home], ['/categories', 'Categories', FolderTree], ['/shops', 'Explore Shops', Store],
     ['/products', 'Search', Search], ['/seller/shop/create', 'Sell Item', Store], ['/offers', 'Special Offers', FileText],
-    ['/favorites', 'Favorites', Heart], ['/orders', 'My Orders', ShoppingBag], ['/chats', 'Messages', MessageCircle],
+    ['/favorites', 'Favorites', Heart], ['/orders', 'My Orders', ShoppingBag], ['/reviews', 'Reviews', Star], ['/chats', 'Messages', MessageCircle],
     ['/help', 'Help & Support', HelpCircle], ['/profile', 'Profile', User],
 ];
 

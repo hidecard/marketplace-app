@@ -1,0 +1,1 @@
+import{i as e,t}from"./app-CuKNLzg2-v3.js";import{t as n}from"./AppLayout-DLE7SF9s-v3.js";import r from"./RoleOperationsPage-BIYgfHgD-v3.js";var i=t();function a(){let t=e().props;return(0,i.jsx)(n,{children:(0,i.jsx)(r,{...t,kind:`seller`})})}export{a as default};
