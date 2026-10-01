@@ -87,29 +87,17 @@ npm run build:all
 
 ### Deploy
 
-```bash
-# Deploy everything
-npm run deploy:all
+The production Laravel application is deployed to Hostinger. Push to `main` to run tests, build Composer dependencies and frontend assets in GitHub Actions, and upload the release over FTP.
 
-# Deploy specific parts
-npm run deploy:web
-npm run deploy:admin
-npm run deploy:firebase
+See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md) for the one-time Hostinger setup and required GitHub Secrets.
+
+```bash
+git add .
+git commit -m "describe the change"
+git push origin main
 ```
 
-### Automatic Web Deployment
-
-The production Web PWA is hosted at [marketplace-app.hidecard1500.workers.dev](https://marketplace-app.hidecard1500.workers.dev/). The production Admin panel is hosted separately at [marketplace-admin.hidecard1500.workers.dev/login](https://marketplace-admin.hidecard1500.workers.dev/login). The workflow in `.github/workflows/deploy-cloudflare.yml` validates the Web app, admin app, Firebase Functions, unit tests, and Firebase Rules on every pull request and push. A successful push to `main` deploys the validated Web and Admin bundles to their separate Cloudflare Workers.
-
-Add these repository secrets under **GitHub → Settings → Secrets and variables → Actions**:
-
-- `CLOUDFLARE_API_TOKEN` — a scoped token with **Edit Cloudflare Workers** permission.
-- `CLOUDFLARE_ACCOUNT_ID` — the Cloudflare account that owns the `marketplace-app` Worker.
-- `FIREBASE_SERVICE_ACCOUNT` — a JSON service-account credential authorized to deploy Functions, Firestore indexes/rules, and Storage rules to `padaytharpin-app`.
-- `VITE_FIREBASE_VAPID_KEY` — required for Web push notifications.
-- `VITE_FIREBASE_APP_CHECK_KEY` — required before production App Check enforcement is enabled.
-
-The public Firebase Web configuration is supplied to CI as non-secret build configuration. It can be overridden with repository variables named `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, and `VITE_FIREBASE_MEASUREMENT_ID`. Set the repository variable `ENFORCE_APP_CHECK=true` only after valid App Check providers and both Web client keys have been configured and tested; it defaults to `false` to avoid locking out current clients during rollout.
+Cloudflare Workers deployment has been removed from this repository.
 
 ## Features
 
@@ -133,7 +121,7 @@ The public Firebase Web configuration is supplied to CI as non-secret build conf
 - Receipt printing (Bluetooth on Android)
 
 ### Admin Panel
-- Open the production Admin panel at [marketplace-admin.hidecard1500.workers.dev/login](https://marketplace-admin.hidecard1500.workers.dev/login).
+- Open the production Admin panel from the Hostinger deployment domain.
 - The account must have `role: "admin"` and `status: "active"` in `users/{uid}`; a normal User or Seller account is intentionally rejected.
 - Platform analytics dashboard
 - User management

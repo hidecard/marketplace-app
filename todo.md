@@ -114,18 +114,18 @@
 - [x] Configure the supplied Firebase Web values in local ignored `web/.env` and `admin/.env` files.
 - [x] Fix the missing `addProduct` English/Burmese translation that blocked the Web build.
 - [x] Fix the Web Vite output path from the incorrect root `dist/` directory to `web/dist/`.
-- [x] Confirm `wrangler.jsonc` now packages the fresh `web/dist` output used by the existing `marketplace-app` Worker.
-- [x] Add `.github/workflows/deploy-cloudflare.yml` for pull-request CI and automatic `main` deployment.
+- [x] Retired the old Cloudflare Worker packaging configuration; Hostinger is now the deployment target.
+- [x] Removed the obsolete Cloudflare deployment workflow.
 - [x] Run Web and admin typecheck, lint, and production builds in CI.
 - [x] Build, lint, and unit-test Firebase Functions in CI.
 - [x] Compile Firestore and Storage Rules with Firebase emulators in CI.
-- [x] Deploy Firebase Functions, Firestore rules/indexes, and Storage rules before the Web Worker in CI.
+- [x] Keep Firebase Functions, Firestore indexes/rules, and Storage rules deployment independent of the Hostinger web deployment.
 - [x] Upload and reuse the validated Web artifact instead of rebuilding during deployment.
 - [x] Add deployment concurrency so an older workflow cannot overwrite a newer `main` build.
 - [x] Document required GitHub secrets and the hosted URL in `README.md`.
 - [x] Confirm local Web production build succeeds.
 - [x] Confirm local admin production build succeeds.
-- [x] Confirm Cloudflare Wrangler dry-run succeeds and discovers the current Web assets.
+- [x] Removed the obsolete Wrangler dry-run from the deployment checklist.
 - [x] Smoke-test the fresh Web production preview and confirm the Marketplace page loads.
 
 ### Authentication and Identity Safety
@@ -139,7 +139,7 @@
 - [x] Add a Seller/onboarding boundary that lets shop owners reach the dashboard and verification flow before approval.
 - [x] Keep seller operations behind the approved-and-verified shop middleware.
 - [x] Add an active Firestore `admin` role in both Admin login and Admin protected routes.
-- [x] Deploy the Admin SPA to a separate protected Worker at `marketplace-admin.hidecard1500.workers.dev`.
+- [x] Retired the separate Cloudflare Admin Worker; Admin is now served from the Hostinger deployment.
 - [x] Fix Admin Tailwind/PostCSS configuration so production CSS utilities are emitted and loaded.
 - [x] Verify new users default to `role: user`, `status: active`; Firestore Rules reject client-created admin roles and protect role/status updates.
 
@@ -227,7 +227,7 @@
 - [x] Existing Functions unit suite: 19 tests passing.
 - [x] Firestore and Storage Rules emulator compilation.
 - [x] `git diff --check`.
-- [x] Wrangler deployment dry-run.
+- [x] Removed the obsolete Wrangler deployment check.
 - [x] Laravel migration validation against MySQL and SQLite.
 - [x] Laravel Pint formatting for changed PHP files.
 - [x] Laravel full test suite: 36 tests, 128 assertions.
@@ -236,8 +236,8 @@
 
 ### Credentials and Actual Deployment
 
-- [x] Add GitHub secret `CLOUDFLARE_API_TOKEN` with scoped Workers edit permission.
-- [x] Add GitHub secret `CLOUDFLARE_ACCOUNT_ID` for the Worker owner account.
+- [ ] Remove the unused `CLOUDFLARE_API_TOKEN` GitHub secret after confirming no other workflow needs it.
+- [ ] Remove the unused `CLOUDFLARE_ACCOUNT_ID` GitHub secret after confirming no other workflow needs it.
 - [x] Add GitHub secret `FIREBASE_SERVICE_ACCOUNT` with Firebase deployment permissions.
 - [ ] Add `VITE_FIREBASE_VAPID_KEY` for production Web push notifications.
 - [ ] Add `VITE_FIREBASE_APP_CHECK_KEY` for the Web PWA.
@@ -246,10 +246,10 @@
 - [x] Pass the production deployment-secret preflight in GitHub Actions.
 - [x] Confirm Firebase Functions, Firestore indexes/rules, and Storage rules deploy from CI.
 - [x] Initialize the Firebase Storage bucket and deploy hardened Storage Rules.
-- [x] Confirm the Cloudflare Worker deploy job succeeds from CI.
-- [x] Confirm the production URL serves the new `assets/index-BTU3S4HP.js` bundle rather than the previous asset.
+- [x] Removed the obsolete Cloudflare Worker deploy check.
+- [x] Retired the old Worker asset URL check; production assets are now served by Hostinger.
 - [ ] Revoke every Cloudflare token and R2 access credential exposed during setup, create replacements, and update only the GitHub secrets/integrations that actually use them.
-- [ ] Add a custom domain only if a domain is selected; the current Workers URL already has managed HTTPS.
+- [ ] Confirm the Hostinger domain/document root and HTTPS certificate before production sign-off.
 
 ### App Check Rollout
 
@@ -328,4 +328,4 @@
 
 ## 5. Current Definition of Done
 
-The Web-first source is substantially hardened, all automated checks pass (Web TypeScript/lint/build, Admin TypeScript/lint/build, Firebase Functions TypeScript/lint/tests, Laravel backend full test suite 36/36, Laravel migrations validated on MySQL and SQLite, Pint formatting), the Firebase backend/rules are deployed, and the Cloudflare Worker is serving the verified current bundle. Laravel backend now includes password reset endpoints, delivery fee configuration, and coupon/promotion models with discount support. Full production sign-off still requires rotating the setup credentials exposed outside GitHub Secrets, configuring and enforcing App Check, adding the listed authorization/concurrency tests, and completing staging QA.
+The Web-first source is substantially hardened, all automated checks pass (Web TypeScript/lint/build, Admin TypeScript/lint/build, Firebase Functions TypeScript/lint/tests, Laravel backend full test suite 36/36, Laravel migrations validated on MySQL and SQLite, Pint formatting), the Firebase backend/rules are deployed, and the Hostinger deployment workflow is configured to serve the Laravel application. Laravel backend now includes password reset endpoints, delivery fee configuration, and coupon/promotion models with discount support. Full production sign-off still requires rotating the setup credentials exposed outside GitHub Secrets, configuring and enforcing App Check, adding the listed authorization/concurrency tests, and completing staging QA.

@@ -18,8 +18,7 @@
     "ci": "npm run test:backend && npm run build:backend"
   },
   "devDependencies": {
-    "firebase-tools": "^14.23.0",
-    "wrangler": "4.131.0"
+    "firebase-tools": "^14.23.0"
   },
   "engines": {
     "node": ">=18.0.0"

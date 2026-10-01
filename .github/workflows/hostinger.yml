@@ -33,9 +33,9 @@ jobs:
           extensions: mbstring, pdo_sqlite, sqlite3
           coverage: none
           tools: composer:v2
-      - name: Install production Composer dependencies in CI
+      - name: Install Composer dependencies for tests in CI
         working-directory: backend
-        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
       - name: Prepare SQLite test database
         working-directory: backend
         run: |
