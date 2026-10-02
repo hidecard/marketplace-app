@@ -106,6 +106,7 @@
 - [x] Restore the missing User Checkout page with saved-address selection, manual delivery entry, order summary, COD confirmation, and validation errors.
 - [x] Clear the shared Inertia PageProps TypeScript errors across User Checkout/Chat/Addresses, Product Detail, Dashboard, Seller Verification, and Admin Product Form.
 - [x] Fix shared Admin/Seller operations actions to honor GET, POST, and DELETE methods, including category edit/delete and Admin product deletion.
+- [x] Restore Hostinger's missing Laravel exception-renderer CSS resource so protected Admin/Seller 403 responses no longer cascade into HTTP 500 errors.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
