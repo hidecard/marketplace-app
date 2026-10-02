@@ -101,6 +101,8 @@
 - [x] Make User order status tabs server-filtered and add buyer-only pending-order cancellation with transactional stock restoration.
 - [x] Add saved-address selection to checkout while retaining manual delivery entry.
 - [x] Apply graceful ProductImage fallback to User categories and favorites so missing legacy files no longer show broken image icons.
+- [x] Repair Review page legacy-schema failures by avoiding explicit `products.title/name` query selects and loading eligible products through the Product model.
+- [x] Store the delivered order reference on each buyer review for safer authorization and moderation traceability.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
