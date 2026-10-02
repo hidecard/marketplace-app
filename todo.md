@@ -96,6 +96,7 @@
 - [x] Add a reusable image fallback so deleted legacy assets show a neutral placeholder instead of a broken-image icon across Marketplace, Shop, Product Detail, and Seller catalog pages.
 - [x] Match the legacy User Home carousel with rotating banners, manual dots, legacy Burmese messaging, and the same fallback treatment in Cart product cards.
 - [ ] Preserve `storage/app/public` outside source deployments and restore any legacy product files deleted by Hostinger cleanup; new Laravel uploads use `/media/...` and are server-streamed.
+- [x] Add a deployment guard that detects an incomplete Laravel vendor tree, including the exception renderer asset, before reusing the cache.
 - [x] Restore normalized public shop logo/cover URLs, add Seller logo and cover uploads with previews, and deploy the repaired shop profile message flow.
 - [x] Add a POST-compatible Seller settings route so multipart logo/cover uploads do not fail with HTTP 405 while the existing PUT route remains supported.
 - [x] Make User order status tabs server-filtered and add buyer-only pending-order cancellation with transactional stock restoration.
