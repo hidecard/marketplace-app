@@ -1,10 +1,11 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import AdminLayout from '../../../Layouts/AdminLayout';
+import type { SharedProps } from '../../../types';
 
 type Product = { id: number; title: string; description?: string; price: string; cost_price?: string; stock: number; condition: string; status: string; images?: string[]; category_id?: string | null; category_ref_id?: number | null; seller_id: number; shop_id?: number | null } | null;
 type Option = { id: number; name: string; role?: string; owner_id?: number };
-type Props = { product: Product; categories: Option[]; sellers: Option[]; shops: Option[] };
+type Props = SharedProps & Record<string, unknown> & { product: Product; categories: Option[]; sellers: Option[]; shops: Option[] };
 type FormData = { title: string; description: string; price: string; cost_price: string; stock: number; condition: string; status: string; category_id: string; seller_id: string; shop_id: string; image_urls: string; images: File[] };
 
 export default function Form() {

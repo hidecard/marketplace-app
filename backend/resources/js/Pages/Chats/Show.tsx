@@ -4,7 +4,7 @@ import AppLayout from '../../Layouts/AppLayout';
 import type { SharedProps } from '../../types';
 
 type Message = { id: number; body: string; sender_id: number; sender_name: string; created_at?: string | null; mine: boolean };
-type Props = SharedProps & { conversation: { id: number; title: string; product?: string | null; messages: Message[] } };
+type Props = SharedProps & Record<string, unknown> & { conversation: { id: number; title: string; product?: string | null; messages: Message[] } };
 
 export default function Show() {
     const { conversation } = usePage<Props>().props;

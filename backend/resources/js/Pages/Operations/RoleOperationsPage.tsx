@@ -1,11 +1,12 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { ArrowRight, BarChart3, CheckCircle2, Eye, FileText, Package, Plus, Settings2, ShieldCheck, ShoppingBag, Store, Trash2, Users, XCircle } from 'lucide-react';
 import type { ComponentType } from 'react';
+import type { SharedProps } from '../../types';
 
 type Action = { label: string; href: string; method?: 'get' | 'post' | 'delete' };
 type Row = { id: number | string; title: string; meta?: string; href?: string; actions?: Action[]; status?: string };
 type Card = { label: string; value: string | number };
-export type RoleOperationsProps = { kind: 'seller' | 'admin'; screen: string; title: string; subtitle: string; rows: Row[]; cards: Card[]; shop?: { name: string; verified: boolean } | null; flash?: string };
+export type RoleOperationsProps = SharedProps & Record<string, unknown> & { kind: 'seller' | 'admin'; screen: string; title: string; subtitle: string; rows: Row[]; cards: Card[]; shop?: { name: string; verified: boolean } | null; flash?: string };
 
 type Icon = ComponentType<{ size?: number; className?: string }>;
 const iconFor = (screen: string): Icon => {

@@ -2,10 +2,11 @@ import { Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, BadgeCheck, Heart, MapPin, MessageCircle, Share2, ShieldCheck, ShoppingCart, Star } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 import ProductImage from '../../Components/ProductImage';
+import type { SharedProps } from '../../types';
 
 type Product = { id: number; title: string; description?: string; price: string; stock: number; condition: string; images?: string[]; shop?: { name: string; verified: boolean; address?: string }; seller?: { name: string } };
 type Review = { id: number; rating: number; body?: string | null; user_name: string; created_at?: string };
-type Props = { product: Product; reviews: Review[]; reviewSummary: { count: number; average: number }; auth?: { user?: { id: number } }; isFavorite?: boolean };
+type Props = SharedProps & Record<string, unknown> & { product: Product; reviews: Review[]; reviewSummary: { count: number; average: number }; isFavorite?: boolean };
 
 function Stars({ rating }: { rating: number }) {
     return <span className="inline-flex items-center gap-0.5 text-amber-500" aria-label={`${rating} out of 5 stars`}>{Array.from({ length: 5 }, (_, index) => <Star key={index} size={16} fill={index < Math.round(rating) ? 'currentColor' : 'none'} />)}</span>;

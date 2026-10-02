@@ -103,6 +103,8 @@
 - [x] Apply graceful ProductImage fallback to User categories and favorites so missing legacy files no longer show broken image icons.
 - [x] Repair Review page legacy-schema failures by avoiding explicit `products.title/name` query selects and loading eligible products through the Product model.
 - [x] Store the delivered order reference on each buyer review for safer authorization and moderation traceability.
+- [x] Restore the missing User Checkout page with saved-address selection, manual delivery entry, order summary, COD confirmation, and validation errors.
+- [x] Clear the shared Inertia PageProps TypeScript errors across User Checkout/Chat/Addresses, Product Detail, Dashboard, Seller Verification, and Admin Product Form.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.

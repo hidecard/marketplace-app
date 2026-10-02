@@ -1,10 +1,11 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
+import type { SharedProps } from '../../types';
 
 type Shop = { name: string; verification_status: string; verified: boolean; rejection_note?: string | null };
 type Verification = { id: number; status: string; evidence: string[]; note?: string | null; reviewed_at?: string | null; created_at: string };
-type Props = { shop: Shop; requests: Verification[]; flash?: { success?: string } };
+type Props = SharedProps & Record<string, unknown> & { shop: Shop; requests: Verification[] };
 
 export default function Verification() {
     const { shop, requests, flash } = usePage<Props>().props;

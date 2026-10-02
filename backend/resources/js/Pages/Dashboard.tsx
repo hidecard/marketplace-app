@@ -2,7 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import AppLayout from '../Layouts/AppLayout';
 import type { SharedProps } from '../types';
 
-type Props = SharedProps & { user: { id: number; name: string; email: string; role: string; status: string; phone_verified: boolean }; shop: { name: string; verified: boolean; verification_status: string } | null };
+type Props = SharedProps & Record<string, unknown> & { user: { id: number; name: string; email: string; role: string; status: string; phone_verified: boolean }; shop: { name: string; verified: boolean; verification_status: string } | null };
 
 export default function Dashboard() {
     const { user, shop } = usePage<Props>().props;
