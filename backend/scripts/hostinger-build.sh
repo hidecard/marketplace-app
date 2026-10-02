@@ -17,10 +17,11 @@ fi
 CURRENT_LOCK_HASH="$(sha256sum composer.lock | awk '{print $1}')"
 CACHED_LOCK_HASH=""
 [[ -f "$LOCK_HASH_FILE" ]] && CACHED_LOCK_HASH="$(cat "$LOCK_HASH_FILE")"
+REQUIRED_FRAMEWORK_ASSET="$ROOT_DIR/vendor/laravel/framework/src/Illuminate/Foundation/resources/exceptions/renderer/dist/styles.css"
 
-if [[ -f "$ROOT_DIR/vendor/autoload.php" ]]; then
+if [[ -f "$ROOT_DIR/vendor/autoload.php" && -f "$REQUIRED_FRAMEWORK_ASSET" ]]; then
   echo "Using tracked production vendor; Composer is not needed on Hostinger."
-elif [[ ! -f "$PERSISTENT_VENDOR_DIR/autoload.php" || "$CURRENT_LOCK_HASH" != "$CACHED_LOCK_HASH" ]]; then
+elif [[ ! -f "$PERSISTENT_VENDOR_DIR/autoload.php" || ! -f "$PERSISTENT_VENDOR_DIR/laravel/framework/src/Illuminate/Foundation/resources/exceptions/renderer/dist/styles.css" || "$CURRENT_LOCK_HASH" != "$CACHED_LOCK_HASH" ]]; then
   echo "Installing Composer dependencies into persistent cache: $PERSISTENT_VENDOR_DIR"
   rm -rf "$PERSISTENT_VENDOR_DIR"
   mkdir -p "$PERSISTENT_VENDOR_DIR"
