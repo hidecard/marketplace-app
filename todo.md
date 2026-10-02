@@ -109,6 +109,7 @@
 - [x] Fix shared Admin/Seller operations actions to honor GET, POST, and DELETE methods, including category edit/delete and Admin product deletion.
 - [x] Restore Hostinger's missing Laravel exception-renderer CSS resource so protected Admin/Seller 403 responses no longer cascade into HTTP 500 errors.
 - [x] Add dedicated Admin/Seller web feature tests for Seller POS, expense creation, inventory/product ownership, Admin shop/product/category moderation, and regular-user denial.
+- [x] Replace static User header notification/cart dots with server-backed unread-notification and session-cart badges on desktop and mobile navigation.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.

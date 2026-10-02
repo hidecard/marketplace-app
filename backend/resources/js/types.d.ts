@@ -15,6 +15,8 @@ export interface AuthUser {
 
 export interface SharedProps extends InertiaPageProps {
     auth: { user: AuthUser | null };
+    cart_count?: number;
+    unread_notifications?: number;
     flash?: { success?: string; error?: string; otp_challenge_id?: number };
     errors: Record<string, string>;
 }

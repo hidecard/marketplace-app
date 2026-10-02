@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\MarketplaceNotification;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -40,6 +41,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user()?->only(['id', 'name', 'email', 'role', 'status', 'phone_number', 'phone_verified']),
             ],
+            'cart_count' => fn () => collect($request->session()->get('cart', []))->sum(),
+            'unread_notifications' => fn () => $request->user() ? MarketplaceNotification::where('user_id', $request->user()->id)->whereNull('read_at')->count() : 0,
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
