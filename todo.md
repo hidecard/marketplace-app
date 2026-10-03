@@ -111,6 +111,7 @@
 - [x] Add dedicated Admin/Seller web feature tests for Seller POS, expense creation, inventory/product ownership, Admin shop/product/category moderation, and regular-user denial.
 - [x] Replace static User header notification/cart dots with server-backed unread-notification and session-cart badges on desktop and mobile navigation.
 - [x] Replace the generic User `/shops` screen with a dedicated verified-shops page: search, server-side sorting, pagination, grid/list views, shop counts, and empty states.
+- [x] Redesign User product search/listing to match the legacy Firebase flow: mobile filter drawer, clear-all filters, shop/city filter, price/condition/category filters, grid/list modes, result counts, pagination, and improved empty state.
 - [x] Clear the remaining Shop Detail and User Notifications shared Inertia prop type errors found during the User-first UI validation pass.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
