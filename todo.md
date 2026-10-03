@@ -115,6 +115,8 @@
 - [x] Add buyer order-detail completion for delivered orders, delivery progress steps, product thumbnails, direct review action, and seller messaging entry point.
 - [x] Add client-side conversation search and a proper no-results state to the User Messages page.
 - [x] Repair the User Profile edit control: add a normal `/profile` update route, region persistence, inline edit form, Notifications menu link, and success/error feedback.
+- [x] Make Product Detail Share functional with native mobile share and clipboard fallback.
+- [x] Add a direct Make an Offer entry from Product Detail and preselect the originating product on the Offers page.
 - [x] Clear the remaining Shop Detail and User Notifications shared Inertia prop type errors found during the User-first UI validation pass.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.

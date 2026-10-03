@@ -18,7 +18,7 @@ class OfferController extends Controller
         $query = DB::table('offers')->join('products', 'products.id', '=', 'offers.product_id')->join('users as other', 'other.id', '=', $isSeller ? 'offers.buyer_id' : 'offers.seller_id')->where($isSeller ? 'offers.seller_id' : 'offers.buyer_id', $request->user()->id)->latest('offers.created_at');
         $offers = $query->limit(100)->get(['offers.id', 'offers.product_id', 'offers.amount', 'offers.status', 'offers.note', 'offers.created_at', 'products.title', 'products.price', 'other.name as other_name', 'other.email as other_email']);
 
-        return Inertia::render('Offers/Index', ['mode' => $isSeller ? 'seller' : 'buyer', 'offers' => $offers, 'products' => $isSeller ? [] : Product::where('status', 'active')->where('seller_id', '!=', $request->user()->id)->orderBy('title')->limit(100)->get(['id', 'title', 'price'])]);
+        return Inertia::render('Offers/Index', ['mode' => $isSeller ? 'seller' : 'buyer', 'offers' => $offers, 'selectedProductId' => $request->integer('product_id') ?: null, 'products' => $isSeller ? [] : Product::where('status', 'active')->where('seller_id', '!=', $request->user()->id)->orderBy('title')->limit(100)->get(['id', 'title', 'price'])]);
     }
 
     public function review(Request $request, int $offer): RedirectResponse
