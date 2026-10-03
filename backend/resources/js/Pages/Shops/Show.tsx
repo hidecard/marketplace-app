@@ -3,10 +3,11 @@ import { ArrowLeft, Grid2X2, Heart, List, MapPin, MessageCircle, Package, Phone,
 import { useMemo, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import ProductImage from '../../Components/ProductImage';
+import type { SharedProps } from '../../types';
 
 type Product = { id: number; title: string; price: string | number; stock: number; condition?: string; images?: string[]; created_at?: string | null };
 type Shop = { id: number; name: string; slug: string; description?: string; logo_url?: string; cover_url?: string; phone?: string; email?: string; address?: string; verified: boolean; products_count: number; followers_count: number; products: Product[]; facebook_url?: string | null; instagram_url?: string | null; tiktok_url?: string | null; website_url?: string | null };
-type Props = { shop: Shop; isFollowing: boolean; authUser?: { id: number } | null; flash?: { success?: string; error?: string } };
+type Props = SharedProps & Record<string, unknown> & { shop: Shop; isFollowing: boolean; authUser?: { id: number } | null; flash?: { success?: string; error?: string } };
 type Sort = 'newest' | 'price_low' | 'price_high';
 
 const money = (value: string | number) => `${Number(value).toLocaleString()} MMK`;

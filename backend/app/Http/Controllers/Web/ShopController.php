@@ -14,6 +14,35 @@ use Inertia\Response;
 
 class ShopController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $query = Shop::query()->where('verified', true)->withCount(['products as active_products_count' => fn ($builder) => $builder->where('status', 'active'), 'followers']);
+        if ($request->filled('q')) {
+            $term = '%'.$request->string('q')->toString().'%';
+            $query->where(fn ($builder) => $builder->where('name', 'like', $term)->orWhere('city', 'like', $term)->orWhere('description', 'like', $term));
+        }
+        match ($request->string('sort')->toString()) {
+            'products' => $query->orderByDesc('active_products_count'),
+            'name' => $query->orderBy('name'),
+            default => $query->latest(),
+        };
+
+        return Inertia::render('Shops/Index', [
+            'shops' => $query->paginate(24)->withQueryString()->through(fn (Shop $shop) => [
+                'id' => $shop->id,
+                'name' => $shop->name,
+                'slug' => $shop->slug,
+                'description' => $shop->description,
+                'logo_url' => ProductImages::normalize($shop->logo_url)[0] ?? null,
+                'address' => $shop->address ?: $shop->city,
+                'verified' => (bool) $shop->verified,
+                'products_count' => (int) $shop->active_products_count,
+                'followers_count' => (int) $shop->followers_count,
+            ]),
+            'filters' => $request->only(['q', 'sort']),
+        ]);
+    }
+
     public function show(Request $request, Shop $shop): Response
     {
         abort_unless($shop->verified, 404);

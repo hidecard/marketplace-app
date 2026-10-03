@@ -21,7 +21,7 @@ Route::get('/media/{path}', [MarketplaceController::class, 'media'])->where('pat
 Route::get('/products', [MarketplaceController::class, 'products'])->name('products.index');
 Route::get('/products/{product}', [MarketplaceController::class, 'product'])->name('products.show');
 Route::get('/categories/{category?}', [UserController::class, 'categories'])->name('categories.index');
-Route::get('/shops', [OperationsController::class, 'user'])->defaults('screen', 'shops')->name('shops.index');
+Route::get('/shops', [ShopController::class, 'index'])->name('shops.index');
 Route::get('/shops/{shop}', [ShopController::class, 'show'])->name('shops.show');
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/{product}', [CartController::class, 'add'])->name('cart.add');
