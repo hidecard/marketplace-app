@@ -97,6 +97,7 @@ class AuthController extends Controller
             'profile' => [
                 'name' => $user->name,
                 'email' => $user->email,
+                'region' => $user->region,
                 'phone_number' => $user->phone_number,
                 'phone_verified' => (bool) $user->phone_verified,
                 'role' => $user->role,
@@ -107,6 +108,17 @@ class AuthController extends Controller
                 'favorites' => Schema::hasTable('favorites') ? DB::table('favorites')->where('user_id', $user->id)->count() : 0,
             ],
         ]);
+    }
+
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:120'],
+            'region' => ['nullable', 'string', 'max:120'],
+        ]);
+        $request->user()->update($data);
+
+        return back()->with('success', 'Profile updated successfully.');
     }
 
     public function requestPhoneOtp(Request $request): RedirectResponse

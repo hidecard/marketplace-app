@@ -58,6 +58,7 @@ Route::middleware(['auth', 'active.user'])->group(function (): void {
     Route::get('/reviews', [ReviewController::class, 'index'])->name('reviews.index');
     Route::post('/products/{product}/reviews', [ReviewController::class, 'store'])->name('reviews.store');
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.index');
+    Route::post('/profile', [AuthController::class, 'updateProfile'])->name('profile.update');
     Route::get('/addresses', [UserController::class, 'addresses'])->name('addresses.index');
     Route::get('/help', [OperationsController::class, 'user'])->defaults('screen', 'help')->name('help.index');
     Route::post('/favorites/{product}/toggle', [OperationsController::class, 'toggleFavorite'])->name('favorites.toggle');
