@@ -125,6 +125,8 @@
 - [x] Clear the remaining Shop Detail and User Notifications shared Inertia prop type errors found during the User-first UI validation pass.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
+- [x] Complete Seller category management UI with create, edit, delete, and visibility-aware operations controls.
+- [x] Make Admin Dashboard recent orders clickable and label the platform reports action accurately.
 - [ ] Remove legacy Firebase migration-only tooling and delete `web/`/`admin/` only after production parity and rollback verification.
 - [ ] Delete `web/`, `admin/`, Firebase env variables/packages/services, and Firebase deployment code only after the parity checklist passes.
 
