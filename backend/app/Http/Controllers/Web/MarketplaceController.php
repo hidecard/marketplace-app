@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Category;
 use App\Models\Favorite;
+use App\Models\MarketplaceNotification;
+use App\Models\Order;
 use App\Models\Product;
 use App\Models\Review;
 use App\Models\Shop;
@@ -126,6 +128,15 @@ class MarketplaceController extends Controller
             return redirect()->route('profile.complete');
         }
 
-        return Inertia::render('Dashboard', ['user' => $user->only(['id', 'name', 'email', 'role', 'status', 'phone_verified']), 'shop' => $user->shop]);
+        return Inertia::render('Dashboard', [
+            'user' => $user->only(['id', 'name', 'email', 'role', 'status', 'phone_verified']),
+            'shop' => $user->shop,
+            'stats' => [
+                'orders' => Order::where('buyer_id', $user->id)->count(),
+                'pending_orders' => Order::where('buyer_id', $user->id)->whereIn('status', ['pending', 'confirmed', 'preparing', 'shipped'])->count(),
+                'favorites' => Favorite::where('user_id', $user->id)->count(),
+                'unread_notifications' => MarketplaceNotification::where('user_id', $user->id)->whereNull('read_at')->count(),
+            ],
+        ]);
     }
 }

@@ -119,6 +119,9 @@
 - [x] Add a direct Make an Offer entry from Product Detail and preselect the originating product on the Offers page.
 - [x] Make User Checkout server-authoritative for the active delivery-fee rule, final total, COD payment method, saved-address ownership, stock locking, and multi-seller rejection.
 - [x] Add Checkout/payment feature tests covering successful COD placement, delivery fee calculation, stock decrement, invalid payment methods, cross-user addresses, and multi-seller carts.
+- [x] Add User Dashboard live summary cards for total orders, in-progress orders, favorites, unread alerts, messages, seller onboarding, and role-aware quick links.
+- [x] Improve User Order History with live per-status counts, preparing-order filtering, safe cancellation confirmation, and complete order-item previews.
+- [x] Improve User Order Detail with delivery progress, subtotal/delivery/total breakdown, buyer completion, direct review entry, and direct seller chat creation.
 - [x] Clear the remaining Shop Detail and User Notifications shared Inertia prop type errors found during the User-first UI validation pass.
 - [x] Fix Seller Expenses form to submit the required expense date, validate amount/category client-side, and show Laravel validation errors.
 - [x] Improve Seller POS mobile spacing and keep Seller operational forms server-backed.
