@@ -355,3 +355,6 @@
 ## 5. Current Definition of Done
 
 The Web-first source is substantially hardened, all automated checks pass (Web TypeScript/lint/build, Admin TypeScript/lint/build, Firebase Functions TypeScript/lint/tests, Laravel backend full test suite 36/36, Laravel migrations validated on MySQL and SQLite, Pint formatting), the Firebase backend/rules are deployed, and the Hostinger deployment workflow is configured to serve the Laravel application. Laravel backend now includes password reset endpoints, delivery fee configuration, and coupon/promotion models with discount support. Full production sign-off still requires rotating the setup credentials exposed outside GitHub Secrets, configuring and enforcing App Check, adding the listed authorization/concurrency tests, and completing staging QA.
+- [x] Fix responsive shared layout parity: Seller now has Seller-specific mobile bottom navigation, while User retains Marketplace navigation.
+- [x] Add safe-area-aware mobile content padding so bottom navigation no longer covers page actions.
+- [x] Improve Admin mobile sidebar behavior, active nested navigation states, compact headers, and responsive content padding.
