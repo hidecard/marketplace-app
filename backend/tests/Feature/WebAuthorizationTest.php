@@ -67,13 +67,13 @@ class WebAuthorizationTest extends TestCase
         $this->actingAs($admin)->post('/admin/users/'.$admin->id.'/status/suspended')->assertUnprocessable();
     }
 
-    public function test_unverified_seller_and_regular_user_cannot_enter_protected_operations(): void
+    public function test_unverified_seller_is_sent_to_verification_and_regular_user_is_sent_to_dashboard(): void
     {
         $seller = User::factory()->create(['role' => User::ROLE_SELLER]);
         $user = User::factory()->create();
 
-        $this->actingAs($seller)->get('/seller/orders')->assertForbidden();
-        $this->actingAs($user)->get('/admin/users')->assertForbidden();
+        $this->actingAs($seller)->get('/seller/orders')->assertRedirect('/seller/verification');
+        $this->actingAs($user)->get('/admin/users')->assertRedirect('/dashboard');
     }
 
     public function test_seller_product_creation_keeps_legacy_name_column_in_sync_with_title(): void

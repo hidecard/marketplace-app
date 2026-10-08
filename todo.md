@@ -109,6 +109,8 @@
 - [x] Fix shared Admin/Seller operations actions to honor GET, POST, and DELETE methods, including category edit/delete and Admin product deletion.
 - [x] Restore Hostinger's missing Laravel exception-renderer CSS resource so protected Admin/Seller 403 responses no longer cascade into HTTP 500 errors.
 - [x] Add dedicated Admin/Seller web feature tests for Seller POS, expense creation, inventory/product ownership, Admin shop/product/category moderation, and regular-user denial.
+- [x] Fix role middleware response behavior: web requests redirect to `/dashboard` or `/seller/verification` with a flash error, while API requests retain JSON 403 responses.
+- [x] Extend web authorization tests for regular-user Admin denial and unverified-Seller verification redirects; full suite now passes 51 tests and 209 assertions.
 - [x] Replace static User header notification/cart dots with server-backed unread-notification and session-cart badges on desktop and mobile navigation.
 - [x] Replace the generic User `/shops` screen with a dedicated verified-shops page: search, server-side sorting, pagination, grid/list views, shop counts, and empty states.
 - [x] Redesign User product search/listing to match the legacy Firebase flow: mobile filter drawer, clear-all filters, shop/city filter, price/condition/category filters, grid/list modes, result counts, pagination, and improved empty state.

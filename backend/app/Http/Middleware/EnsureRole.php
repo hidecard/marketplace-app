@@ -13,17 +13,25 @@ class EnsureRole
         $user = $request->user();
 
         if (! $user || ! $user->isActive()) {
-            return response()->json(['message' => 'An active authenticated account is required.'], 403);
+            return $this->deny($request, 'An active authenticated account is required.');
         }
 
         if (! in_array($user->role, $roles, true)) {
-            return response()->json([
-                'message' => 'You do not have permission to access this resource.',
+            return $this->deny($request, 'You do not have permission to access this resource.', [
                 'required_roles' => $roles,
                 'current_role' => $user->role,
-            ], 403);
+            ]);
         }
 
         return $next($request);
+    }
+
+    protected function deny(Request $request, string $message, array $extra = []): Response
+    {
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json(['message' => $message, ...$extra], 403);
+        }
+
+        return redirect()->route('dashboard')->with('error', $message);
     }
 }

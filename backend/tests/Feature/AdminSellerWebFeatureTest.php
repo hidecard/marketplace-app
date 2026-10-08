@@ -112,9 +112,9 @@ class AdminSellerWebFeatureTest extends TestCase
         $user = User::factory()->create(['role' => User::ROLE_USER]);
         $category = Category::create(['name' => 'Blocked', 'slug' => 'blocked', 'sort_order' => 0, 'is_active' => true]);
 
-        $this->actingAs($user)->get('/admin/products')->assertForbidden();
-        $this->actingAs($user)->post('/admin/categories', ['name' => 'Nope'])->assertForbidden();
-        $this->actingAs($user)->delete("/admin/categories/{$category->id}")->assertForbidden();
+        $this->actingAs($user)->get('/admin/products')->assertRedirect('/dashboard');
+        $this->actingAs($user)->post('/admin/categories', ['name' => 'Nope'])->assertRedirect('/dashboard');
+        $this->actingAs($user)->delete("/admin/categories/{$category->id}")->assertRedirect('/dashboard');
     }
 
     /** @return array{0: User, 1: Shop, 2: Product} */

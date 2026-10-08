@@ -13,7 +13,11 @@ class EnsureVerifiedSeller
         $user = $request->user();
         $shop = $user?->shop;
         if (! $user || ! $user->isActive() || ! $user->isSeller() || ! $shop || ! $shop->verified) {
-            return response()->json(['message' => 'An active verified seller shop is required.'], 403);
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json(['message' => 'An active verified seller shop is required.'], 403);
+            }
+
+            return redirect()->route($user?->isSeller() ? 'seller.verification' : 'dashboard')->with('error', 'A verified seller shop is required for this page.');
         }
 
         return $next($request);
