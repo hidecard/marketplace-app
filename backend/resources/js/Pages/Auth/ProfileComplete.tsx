@@ -3,14 +3,17 @@ import { useEffect } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import type { SharedProps } from '../../types';
 
-type Props = SharedProps & { user: { name: string; phone_number?: string | null; phone_verified?: boolean }; flash?: SharedProps['flash'] & { otp_challenge_id?: number } };
+type Props = SharedProps & { user: { name: string; region?: string | null; phone_number?: string | null; phone_verified?: boolean }; flash?: SharedProps['flash'] & { otp_challenge_id?: number; otp_code?: string } };
 
 export default function ProfileComplete() {
     const { user, flash } = usePage<Props>().props;
-    const profile = useForm({ name: user.name ?? '', region: '' });
+    const profile = useForm({ name: user.name ?? '', region: user.region ?? '' });
     const otpRequest = useForm({ phone_number: user.phone_number ?? '' });
     const otpVerify = useForm({ challenge_id: '', code: '' });
-    useEffect(() => { if (flash?.otp_challenge_id) otpVerify.setData('challenge_id', String(flash.otp_challenge_id)); }, [flash?.otp_challenge_id]);
+    useEffect(() => {
+        if (flash?.otp_challenge_id) otpVerify.setData('challenge_id', String(flash.otp_challenge_id));
+        if (flash?.otp_code) otpVerify.setData('code', flash.otp_code);
+    }, [flash?.otp_challenge_id, flash?.otp_code]);
 
     return <AppLayout><main className="mx-auto max-w-xl px-4 py-12 pb-28 sm:px-6">
         <p className="text-sm font-bold uppercase tracking-widest text-primary-700">Finish onboarding</p>
@@ -25,6 +28,7 @@ export default function ProfileComplete() {
                     <button disabled={otpRequest.processing} className="rounded-xl bg-primary-700 px-4 py-2 font-bold text-white">Send code</button>
                 </form>
                 {flash?.otp_challenge_id && <p className="mt-2 text-xs text-slate-500">Challenge ID {flash.otp_challenge_id} was added automatically.</p>}
+                {flash?.otp_code && <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm font-bold text-amber-800">Your verification code: <span className="font-black tracking-[0.25em]">{flash.otp_code}</span></p>}
                 <form onSubmit={(e) => { e.preventDefault(); otpVerify.post('/profile/phone/verify'); }} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
                     <input value={otpVerify.data.challenge_id} onChange={(e) => otpVerify.setData('challenge_id', e.target.value)} placeholder="Challenge ID" className="rounded-xl border-slate-300" />
                     <input value={otpVerify.data.code} onChange={(e) => otpVerify.setData('code', e.target.value)} placeholder="6-digit code" className="rounded-xl border-slate-300" />

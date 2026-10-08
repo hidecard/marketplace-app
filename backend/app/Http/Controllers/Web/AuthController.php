@@ -86,7 +86,13 @@ class AuthController extends Controller
 
     public function showProfileCompletion(): Response
     {
-        return Inertia::render('Auth/ProfileComplete', ['user' => Auth::user()]);
+        $user = Auth::user();
+        return Inertia::render('Auth/ProfileComplete', ['user' => [
+            'name' => $user->name,
+            'region' => $user->region,
+            'phone_number' => $user->phone_number,
+            'phone_verified' => (bool) $user->phone_verified,
+        ]]);
     }
 
     public function showProfile(Request $request): Response
@@ -136,11 +142,20 @@ class AuthController extends Controller
             'expires_at' => now()->addMinutes(10),
             'request_ip' => $request->ip(),
         ]);
-        if (app()->environment('local', 'testing')) {
-            Log::info('Phone OTP generated for local development', ['challenge_id' => $challenge->id, 'phone_number' => $phone, 'code' => $code]);
+        $driver = (string) config('services.phone_otp.driver', 'log');
+        $exposeCode = (bool) config('services.phone_otp.expose_code', false) || ($driver === 'log' && app()->environment('local', 'testing'));
+        if ($driver === 'log' || app()->environment('local', 'testing')) {
+            Log::info('Phone OTP generated', ['challenge_id' => $challenge->id, 'phone_number' => $phone, 'code' => $code]);
         }
-
-        return back()->with('success', 'Verification code sent. Enter the code from your SMS or verification provider.')->with('otp_challenge_id', $challenge->id);
+        if ($driver === 'log' && ! $exposeCode && app()->environment('production')) {
+            $challenge->delete();
+            return back()->withErrors(['phone_number' => 'Phone verification is not configured yet. Please contact support.']);
+        }
+        $response = back()->with('success', $exposeCode ? 'Demo verification code generated. Enter it below to verify this phone number.' : 'Verification code sent. Enter the code from your SMS or verification provider.')->with('otp_challenge_id', $challenge->id);
+        if ($exposeCode) {
+            $response->with('otp_code', $code);
+        }
+        return $response;
     }
 
     public function verifyPhoneOtp(Request $request): RedirectResponse

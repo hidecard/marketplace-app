@@ -23,9 +23,13 @@ class ReviewController extends Controller
             'product_title' => $review->product?->title ?: $review->product?->name ?: 'Product', 'user_name' => $review->user?->name ?: 'Customer', 'created_at' => $review->created_at?->toDateString(),
         ]);
         $eligibleIds = DB::table('order_items')->join('orders', 'orders.id', '=', 'order_items.order_id')->where('orders.buyer_id', $request->user()->id)->whereIn('orders.status', ['delivered', 'completed'])->whereNotExists(fn ($query) => $query->selectRaw('1')->from('reviews')->whereColumn('reviews.product_id', 'order_items.product_id')->where('reviews.user_id', $request->user()->id))->distinct()->pluck('order_items.product_id');
+        $selectedProductId = $request->integer('product_id') ?: null;
         $eligibleProducts = Product::whereIn('id', $eligibleIds)->get();
+        if ($selectedProductId && $eligibleProducts->contains('id', $selectedProductId)) {
+            $eligibleProducts = $eligibleProducts->sortByDesc(fn (Product $product) => (int) $product->id === $selectedProductId)->values();
+        }
 
-        return Inertia::render('Reviews/Index', ['reviews' => $reviews, 'eligibleProducts' => $eligibleProducts]);
+        return Inertia::render('Reviews/Index', ['reviews' => $reviews, 'eligibleProducts' => $eligibleProducts, 'selectedProductId' => $selectedProductId]);
     }
 
     public function store(Request $request, Product $product): RedirectResponse

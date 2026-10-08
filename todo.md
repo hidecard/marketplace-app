@@ -358,3 +358,7 @@ The Web-first source is substantially hardened, all automated checks pass (Web T
 - [x] Fix responsive shared layout parity: Seller now has Seller-specific mobile bottom navigation, while User retains Marketplace navigation.
 - [x] Add safe-area-aware mobile content padding so bottom navigation no longer covers page actions.
 - [x] Improve Admin mobile sidebar behavior, active nested navigation states, compact headers, and responsive content padding.
+- [x] Make local/testing OTP verification genuinely usable: generated code is returned to the profile UI and auto-filled only for the configured demo/log driver; production without an SMS provider fails honestly instead of claiming a code was sent.
+- [x] Preserve the OTP challenge hash, expiry, attempt limit, user ownership check, and verified phone persistence.
+- [x] Make completed/delivered Order Detail open the selected product directly in the eligible Reviews flow.
+- [x] Add end-to-end web coverage for OTP request/verify and selected-product Review submission.

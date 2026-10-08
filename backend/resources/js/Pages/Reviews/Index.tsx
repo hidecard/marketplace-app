@@ -15,6 +15,7 @@ type Product = { id: number; title?: string; name?: string };
 type Props = {
     reviews: Review[];
     eligibleProducts: Product[];
+    selectedProductId?: number | null;
     flash?: { success?: string; error?: string };
 };
 
@@ -50,13 +51,13 @@ function ReviewForm({ product }: { product: Product }) {
 }
 
 export default function Index() {
-    const { reviews, eligibleProducts, flash } = usePage<Props>().props;
+    const { reviews, eligibleProducts, selectedProductId, flash } = usePage<Props>().props;
     return <AppLayout><section className="mx-auto max-w-5xl px-4 py-6 pb-28 sm:px-6 sm:py-8">
         <Link href="/profile" className="inline-flex items-center gap-1 text-sm font-semibold text-gray-500 hover:text-primary-700"><ArrowLeft size={16} /> Back to profile</Link>
         <div className="mt-5 flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-bold uppercase tracking-widest text-primary-700">Community trust</p><h1 className="mt-2 text-3xl font-black text-gray-950">Reviews</h1><p className="mt-2 text-gray-500">Read customer feedback and review products you received.</p></div><div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm ring-1 ring-gray-100"><p className="text-2xl font-black text-primary-700">{reviews.length}</p><p className="text-xs font-semibold text-gray-500">Recent reviews</p></div></div>
         {flash?.success && <p className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">{flash.success}</p>}
         {flash?.error && <p className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{flash.error}</p>}
-        {eligibleProducts.length > 0 && <section className="mt-8"><div className="mb-3 flex items-center gap-2"><MessageSquare size={19} className="text-primary-600" /><h2 className="text-xl font-bold text-gray-900">Products waiting for your review</h2></div><div className="grid gap-4 md:grid-cols-2">{eligibleProducts.map((product) => <ReviewForm key={product.id} product={product} />)}</div></section>}
+        {eligibleProducts.length > 0 && <section className="mt-8"><div className="mb-3 flex items-center gap-2"><MessageSquare size={19} className="text-primary-600" /><h2 className="text-xl font-bold text-gray-900">Products waiting for your review</h2></div>{selectedProductId && eligibleProducts.some((product) => product.id === selectedProductId) && <p className="mb-4 rounded-xl border border-primary-100 bg-primary-50 p-3 text-sm font-semibold text-primary-800">Showing the product from your order first.</p>}<div className="grid gap-4 md:grid-cols-2">{eligibleProducts.map((product) => <ReviewForm key={product.id} product={product} />)}</div></section>}
         <section className="mt-8"><h2 className="text-xl font-bold text-gray-900">Customer reviews</h2><div className="mt-4 space-y-4">{reviews.map((review) => <article key={review.id} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100"><div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="font-bold text-gray-900">{review.product_title}</h3><p className="mt-1 text-sm text-gray-500">{review.user_name} · {review.created_at || 'Recently'}</p></div><Stars rating={review.rating} /></div>{review.body && <p className="mt-4 whitespace-pre-line leading-6 text-gray-700">{review.body}</p>}</article>)}{reviews.length === 0 && <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-12 text-center"><MessageSquare className="mx-auto text-gray-300" size={46} /><h3 className="mt-4 font-bold text-gray-900">No reviews yet</h3><p className="mt-1 text-sm text-gray-500">Completed purchases will appear here when customers share feedback.</p><Link href="/products" className="mt-5 inline-flex rounded-xl bg-primary-600 px-4 py-2.5 text-sm font-bold text-white">Browse products</Link></div>}</div></section>
     </section></AppLayout>;
 }

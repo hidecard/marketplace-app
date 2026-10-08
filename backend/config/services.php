@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'phone_otp' => [
+        'driver' => env('PHONE_OTP_DRIVER', 'log'),
+        'expose_code' => (bool) env('OTP_EXPOSE_CODE', false),
+    ],
+
 ];
