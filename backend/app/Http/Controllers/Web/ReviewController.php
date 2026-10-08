@@ -8,6 +8,7 @@ use App\Models\Review;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -38,7 +39,14 @@ class ReviewController extends Controller
         $orderId = DB::table('order_items')->join('orders', 'orders.id', '=', 'order_items.order_id')->where('orders.buyer_id', $request->user()->id)->where('order_items.product_id', $product->id)->whereIn('orders.status', ['delivered', 'completed'])->value('orders.id');
         abort_unless($orderId, 403);
         abort_if(Review::where('user_id', $request->user()->id)->where('product_id', $product->id)->exists(), 422, 'You already reviewed this product.');
-        Review::create(['order_id' => $orderId, 'user_id' => $request->user()->id, 'product_id' => $product->id, 'shop_id' => $product->shop_id, 'rating' => $data['rating'], 'body' => $data['body'] ?? null, 'is_visible' => true]);
+        $review = ['order_id' => $orderId, 'user_id' => $request->user()->id, 'product_id' => $product->id, 'shop_id' => $product->shop_id, 'rating' => $data['rating'], 'body' => $data['body'] ?? null, 'is_visible' => true];
+        // Hostinger may still have the legacy reviews schema where buyer_id is
+        // required. Keep the canonical user_id while satisfying that schema;
+        // fresh Laravel installs do not have to carry the legacy column.
+        if (Schema::hasColumn('reviews', 'buyer_id')) {
+            $review['buyer_id'] = $request->user()->id;
+        }
+        Review::create($review);
 
         return back()->with('success', 'Review submitted.');
     }
