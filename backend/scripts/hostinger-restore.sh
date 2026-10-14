@@ -18,7 +18,7 @@ fail() {
 [[ -f "$BACKUP_DIR/manifest.txt" ]] || fail "Backup manifest is missing."
 
 cd "$ROOT_DIR"
-sha256sum --check <(grep -E ' (database\.sql\.gz|storage-app-public\.tar\.gz)$' "$BACKUP_DIR/manifest.txt")
+(cd "$BACKUP_DIR" && sha256sum --check <(grep -E ' (database\.sql\.gz|storage-app-public\.tar\.gz)$' manifest.txt))
 
 ENV_FILE="${ENV_FILE:-$PARENT_DIR/.env}"
 env_value() {

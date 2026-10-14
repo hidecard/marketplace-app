@@ -41,6 +41,7 @@
 - [x] Create a Firebase-to-MySQL data migration and reconciliation script.
 - [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.
 - [x] Add a read-only staging smoke script and GitHub Actions workflow for public health, assets, login, and authenticated API checks.
+- [ ] Rehearse the backup restore on a disposable staging copy and record the rollback result.
 - [ ] Add staging-only GitHub secrets, run the complete critical-flow checklist, and record a rollback rehearsal.
 
 ### Current cutover checkpoint
@@ -329,10 +330,11 @@
 - [x] Add locale-aware date, number, and Myanmar kyat formatting.
 - [ ] Add Web/admin error reporting such as Sentry.
 - [ ] Monitor FCM delivery and provide a production notification-permission UX.
-- [ ] Add deployment rollback documentation and a tested rollback procedure.
+- [x] Add deployment rollback documentation and test the restore procedure with disposable database/storage fixtures.
 - [x] Reduce the current large Web/admin JavaScript bundles with route-level code splitting.
 - [ ] Complete manual staging QA on phone linking, individual selling, shop verification, business unlock, orders, chat, offers, POS, expenses, and admin moderation.
-- [ ] Complete release security review and QA sign-off.
+- [x] Add a CI release security baseline with tracked-secret checks and Composer/npm dependency audits.
+- [ ] Complete manual release security review and owner QA sign-off on staging/production.
 
 ## 3. Flutter/Android App — Deferred Until Web Is Stable
 
