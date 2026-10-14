@@ -322,7 +322,7 @@
 - [x] Add a full admin verification detail view with evidence-photo gallery rather than list-only review.
 - [x] Replace the rejection `prompt()` with a designed moderation dialog.
 - [ ] Complete Burmese/English coverage for remaining hard-coded Web and admin strings.
-- [ ] Add locale-aware date, number, and Myanmar kyat formatting.
+- [x] Add locale-aware date, number, and Myanmar kyat formatting.
 - [ ] Add Web/admin error reporting such as Sentry.
 - [ ] Monitor FCM delivery and provide a production notification-permission UX.
 - [ ] Add deployment rollback documentation and a tested rollback procedure.

@@ -1,9 +1,10 @@
+import { formatNumber } from './../../lib/format';
 import { Link, usePage } from '@inertiajs/react';
 import { AlertTriangle, BarChart3, Boxes, DollarSign, Package, Plus, Receipt, ShoppingBag, Users } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 
 type Props = { shop: { name: string; verification_status: string }; stats: { products: number; low_stock: number; orders: number; revenue: number }; recentOrders: { id: number; order_number: string; total: string | number; status: string; buyer?: { name: string } | null; created_at?: string }[] };
-const money = (value: number) => `${value.toLocaleString()} MMK`;
+const money = (value: number) => `${formatNumber(value)} MMK`;
 
 export default function Dashboard() {
     const { shop, stats, recentOrders } = usePage<Props>().props;

@@ -1,0 +1,1 @@
+import{i as e,t}from"./app-Btn5y1Xd-v3.js";import{t as n}from"./AdminLayout-CRZxFoDT-v3.js";import r from"./RoleOperationsPage-BwuAs9cj-v3.js";var i=t();function a(){let t=e().props;return(0,i.jsx)(n,{title:t.title,children:(0,i.jsx)(r,{...t,kind:`admin`})})}export{a as default};

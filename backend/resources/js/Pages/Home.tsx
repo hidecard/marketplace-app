@@ -1,3 +1,4 @@
+import { formatNumber } from './../lib/format';
 import { Link, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import { ChevronRight, ShieldCheck, Store, Search, PlusCircle } from 'lucide-react';
@@ -10,7 +11,7 @@ type Product = { id: number; title: string; price: string | number; stock: numbe
 type Props = { categories: Category[]; verifiedShops: Shop[]; featuredProducts: Product[]; recentProducts: Product[] };
 
 function ProductCard({ product }: { product: Product }) {
-    return <Link href={`/products/${product.id}`} className="min-w-[180px] overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex aspect-square items-center justify-center bg-gradient-to-br from-primary-50 to-blue-100 text-4xl">{product.images?.[0] ? <ProductImage src={product.images[0]} alt={product.title} /> : '✦'}</div><div className="p-3"><p className="line-clamp-1 text-sm font-semibold text-gray-900">{product.title}</p><p className="mt-1 font-bold text-primary-700">{Number(product.price).toLocaleString()} Ks</p><p className="mt-1 text-xs capitalize text-gray-500">{product.condition || 'new'} · {product.stock} left</p></div></Link>;
+    return <Link href={`/products/${product.id}`} className="min-w-[180px] overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-100 transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex aspect-square items-center justify-center bg-gradient-to-br from-primary-50 to-blue-100 text-4xl">{product.images?.[0] ? <ProductImage src={product.images[0]} alt={product.title} /> : '✦'}</div><div className="p-3"><p className="line-clamp-1 text-sm font-semibold text-gray-900">{product.title}</p><p className="mt-1 font-bold text-primary-700">{formatNumber(product.price)} Ks</p><p className="mt-1 text-xs capitalize text-gray-500">{product.condition || 'new'} · {product.stock} left</p></div></Link>;
 }
 
 export default function Home() {

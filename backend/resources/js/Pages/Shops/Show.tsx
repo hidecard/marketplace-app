@@ -1,3 +1,4 @@
+import { formatNumber } from './../../lib/format';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { ArrowLeft, Grid2X2, Heart, List, MapPin, MessageCircle, Package, Phone, QrCode, Share2, ShieldCheck, Star } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -10,7 +11,7 @@ type Shop = { id: number; name: string; slug: string; description?: string; logo
 type Props = SharedProps & Record<string, unknown> & { shop: Shop; isFollowing: boolean; authUser?: { id: number } | null; flash?: { success?: string; error?: string } };
 type Sort = 'newest' | 'price_low' | 'price_high';
 
-const money = (value: string | number) => `${Number(value).toLocaleString()} MMK`;
+const money = (value: string | number) => `${formatNumber(value)} MMK`;
 
 export default function Show() {
     const { shop, isFollowing, authUser, flash } = usePage<Props>().props;
