@@ -8,6 +8,7 @@ use App\Models\CouponRedemption;
 use App\Models\DeliveryFee;
 use App\Models\Order;
 use App\Models\Product;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -58,7 +59,8 @@ class OrderController extends Controller
             return response()->json(['order' => $existing->load('items.product', 'shop'), 'replayed' => true]);
         }
 
-        $order = DB::transaction(function () use ($data, $request): Order {
+        try {
+            $order = DB::transaction(function () use ($data, $request): Order {
             $products = [];
             foreach ($data['items'] as $item) {
                 $product = Product::query()->lockForUpdate()->findOrFail($item['product_id']);
@@ -143,7 +145,21 @@ class OrderController extends Controller
             }
 
             return $order;
-        });
+            });
+        } catch (QueryException $exception) {
+            $existing = Order::where('idempotency_key', $data['idempotency_key'])
+                ->where('buyer_id', $request->user()->id)
+                ->first();
+
+            if (! $existing || ! in_array((string) ($exception->errorInfo[0] ?? $exception->getCode()), ['19', '23000'], true)) {
+                throw $exception;
+            }
+
+            return response()->json([
+                'order' => $existing->load('items.product', 'shop'),
+                'replayed' => true,
+            ]);
+        }
 
         return response()->json(['order' => $order->load('items.product', 'shop'), 'replayed' => false], 201);
     }
