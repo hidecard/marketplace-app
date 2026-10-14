@@ -14,6 +14,13 @@ if [[ ! -f composer.json || ! -f composer.lock || ! -d public ]]; then
   exit 1
 fi
 
+# A production deployment must create an off-release backup before any cache,
+# vendor, or frontend work can change the live tree. The backup script writes
+# outside ROOT_DIR, so a later Git sync cannot remove the recovery point.
+if [[ "${BACKUP_BEFORE_DEPLOY:-true}" == "true" ]]; then
+  bash "$ROOT_DIR/scripts/hostinger-backup.sh"
+fi
+
 CURRENT_LOCK_HASH="$(sha256sum composer.lock | awk '{print $1}')"
 CACHED_LOCK_HASH=""
 [[ -f "$LOCK_HASH_FILE" ]] && CACHED_LOCK_HASH="$(cat "$LOCK_HASH_FILE")"

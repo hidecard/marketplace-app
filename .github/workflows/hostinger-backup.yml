@@ -1,0 +1,61 @@
+name: Hostinger backup
+
+on:
+  schedule:
+    - cron: '15 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hostinger-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Backup production database and uploads
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Validate backup connection settings
+        env:
+          HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+          HOSTINGER_APP_ROOT: ${{ secrets.HOSTINGER_APP_ROOT }}
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for name in HOSTINGER_SSH_HOST HOSTINGER_SSH_USER HOSTINGER_APP_ROOT HOSTINGER_SSH_KEY HOSTINGER_SSH_KNOWN_HOSTS; do
+            if [[ -z "${!name}" ]]; then
+              echo "Missing required repository secret: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Configure SSH
+        env:
+          HOSTINGER_SSH_KEY: ${{ secrets.HOSTINGER_SSH_KEY }}
+          HOSTINGER_SSH_KNOWN_HOSTS: ${{ secrets.HOSTINGER_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$HOSTINGER_SSH_KEY" > "$HOME/.ssh/hostinger_backup_key"
+          printf '%s\n' "$HOSTINGER_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/hostinger_backup_key" "$HOME/.ssh/known_hosts"
+
+      - name: Run server backup
+        env:
+          HOSTINGER_SSH_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
+          HOSTINGER_SSH_USER: ${{ secrets.HOSTINGER_SSH_USER }}
+          HOSTINGER_SSH_PORT: ${{ secrets.HOSTINGER_SSH_PORT || '22' }}
+          HOSTINGER_APP_ROOT: ${{ secrets.HOSTINGER_APP_ROOT }}
+        run: |
+          set -euo pipefail
+          ssh -i "$HOME/.ssh/hostinger_backup_key" \
+            -p "$HOSTINGER_SSH_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            "$HOSTINGER_SSH_USER@$HOSTINGER_SSH_HOST" \
+            "cd '$HOSTINGER_APP_ROOT' && BACKUP_BEFORE_DEPLOY=false bash scripts/hostinger-backup.sh"
