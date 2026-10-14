@@ -14,6 +14,11 @@ if [[ ! -f composer.json || ! -f composer.lock || ! -d public ]]; then
   exit 1
 fi
 
+# Validate the external production environment before creating a release or
+# backup. This prevents a deploy with a missing key, debug mode, HTTP URL, or
+# incomplete database credentials.
+bash "$ROOT_DIR/scripts/check-production-config.sh"
+
 # A production deployment must create an off-release backup before any cache,
 # vendor, or frontend work can change the live tree. The backup script writes
 # outside ROOT_DIR, so a later Git sync cannot remove the recovery point.

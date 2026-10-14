@@ -16,6 +16,8 @@
 - [ ] Finish migrating every existing Web/Admin screen and interaction from Firebase SPA code to Inertia pages/controllers.
 - [ ] Remove the legacy Web/Admin Firebase packages, services, env variables, and source after feature parity is verified.
 - [ ] Add production PHP hosting/deploy credentials for `https://easyzaymm.com/`; Cloudflare Worker deployment is no longer the target.
+- [x] Add production environment validation that blocks deploys with missing keys, debug mode, HTTP URLs, or incomplete MySQL credentials.
+- [ ] Configure the real Hostinger/GitHub production secrets and verify a production deploy with the owner.
 - [x] Audit Firebase coupling across Web, Admin, and Functions before migration.
 - [x] Scaffold `backend/` as a Laravel 13 API with Sanctum token authentication.
 - [x] Add MySQL-compatible users, shops, products, orders, and order-items migrations.
@@ -38,6 +40,8 @@
 - [x] Add Laravel participant-scoped chat, message read state, notification inbox, unread counts, and read APIs.
 - [x] Create a Firebase-to-MySQL data migration and reconciliation script.
 - [ ] Configure staging MySQL, run critical-flow QA, rehearse rollback, then cut production over.
+- [x] Add a read-only staging smoke script and GitHub Actions workflow for public health, assets, login, and authenticated API checks.
+- [ ] Add staging-only GitHub secrets, run the complete critical-flow checklist, and record a rollback rehearsal.
 
 ### Current cutover checkpoint
 

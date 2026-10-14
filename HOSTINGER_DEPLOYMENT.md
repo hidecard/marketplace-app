@@ -28,6 +28,14 @@ Keep the production environment file outside the Git deployment directory:
 
 The Laravel bootstrap is configured to load this external `.env`. Never commit it or put it inside `public/`.
 
+Before a production build continues, `scripts/check-production-config.sh` validates
+that the external file has `APP_ENV=production`, a generated `APP_KEY`, an HTTPS
+`APP_URL`, `APP_DEBUG=false`, MySQL credentials, and no release-local `.env` file.
+It does not print secret values. Generate the key once on the server with
+`php artisan key:generate --show`, store it only in the external `.env`, and use a
+dedicated least-privilege MySQL user. Never put any of these values in GitHub source
+or commit history.
+
 Create the storage link once, if it does not already exist:
 
 ```bash
@@ -120,3 +128,38 @@ cron panel to run this at least once daily and before a planned deployment:
 ```cron
 15 2 * * * cd /home/<account>/public_html && BACKUP_BEFORE_DEPLOY=false bash scripts/hostinger-backup.sh >> /home/<account>/.easyzaymm-backup.log 2>&1
 ```
+
+## Staging credentials and QA
+
+Staging must use a separate MySQL database, separate uploads directory, separate
+domain/subdomain, and a staging-only test account. Do not reuse production
+`APP_KEY`, database credentials, administrator credentials, or backup directory.
+
+The repository includes `scripts/staging-smoke.sh` and
+`.github/workflows/staging-qa.yml`. Add these GitHub Actions secrets to run the
+read-only smoke suite:
+
+| Secret | Requirement |
+|---|---|
+| `STAGING_BASE_URL` | HTTPS staging URL only |
+| `STAGING_TEST_EMAIL` | Non-production buyer/test account |
+| `STAGING_TEST_PASSWORD` | Password for that staging-only account |
+
+The smoke suite checks `/up`, `/api/health`, the home page, product listing, the
+Vite manifest, and authenticated `/api/auth/me`. It does not place orders, change
+inventory, approve sellers, or mutate staging data. Run it manually after every
+staging deployment and from the pull request workflow before production cutover.
+
+The remaining manual staging checklist is:
+
+1. Register/login/logout and phone-linking flow.
+2. Individual selling: create shop, submit verification, admin approve/reject,
+   resubmit after rejection.
+3. Buyer browse, cart, COD checkout, duplicate-submit replay, stock exhaustion,
+   order history, cancellation, and completion.
+4. Seller inventory, POS, expenses, reports, orders, offers, chat, and product
+   image upload.
+5. Admin moderation, user status actions, shop/product actions, banners, settings,
+   reports, and mobile navigation.
+6. Take a fresh backup, deploy the release, run smoke checks, rehearse the restore
+   script on a staging copy, and record the result before production cutover.
