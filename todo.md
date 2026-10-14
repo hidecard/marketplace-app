@@ -326,7 +326,7 @@
 - [ ] Add Web/admin error reporting such as Sentry.
 - [ ] Monitor FCM delivery and provide a production notification-permission UX.
 - [ ] Add deployment rollback documentation and a tested rollback procedure.
-- [ ] Reduce the current large Web/admin JavaScript bundles with route-level code splitting.
+- [x] Reduce the current large Web/admin JavaScript bundles with route-level code splitting.
 - [ ] Complete manual staging QA on phone linking, individual selling, shop verification, business unlock, orders, chat, offers, POS, expenses, and admin moderation.
 - [ ] Complete release security review and QA sign-off.
 

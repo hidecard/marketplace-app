@@ -1,0 +1,1 @@
+import{Inventory as e}from"./Business-CGoH8rL4-v3.js";export{e as default};

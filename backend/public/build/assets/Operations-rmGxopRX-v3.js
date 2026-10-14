@@ -1,1 +1,0 @@
-import{i as e,t}from"./app-5EDInrww-v3.js";import{t as n}from"./AdminLayout-C3WPfbQU-v3.js";import r from"./RoleOperationsPage-CsibfvoR-v3.js";var i=t();function a(){let t=e().props;return(0,i.jsx)(n,{title:t.title,children:(0,i.jsx)(r,{...t,kind:`admin`})})}export{a as default};

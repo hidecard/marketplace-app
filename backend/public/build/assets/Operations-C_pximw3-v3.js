@@ -1,0 +1,1 @@
+import{dt as e,ht as t}from"./vendor-react-D41p5SSl-v3.js";import{t as n}from"./AdminLayout-CKrtNXBa-v3.js";import r from"./RoleOperationsPage-BUhaZYaG-v3.js";var i=e();function a(){let e=t().props;return(0,i.jsx)(n,{title:e.title,children:(0,i.jsx)(r,{...e,kind:`admin`})})}export{a as default};

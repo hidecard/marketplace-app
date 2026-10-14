@@ -1,0 +1,1 @@
+import{dt as e,ht as t}from"./vendor-react-D41p5SSl-v3.js";import n from"./RoleOperationsPage-BUhaZYaG-v3.js";import{t as r}from"./AppLayout-Cy7LwoiV-v3.js";var i=e();function a(){let e=t().props;return(0,i.jsx)(r,{children:(0,i.jsx)(n,{...e,kind:`seller`})})}export{a as default};

@@ -13,6 +13,25 @@ export default defineConfig({
     build: {
         rollupOptions: {
             output: {
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) {
+                        return undefined;
+                    }
+
+                    if (id.includes('react') || id.includes('scheduler')) {
+                        return 'vendor-react';
+                    }
+
+                    if (id.includes('@inertiajs')) {
+                        return 'vendor-inertia';
+                    }
+
+                    if (id.includes('lucide-react')) {
+                        return 'vendor-icons';
+                    }
+
+                    return 'vendor';
+                },
                 entryFileNames: 'assets/[name]-[hash]-v3.js',
                 chunkFileNames: 'assets/[name]-[hash]-v3.js',
                 assetFileNames: 'assets/[name]-[hash]-v3[extname]',
