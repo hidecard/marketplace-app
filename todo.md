@@ -296,13 +296,13 @@
 - [ ] Add Firestore Rules authorization tests for buyer, individual seller, shop owner, non-member, and admin roles.
 - [ ] Add Storage Rules tests for user drafts, shop images, verification evidence, and unauthorized access.
 - [x] Add duplicate order submission integration test with idempotent replay and single stock decrement.
-- [ ] Add concurrent last-stock order test.
+- [x] Add MySQL-only process-level concurrent last-stock order test; local SQLite skips it and staging/MySQL execution remains required.
 - [x] Add duplicate POS submission integration test with idempotent replay and single stock decrement.
 - [x] Add buyer cancellation permission test.
 - [x] Add completed-order-only review test.
 - [x] Add one-review-per-product test.
 - [x] Add own-product offer restriction test.
-- [ ] Add one-shop-per-user concurrency test.
+- [x] Add MySQL-only process-level one-shop-per-user concurrency test; local SQLite skips it and staging/MySQL execution remains required.
 - [x] Add unique-shop-slug uniqueness test; true concurrent race rehearsal remains a staging requirement.
 - [ ] Add one-pending-verification-per-shop concurrency test.
 - [x] Add Web critical-flow tests for sign-up, phone link, listing, checkout, verification, and POS.
