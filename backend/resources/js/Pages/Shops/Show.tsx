@@ -4,6 +4,7 @@ import { ArrowLeft, Grid2X2, Heart, List, MapPin, MessageCircle, Package, Phone,
 import { useMemo, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import ProductImage from '../../Components/ProductImage';
+import SeoHead from '../../Components/SeoHead';
 import type { SharedProps } from '../../types';
 
 type Product = { id: number; title: string; price: string | number; stock: number; condition?: string; images?: string[]; created_at?: string | null };
@@ -37,6 +38,7 @@ export default function Show() {
     };
 
     return <AppLayout>
+        <SeoHead title={`${shop.name} — Easy Zay Mm`} description={(shop.description || `Explore products from ${shop.name} on Easy Zay Mm.`).slice(0, 160)} canonical={`https://easyzaymm.com/shops/${shop.id}`} image={shop.cover_url || shop.logo_url} jsonLd={{ '@context': 'https://schema.org', '@type': 'LocalBusiness', name: shop.name, description: shop.description, image: [shop.logo_url, shop.cover_url].filter(Boolean), url: `https://easyzaymm.com/shops/${shop.id}`, telephone: shop.phone, email: shop.email, address: shop.address ? { '@type': 'PostalAddress', streetAddress: shop.address } : undefined }} />
         <section className="min-h-screen bg-gray-50 pb-28">
             <div className="relative h-40 bg-gradient-to-r from-primary-700 via-primary-600 to-primary-400 sm:h-56">
                 {shop.cover_url && <img src={shop.cover_url} alt="" className="h-full w-full object-cover" />}

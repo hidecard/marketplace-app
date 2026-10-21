@@ -14,9 +14,21 @@ use App\Http\Controllers\Web\ReviewController;
 use App\Http\Controllers\Web\RoleController;
 use App\Http\Controllers\Web\ShopController;
 use App\Http\Controllers\Web\UserController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [MarketplaceController::class, 'home'])->name('home');
+Route::get('/robots.txt', function () {
+    return response("User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /seller\nDisallow: /profile\nDisallow: /checkout\nSitemap: ".url('/sitemap.xml')."\n", 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
+})->name('seo.robots');
+Route::get('/sitemap.xml', function () {
+    $urls = collect([url('/'), url('/products'), url('/categories'), url('/shops')]);
+    if (DB::getSchemaBuilder()->hasTable('products')) $urls = $urls->merge(DB::table('products')->where('status', 'active')->pluck('id')->map(fn ($id) => url('/products/'.$id)));
+    if (DB::getSchemaBuilder()->hasTable('shops')) $urls = $urls->merge(DB::table('shops')->where('verified', true)->pluck('id')->map(fn ($id) => url('/shops/'.$id)));
+    $xml = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
+    foreach ($urls->unique() as $url) $xml .= '<url><loc>'.e($url).'</loc></url>';
+    return response($xml.'</urlset>', 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+})->name('seo.sitemap');
 Route::get('/media/{path}', [MarketplaceController::class, 'media'])->where('path', '.*')->name('media.product');
 Route::get('/products', [MarketplaceController::class, 'products'])->name('products.index');
 Route::get('/products/{product}', [MarketplaceController::class, 'product'])->name('products.show');

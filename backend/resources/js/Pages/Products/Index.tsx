@@ -4,6 +4,7 @@ import { BadgeCheck, Grid2X2, List, Search, SlidersHorizontal, X } from 'lucide-
 import { type FormEvent, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import ProductImage from '../../Components/ProductImage';
+import SeoHead from '../../Components/SeoHead';
 import type { SharedProps } from '../../types';
 
 type Product = { id: number; title: string; brand?: string; price: string | number; stock: number; condition?: string; images?: string[]; shop?: { name: string; slug: string; verified?: boolean } };
@@ -25,7 +26,8 @@ export default function Index() {
     const clear = () => router.get('/products', {}, { preserveState: true, replace: true });
 
     return <AppLayout>
-        <section className="mx-auto max-w-7xl px-4 py-5 pb-24 sm:px-6 sm:py-8 lg:px-8">
+        <SeoHead title="Browse products — Easy Zay Mm" description="Search products from verified local shops and sellers on Easy Zay Mm." canonical="https://easyzaymm.com/products" />
+        <section className="mx-auto max-w-7xl px-4 py-5 pb-28 sm:px-6 sm:py-8 lg:px-8">
             <div className="flex items-end justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-primary-600">Marketplace</p><h1 className="mt-1 text-2xl font-bold text-gray-900 sm:text-3xl">Find something useful</h1><p className="mt-1 text-sm text-gray-500">Discover products from verified local shops</p></div><button type="button" onClick={() => setFilterOpen(!filterOpen)} className={`flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold sm:hidden ${filterOpen ? 'bg-primary-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-200'}`}><SlidersHorizontal size={17} /> Filters</button></div>
             <form onSubmit={submit} className={`mt-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm ${filterOpen ? 'block' : 'hidden sm:block'}`}>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6"><div className="relative lg:col-span-2"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} /><input name="q" defaultValue={filters.q} placeholder="Search products, brands, or shops..." className="w-full rounded-lg border-gray-300 pl-10 text-sm focus:border-primary-500 focus:ring-primary-500" /></div><select name="category" defaultValue={filters.category ?? ''} className="rounded-lg border-gray-300 text-sm"><option value="">All categories</option>{categories.map((category) => <option value={category.slug} key={category.slug}>{category.name}</option>)}</select><select name="condition" defaultValue={filters.condition ?? ''} className="rounded-lg border-gray-300 text-sm"><option value="">Any condition</option><option value="new">New</option><option value="used">Used</option><option value="refurbished">Refurbished</option></select><select name="sort" defaultValue={filters.sort ?? ''} className="rounded-lg border-gray-300 text-sm"><option value="">Recommended</option><option value="newest">Newest</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option></select><button className="rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700">Search</button></div>

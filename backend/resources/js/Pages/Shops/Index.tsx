@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft, Grid2X2, List, MapPin, Search, ShieldCheck, Store, Users } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
+import SeoHead from '../../Components/SeoHead';
 
 type Shop = {
     id: number;
@@ -28,7 +29,8 @@ export default function Index() {
     const sort = (value: string) => router.get('/shops', { q: filters.q || undefined, sort: value || undefined }, { preserveState: true, replace: true });
 
     return <AppLayout>
-        <section className="min-h-screen bg-gray-50 pb-24">
+        <SeoHead title="Explore verified shops — Easy Zay Mm" description="Find verified local shops, services, and sellers on Easy Zay Mm." canonical="https://easyzaymm.com/shops" />
+        <section className="min-h-screen bg-gray-50 pb-28">
             <header className="border-b border-gray-200 bg-white px-4 pb-4 pt-4 sm:px-6">
                 <div className="mx-auto max-w-6xl">
                     <div className="flex items-center gap-3">

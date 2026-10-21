@@ -368,3 +368,6 @@ The Web-first source is substantially hardened, all automated checks pass (Web T
 - [x] Preserve the OTP challenge hash, expiry, attempt limit, user ownership check, and verified phone persistence.
 - [x] Make completed/delivered Order Detail open the selected product directly in the eligible Reviews flow.
 - [x] Add end-to-end web coverage for OTP request/verify and selected-product Review submission.
+- [x] Pull the latest Laravel/Inertia UI refactor from GitHub and repair the two broken numeric-card formatters so TypeScript compiles again.
+- [x] Add shared SEO head metadata with canonical, Open Graph, Twitter, and JSON-LD support for marketplace, product, and shop pages.
+- [x] Add global SEO defaults, dynamic robots.txt, and public sitemap.xml routes for active products and verified shops.
