@@ -52,12 +52,14 @@ gzip -dc "$BACKUP_DIR/database.sql.gz" | mysql \
 
 echo "Restoring storage/app/public..."
 mkdir -p "$ROOT_DIR/storage/app"
-TEMP_STORAGE="$ROOT_DIR/storage/app/.public-restore-$$"
+PERSISTENT_STORAGE_DIR="${PERSISTENT_STORAGE_DIR:-$PARENT_DIR/.easyzaymm-storage-public}"
+[[ "$PERSISTENT_STORAGE_DIR" != "$ROOT_DIR"/* && "$PERSISTENT_STORAGE_DIR" != "$ROOT_DIR" ]] || fail "Persistent storage must be outside the application root."
+TEMP_STORAGE="$PARENT_DIR/.easyzaymm-public-restore-$$"
 rm -rf "$TEMP_STORAGE"
 mkdir -p "$TEMP_STORAGE"
 tar -xzf "$BACKUP_DIR/storage-app-public.tar.gz" -C "$TEMP_STORAGE"
+rm -rf "$PERSISTENT_STORAGE_DIR"
+mv "$TEMP_STORAGE" "$PERSISTENT_STORAGE_DIR"
 rm -rf "$ROOT_DIR/storage/app/public"
-mv "$TEMP_STORAGE/public" "$ROOT_DIR/storage/app/public"
-rmdir "$TEMP_STORAGE"
-
+ln -s "$PERSISTENT_STORAGE_DIR" "$ROOT_DIR/storage/app/public"
 echo "Restore completed. Run 'php artisan optimize:clear' and verify the application before reopening traffic."

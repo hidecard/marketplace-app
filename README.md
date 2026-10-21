@@ -87,7 +87,7 @@ npm run build:all
 
 ### Deploy
 
-The production Laravel application is deployed to Hostinger. Push to `main` to run tests, build Composer dependencies and frontend assets in GitHub Actions, and upload the release over FTP.
+The production Laravel application is deployed to Hostinger. Push to `main` to run tests, build Composer dependencies and frontend assets in GitHub Actions, and deploy the release. Uploaded media is kept in Hostinger's external persistent storage directory and is not replaced by normal Git pushes.
 
 See [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md) for the one-time Hostinger setup and required GitHub Secrets.
 

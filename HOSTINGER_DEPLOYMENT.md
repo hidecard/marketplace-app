@@ -60,7 +60,7 @@ The optional `scripts/hostinger-build.sh` first checks for the tracked `vendor/a
 
 Before it checks Composer or runs the frontend build, `hostinger-build.sh` now runs
 `scripts/hostinger-backup.sh`. The backup is written outside `public_html` and
-contains a compressed MySQL dump, a compressed `storage/app/public` archive, and
+contains a compressed MySQL dump, a compressed persistent-upload archive, and
 SHA-256 checksums. If the database dump, uploaded-storage archive, or required
 backup tools fail, the deployment stops instead of continuing with an unprotected
 release. Set `BACKUP_BEFORE_DEPLOY=false` only for a deliberate non-production
@@ -68,16 +68,16 @@ maintenance run.
 
 ## Uploaded files and vector folder
 
-Runtime uploads must stay outside the tracked release:
+Runtime uploads now stay outside the tracked release:
 
 ```text
-public_html/storage/app/public/
+/home/<account>/.easyzaymm-storage-public/
 ```
 
-The `public/storage` symlink should point to `../storage/app/public`. The Git release does not contain or delete uploaded media. Restore previously deleted vector files from a Hostinger backup into:
+On every build, `scripts/hostinger-persist-storage.sh` migrates any existing uploads once and recreates `public_html/storage/app/public` as a symlink to `/home/<account>/.easyzaymm-storage-public`. The Git release does not contain or delete uploaded media. Restore previously deleted vector files from a Hostinger backup into:
 
 ```text
-public_html/storage/app/public/vector/
+/home/<account>/.easyzaymm-storage-public/vector/
 ```
 
 The backup directory is outside the release tree by default:
@@ -99,8 +99,8 @@ php artisan optimize:clear
 ```
 
 The restore script refuses to run without `CONFIRM_RESTORE=YES`, validates both
-archive checksums, restores MySQL, and replaces `storage/app/public` from the
-selected backup. Reopen traffic only after checking login, product images,
+archive checksums, restores MySQL, restores the external upload directory, and
+recreates the `storage/app/public` symlink. Reopen traffic only after checking login, product images,
 checkout, and admin flows.
 
 The restore procedure has also been verified locally with disposable database and

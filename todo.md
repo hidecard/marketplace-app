@@ -1,6 +1,6 @@
 # Padetha Marketplace Project Todo List
 
-> **Last updated:** 2026-09-25
+> **Last updated:** 2026-10-21
 >
 > **Current priority:** Laravel + MySQL backend migration with Inertia React TypeScript as the only Web/Admin target. Flutter/Android work remains preserved and deferred until the Web release is stable.
 > **Status rule:** `[x]` means implemented and locally verified in this repository. `[ ]` means deployment, credentials, automated coverage, staging validation, or implementation is still required.
@@ -100,7 +100,7 @@
 - [x] Normalize Seller catalog image URLs and protect inventory adjustments with seller ownership authorization.
 - [x] Add a reusable image fallback so deleted legacy assets show a neutral placeholder instead of a broken-image icon across Marketplace, Shop, Product Detail, and Seller catalog pages.
 - [x] Match the legacy User Home carousel with rotating banners, manual dots, legacy Burmese messaging, and the same fallback treatment in Cart product cards.
-- [ ] Preserve `storage/app/public` outside source deployments and restore any legacy product files deleted by Hostinger cleanup; new Laravel uploads use `/media/...` and are server-streamed.
+- [x] Preserve `storage/app/public` outside source deployments with a persistent Hostinger storage directory and recreate the public symlink on every release; backups/restores include upload contents and new Laravel uploads use `/media/...`.
 - [x] Add a deployment guard that detects an incomplete Laravel vendor tree, including the exception renderer asset, before reusing the cache.
 - [x] Restore normalized public shop logo/cover URLs, add Seller logo and cover uploads with previews, and deploy the repaired shop profile message flow.
 - [x] Add a POST-compatible Seller settings route so multipart logo/cover uploads do not fail with HTTP 405 while the existing PUT route remains supported.

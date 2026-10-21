@@ -79,10 +79,13 @@ else
   fail "Unsupported DB_CONNECTION '$DB_CONNECTION'; refusing to create an incomplete production backup."
 fi
 
-PUBLIC_STORAGE="$ROOT_DIR/storage/app/public"
-[[ -d "$PUBLIC_STORAGE" ]] || fail "Missing storage/app/public; refusing to create an incomplete backup."
+PUBLIC_STORAGE="${PERSISTENT_STORAGE_DIR:-$PARENT_DIR/.easyzaymm-storage-public}"
+if [[ ! -d "$PUBLIC_STORAGE" && -d "$ROOT_DIR/storage/app/public" ]]; then
+  PUBLIC_STORAGE="$(readlink -f "$ROOT_DIR/storage/app/public")"
+fi
+[[ -d "$PUBLIC_STORAGE" ]] || fail "Missing persistent public storage; refusing to create an incomplete backup."
 echo "Creating uploaded storage backup..."
-tar -C "$ROOT_DIR/storage/app" -czf "$TEMP_DIR/storage-app-public.tar.gz" public
+tar -C "$PUBLIC_STORAGE" -czf "$TEMP_DIR/storage-app-public.tar.gz" .
 
 cat > "$TEMP_DIR/manifest.txt" <<EOF
 created_at_utc=$TIMESTAMP
