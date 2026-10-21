@@ -54,6 +54,32 @@ class BusinessOperationsTest extends TestCase
         $this->assertSame(8, $product->fresh()->stock);
     }
 
+    public function test_duplicate_pos_submission_replays_without_double_stock_decrement(): void
+    {
+        [$seller, $shop, $product] = $this->verifiedSeller();
+        Sanctum::actingAs($seller);
+        $payload = [
+            'items' => [['product_id' => $product->id, 'quantity' => 3]],
+            'discount' => 0,
+            'tax' => 0,
+            'payment_method' => 'cash',
+            'idempotency_key' => 'duplicate-pos-submit',
+        ];
+
+        $first = $this->postJson('/api/business/pos/sales', $payload)
+            ->assertCreated()
+            ->assertJsonPath('sale.total', '3000.00');
+        $saleId = $first->json('sale.id');
+
+        $this->postJson('/api/business/pos/sales', $payload)
+            ->assertOk()
+            ->assertJsonPath('replayed', true)
+            ->assertJsonPath('sale.id', $saleId);
+
+        $this->assertSame(7, $product->fresh()->stock);
+        $this->assertDatabaseCount('pos_sales', 1);
+    }
+
     public function test_expense_creation_is_idempotent(): void
     {
         [$seller] = $this->verifiedSeller();

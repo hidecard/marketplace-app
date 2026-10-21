@@ -295,9 +295,9 @@
 
 - [ ] Add Firestore Rules authorization tests for buyer, individual seller, shop owner, non-member, and admin roles.
 - [ ] Add Storage Rules tests for user drafts, shop images, verification evidence, and unauthorized access.
-- [ ] Add duplicate order submission integration test.
+- [x] Add duplicate order submission integration test with idempotent replay and single stock decrement.
 - [ ] Add concurrent last-stock order test.
-- [ ] Add duplicate POS submission integration test.
+- [x] Add duplicate POS submission integration test with idempotent replay and single stock decrement.
 - [x] Add buyer cancellation permission test.
 - [x] Add completed-order-only review test.
 - [x] Add one-review-per-product test.
