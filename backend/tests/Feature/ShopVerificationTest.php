@@ -31,6 +31,25 @@ class ShopVerificationTest extends TestCase
         ])->assertStatus(409);
     }
 
+    public function test_duplicate_shop_names_receive_unique_slugs(): void
+    {
+        $firstOwner = User::factory()->create(['role' => User::ROLE_USER]);
+        Sanctum::actingAs($firstOwner);
+        $this->postJson('/api/shop', [
+            'name' => 'Same Name Shop',
+            'phone' => '+959123456789',
+            'address' => 'Yangon',
+        ])->assertCreated()->assertJsonPath('shop.slug', 'same-name-shop');
+
+        $secondOwner = User::factory()->create(['role' => User::ROLE_USER]);
+        Sanctum::actingAs($secondOwner);
+        $this->postJson('/api/shop', [
+            'name' => 'Same Name Shop',
+            'phone' => '+959111111111',
+            'address' => 'Mandalay',
+        ])->assertCreated()->assertJsonPath('shop.slug', 'same-name-shop-2');
+    }
+
     public function test_seller_can_submit_one_pending_verification_and_resubmit_after_rejection(): void
     {
         $seller = User::factory()->create(['role' => User::ROLE_SELLER]);

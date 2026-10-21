@@ -303,7 +303,7 @@
 - [x] Add one-review-per-product test.
 - [x] Add own-product offer restriction test.
 - [ ] Add one-shop-per-user concurrency test.
-- [ ] Add unique-shop-slug concurrency test.
+- [x] Add unique-shop-slug uniqueness test; true concurrent race rehearsal remains a staging requirement.
 - [ ] Add one-pending-verification-per-shop concurrency test.
 - [ ] Add Web critical-flow tests for sign-up, phone link, listing, checkout, verification, and POS.
 - [ ] Add admin critical-flow tests for verification, reports, orders, users, and products.
