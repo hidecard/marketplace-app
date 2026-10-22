@@ -19,7 +19,15 @@ use Inertia\Response;
 
 class CartController extends Controller
 {
-    public function index(Request $request): Response { return Inertia::render('Cart/Index', $this->cartProps($request)); }
+    public function index(Request $request): Response
+    {
+        return Inertia::render('Cart/Index', [
+            ...$this->cartProps($request),
+            'addresses' => $request->user()
+                ? Address::where('user_id', $request->user()->id)->latest()->get()
+                : [],
+        ]);
+    }
     public function add(Request $request, Product $product): RedirectResponse { abort_unless($product->status === 'active', 404); $qty = max(1, $request->integer('quantity', 1)); $cart = $request->session()->get('cart', []); $next = ($cart[$product->id] ?? 0) + $qty; abort_if($next > $product->stock, 422, 'Not enough stock available.'); $cart[$product->id] = $next; $request->session()->put('cart', $cart); return back()->with('success', 'Added to cart.'); }
     public function update(Request $request): RedirectResponse { $data = $request->validate(['items' => ['required', 'array'], 'items.*' => ['integer', 'min:1', 'max:1000']]); $ids = array_map('intval', array_keys($data['items'])); $products = Product::whereIn('id', $ids)->get()->keyBy('id'); $cart = []; foreach ($data['items'] as $id => $qty) { $id = (int) $id; abort_unless(isset($products[$id]) && $products[$id]->status === 'active' && $qty <= $products[$id]->stock, 422, 'Cart quantity is unavailable.'); $cart[$id] = (int) $qty; } $request->session()->put('cart', $cart); return back(); }
     public function remove(Request $request, int $product): RedirectResponse { $cart = $request->session()->get('cart', []); unset($cart[$product]); $request->session()->put('cart', $cart); return back(); }

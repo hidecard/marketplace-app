@@ -121,6 +121,8 @@
 - [x] Replace the generic User `/shops` screen with a dedicated verified-shops page: search, server-side sorting, pagination, grid/list views, shop counts, and empty states.
 - [x] Redesign User product search/listing to match the legacy Firebase flow: mobile filter drawer, clear-all filters, shop/city filter, price/condition/category filters, grid/list modes, result counts, pagination, and improved empty state.
 - [x] Add buyer order-detail completion for delivered orders, delivery progress steps, product thumbnails, direct review action, and seller messaging entry point.
+- [x] Align User Home horizontal shop/product rails with the Firebase edge-to-edge mobile pattern.
+- [x] Align User Shops grid/list cards and Cart delivery preview with server-owned saved addresses and the active delivery-fee rule.
 - [x] Add client-side conversation search and a proper no-results state to the User Messages page.
 - [x] Repair the User Profile edit control: add a normal `/profile` update route, region persistence, inline edit form, Notifications menu link, and success/error feedback.
 - [x] Make Product Detail Share functional with native mobile share and clipboard fallback.
