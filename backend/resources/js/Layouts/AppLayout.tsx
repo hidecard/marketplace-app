@@ -25,14 +25,18 @@ const businessItems: readonly NavItem[] = [
 ];
 
 export default function AppLayout({ children }: PropsWithChildren) {
-    const { auth, cart_count = 0, unread_notifications = 0 } = usePage<SharedProps>().props;
+    const { auth, shop, cart_count = 0, unread_notifications = 0 } = usePage<SharedProps>().props;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [language, setLanguage] = useState<'en' | 'my'>('en');
     const path = typeof window === 'undefined' ? '/' : window.location.pathname;
     const isBusiness = path.startsWith('/seller');
     const items = isBusiness ? businessItems : marketplaceItems;
-    const businessHref = user?.role === 'seller' ? '/seller' : '/seller/shop/create';
+    const businessHref = shop?.verification_status === 'approved' && shop.verified
+        ? '/seller'
+        : shop
+            ? '/seller/verification'
+            : '/seller/shop/create';
     const active = (href: string) => href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
     const title = useMemo(() => isBusiness ? (language === 'my' ? 'စီးပွားရေးဆိုင်ရာ' : 'Shop Hub') : (language === 'my' ? 'ပဒေသာပင်' : 'Marketplace'), [isBusiness, language]);
     const closeSidebar = () => setSidebarOpen(false);
@@ -67,6 +71,6 @@ export default function AppLayout({ children }: PropsWithChildren) {
             </header>
             <main className="min-w-0 flex-1 pb-mobile-nav lg:pb-6">{children}</main>
         </div>
-        <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur lg:hidden safe-area-bottom"><div className="mx-auto flex h-16 max-w-lg items-center justify-around">{mobileItems.map(([href, label, Icon]) => <Link key={href} href={href} className={`relative flex h-full min-w-0 flex-1 flex-col items-center justify-center ${active(href) ? 'text-primary-600' : 'text-gray-400'}`}><Icon size={21} />{href === '/cart' && cart_count > 0 && <span className="absolute left-1/2 top-2 ml-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary-600 px-0.5 text-[9px] font-bold text-white">{cart_count > 9 ? '9+' : cart_count}</span>}{href === '/chats' && unread_notifications > 0 && <span className="absolute left-1/2 top-2 ml-2 h-2 w-2 rounded-full bg-red-500" />}<span className="mt-1 truncate px-1 text-[11px]">{label}</span></Link>)}</div></nav>
+        {!isBusiness && <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] backdrop-blur lg:hidden safe-area-bottom"><div className="mx-auto flex h-16 max-w-lg items-center justify-around">{mobileItems.map(([href, label, Icon]) => <Link key={href} href={href} className={`relative flex h-full min-w-0 flex-1 flex-col items-center justify-center ${active(href) ? 'text-primary-600' : 'text-gray-400'}`}><Icon size={21} />{href === '/cart' && cart_count > 0 && <span className="absolute left-1/2 top-2 ml-2 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-primary-600 px-0.5 text-[9px] font-bold text-white">{cart_count > 9 ? '9+' : cart_count}</span>}{href === '/chats' && unread_notifications > 0 && <span className="absolute left-1/2 top-2 ml-2 h-2 w-2 rounded-full bg-red-500" />}<span className="mt-1 truncate px-1 text-[11px]">{label}</span></Link>)}</div></nav>}
     </div>;
 }

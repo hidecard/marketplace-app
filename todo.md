@@ -117,6 +117,7 @@
 - [x] Fix role middleware response behavior: web requests redirect to `/dashboard` or `/seller/verification` with a flash error, while API requests retain JSON 403 responses.
 - [x] Extend web authorization tests for regular-user Admin denial and unverified-Seller verification redirects; full suite now passes 51 tests and 209 assertions.
 - [x] Replace static User header notification/cart dots with server-backed unread-notification and session-cart badges on desktop and mobile navigation.
+- [x] Align the shared Inertia shell with the Firebase layout: server-backed seller mode destinations and no mobile bottom nav on Seller routes.
 - [x] Replace the generic User `/shops` screen with a dedicated verified-shops page: search, server-side sorting, pagination, grid/list views, shop counts, and empty states.
 - [x] Redesign User product search/listing to match the legacy Firebase flow: mobile filter drawer, clear-all filters, shop/city filter, price/condition/category filters, grid/list modes, result counts, pagination, and improved empty state.
 - [x] Add buyer order-detail completion for delivered orders, delivery progress steps, product thumbnails, direct review action, and seller messaging entry point.

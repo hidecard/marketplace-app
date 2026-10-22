@@ -13,8 +13,18 @@ export interface AuthUser {
     phone_verified?: boolean;
 }
 
+export interface SharedShop {
+    id: number;
+    name: string;
+    slug: string;
+    verified: boolean;
+    verification_status: 'pending' | 'approved' | 'rejected';
+    rejection_note?: string | null;
+}
+
 export interface SharedProps extends InertiaPageProps {
     auth: { user: AuthUser | null };
+    shop?: SharedShop | null;
     cart_count?: number;
     unread_notifications?: number;
     flash?: { success?: string; error?: string; otp_challenge_id?: number; otp_code?: string };

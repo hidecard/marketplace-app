@@ -41,6 +41,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user()?->only(['id', 'name', 'email', 'role', 'status', 'phone_number', 'phone_verified']),
             ],
+            'shop' => fn () => $request->user()?->shop?->only(['id', 'name', 'slug', 'verified', 'verification_status', 'rejection_note']),
             'cart_count' => fn () => collect($request->session()->get('cart', []))->sum(),
             'unread_notifications' => fn () => $request->user() ? MarketplaceNotification::where('user_id', $request->user()->id)->whereNull('read_at')->count() : 0,
             'flash' => [
